@@ -1,7 +1,6 @@
 <template>
     <div class="d-flex flex-column align-center" style="height: 100vh;">
-      <h1 class="mb-3 mt-5">The DashBoard</h1>
-      <p>This is the About Page content.</p>
+      <h1 class="mb-3 mt-5">Agents by Name</h1>
   
       <!-- List of Agent Cards -->
       <div class="d-flex flex-wrap justify-center">
