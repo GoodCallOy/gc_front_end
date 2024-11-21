@@ -1,55 +1,72 @@
 <script setup>
-import menuBar from './components/menuBar.vue';
-import DashBoard from './components/dashBoard.vue';
-import AboutPage from './components/aboutPage.vue';
-
 import { ref } from 'vue';
 
-// Register your components
+// Import your components
+import DashBoard from './components/dashBoard.vue';
+import About from './components/aboutPage.vue';
+
+// Define a map of navigation items to components
 const componentsMap = {
-  Home: DashBoard,
-  About: AboutPage,
+  home: DashBoard,
+  about: About,
 };
 
-// Define a reactive variable for the active component
-const activeComponent = ref('Home');
+// Reactive state for the currently selected navigation item
+const selectedItem = ref('home'); // Default to 'home'
 
-// Function to update the active component
-function updateComponent(componentName) {
-  activeComponent.value = componentName;
+// Reactive state for the drawer's open/close status
+const isDrawerOpen = ref(true); // Tracks whether the drawer is expanded
+
+// Function to handle navigation item selection
+function selectItem(value) {
+  selectedItem.value = value;
 }
 </script>
 
 <template>
-  <div class="layout">
-    <aside class="menu-bar">
-      <menuBar @menu-item-click="updateComponent" />
-    </aside>
+  <v-app>
+    <!-- Navigation Drawer -->
+    <v-navigation-drawer
+      app
+      rail
+      width="256"
+      rail-width="72"
+      expand-on-hover
+    >
+      <!-- User Info (Shown Only in Expanded Mode) -->
+      <v-list v-if="isDrawerOpen">
+        <v-list-item
+          prepend-avatar="https://randomuser.me/api/portraits/women/85.jpg"
+          subtitle="sandra_a88@gmail.com"
+          title="Sandra Adams"
+        ></v-list-item>
+        <v-divider></v-divider>
+      </v-list>
 
-    <div class="content">
-      <!-- Dynamically load the component -->
-      <component :is="componentsMap[activeComponent]" />
-    </div>
-  </div>
+      <!-- Navigation Items -->
+      <v-list density="compact" nav>
+        <v-list-item
+          prepend-icon="mdi-folder"
+          title="DashBoard"
+          value="home"
+          @click="selectItem('home')"
+        ></v-list-item>
+        <v-list-item
+          prepend-icon="mdi-account-multiple"
+          title="About"
+          value="about"
+          @click="selectItem('about')"
+        ></v-list-item>
+      </v-list>
+    </v-navigation-drawer>
+
+    <!-- Main Content Area -->
+    <v-main app>
+      <!-- Dynamically load the selected component -->
+      <component :is="componentsMap[selectedItem]" />
+    </v-main>
+  </v-app>
 </template>
 
 <style scoped>
-.layout {
-  display: flex;
-  height: 100vh; /* Full viewport height */
-}
-
-.menu-bar {
-  width: 255px;
-  background-color: #2c3e50;
-  color: white;
-  padding: 0; /* Ensure no unexpected padding */
-  box-sizing: border-box;
-  overflow-y: auto; /* Add a scrollbar if content overflows */
-}
-
-.content {
-  flex-grow: 1;
-  padding: 20px;
-}
 </style>
