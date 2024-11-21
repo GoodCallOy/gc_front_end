@@ -1,4 +1,4 @@
-# gc_front_end
+# vuetify-test
 
 ## Project setup
 ```
