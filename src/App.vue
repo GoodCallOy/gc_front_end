@@ -4,11 +4,13 @@ import { ref } from 'vue';
 // Import your components
 import DashBoard from './components/dashBoard.vue';
 import Agents from './components/agentsPage.vue';
+import AddAgent from './components/addAgent.vue';
 
 // Define a map of navigation items to components
 const componentsMap = {
   home: DashBoard,
   agents: Agents,
+  addAgent: AddAgent,
 };
 
 // Reactive state for the currently selected navigation item
@@ -56,6 +58,12 @@ function selectItem(value) {
           title="Agents"
           value="agents"
           @click="selectItem('agents')"
+        ></v-list-item>
+        <v-list-item
+          prepend-icon="mdi-account-multiple"
+          title="Add Agents"
+          value="addAgent"
+          @click="selectItem('addAgent')"
         ></v-list-item>
       </v-list>
     </v-navigation-drawer>

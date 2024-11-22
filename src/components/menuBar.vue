@@ -10,6 +10,7 @@ export default {
         { text: 'DashBoard', icon: 'mdi-folder' },
         { text: 'Cases', icon: 'mdi-account-multiple' },
         { text: 'Agents', icon: 'mdi-star' },
+        { text: 'Add Agent', icon: 'mdi-star' },
         { text: 'about', icon: 'mdi-history' },
       ],
     }),

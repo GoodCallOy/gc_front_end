@@ -54,7 +54,7 @@
     methods: {
       async getAgents() {
         try {
-          const response = await axios.get('https://goodcall-back-end.onrender.com/api/v1/agents/');
+          const response = await axios.get('https://goodcall-back-end.onrender.com/api/v1/agent/');
           this.agents = response.data; // Store the fetched data in the agents array
         } catch (error) {
           console.error('Error fetching agents:', error);
