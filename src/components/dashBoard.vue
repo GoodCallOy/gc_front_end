@@ -9,6 +9,7 @@
           v-for="(singleCase, index) in cases"
           :key="index"
           :companyCase="singleCase"
+          :agents="agents"
         />
       </div>
 
