@@ -1,51 +1,68 @@
 <template>
     <div class="d-flex flex-column align-center" style="height: 100vh;">
       <h1 class="mb-3 mt-5">The DashBoard</h1>
-      <p>This is the About Page content.</p>
+      <p>List of cases.</p>
   
+       <!-- List of Cases Cards -->
+       <div class="d-flex flex-wrap justify-center">
+        <CaseCard
+          v-for="(singleCase, index) in cases"
+          :key="index"
+          :companyCase="singleCase"
+        />
+      </div>
+
+      <p>List of agents.</p>
       <!-- List of Agent Cards -->
       <div class="d-flex flex-wrap justify-center">
-        <v-card
+        <AgentCard
           v-for="(agent, index) in agents"
           :key="index"
-          class="mx-2 my-2"
-          elevation="16"
-          style="width: 200px; height: 300px;"
-        >
-          <v-card-title>{{ agent.name }}</v-card-title>
-          <v-card-subtitle>Agents Stats</v-card-subtitle>
-          <v-card-text>
-            <p>Meetings: {{ agent.meeting }}</p>
-            <p>Call Time: {{ agent.call_time }} mins</p>
-            <p>Calls Made: {{ agent.calls_made }}</p>
-            <p>outgoing_calls: {{ agent.outgoing_calls }}</p>
-            <p>answered_calls: {{ agent.answered_calls }}</p>
-            <p>resopnse_rate: {{ agent.resopnse_rate }}%</p>
-          </v-card-text>
-        </v-card>
+          :agent="agent"
+        />
       </div>
     </div>
   </template>
   
   <script>
   import axios from 'axios';
+  import AgentCard from './agentCard.vue'
+  import CaseCard from './caseCard.vue'
   
   export default {
     name: 'dashBoard',
+    
+    components: {
+      AgentCard, // Register the component
+      CaseCard, // Register the component
+    },
+    
     data() {
       return {
         agents: [], // Array to store agents data
+        cases: [],
       };
     },
+
     mounted() {
       // Fetch the list of agents when the component is mounted
       this.getAgents();
+      this.getCases();
     },
+
     methods: {
       async getAgents() {
         try {
           const response = await axios.get('https://goodcall-back-end.onrender.com/api/v1/agents/');
           this.agents = response.data; // Store the fetched data in the agents array
+        } catch (error) {
+          console.error('Error fetching agents:', error);
+        }
+      },
+      async getCases() {
+        try {
+          const response = await axios.get('https://goodcall-back-end.onrender.com/api/v1/cases/');
+          this.cases = response.data; // Store the fetched data in the agents array
         } catch (error) {
           console.error('Error fetching agents:', error);
         }
