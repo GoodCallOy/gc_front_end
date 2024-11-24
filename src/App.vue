@@ -60,7 +60,13 @@ function selectItem(value) {
           @click="selectItem('agents')"
         ></v-list-item>
         <v-list-item
-          prepend-icon="mdi-account-multiple"
+          prepend-icon="mdi-folder-plus"
+          title="Add Case"
+          value="addCase"
+          @click="selectItem('addCase')"
+        ></v-list-item>
+        <v-list-item
+          prepend-icon="mdi-account-plus"
           title="Add Agents"
           value="addAgent"
           @click="selectItem('addAgent')"

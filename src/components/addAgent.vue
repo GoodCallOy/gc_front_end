@@ -87,7 +87,7 @@
           v => (v && v.length <= 100) || 'Name must be less than 100 characters',
         ],
         numberRules: [
-          v => v > 0 || 'Value must be greater than 0',
+          v => v >= 0 || 'Value must be 0 or higher',
         ],
       };
     },
@@ -96,7 +96,7 @@
         const me = this
         console.log('Agent object: ', me.agent)
         try {
-          const response = await axios.post('http://localhost:3030/api/v1/agent/', me.agent);
+          const response = await axios.post('https://goodcall-back-end.onrender.com/api/v1/agent/', me.agent);
           console.log('Agent added: ', response)
           me.message = 'Agent added successfully!';
           me.alertType = 'success';

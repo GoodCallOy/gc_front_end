@@ -1,5 +1,5 @@
 <template>
-    <v-card class="mx-auto my-2 mr-3" elevation="16" style="width: auto; max-width: 800px; padding: 20px;">
+    <v-card class="mx-auto my-2 mr-3" elevation="16" style="min-width: 600px; max-width: 800px; padding: 20px;">
       <!-- Centered Case Information -->
       <div class="text-center mb-5">
         <v-card-title>{{ companyCase.name }}</v-card-title>
