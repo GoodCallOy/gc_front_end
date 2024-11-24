@@ -4,7 +4,7 @@
       <p>List of cases.</p>
   
        <!-- List of Cases Cards -->
-       <div class="d-flex flex-wrap justify-center">
+       <div class="d-flex flex-wrap justify-center mb-5">
         <CaseCard
           v-for="(singleCase, index) in cases"
           :key="index"
@@ -13,7 +13,7 @@
         />
       </div>
 
-      <p>List of agents.</p>
+      <p class="mt-5">List of agents.</p>
       <!-- List of Agent Cards -->
       <div class="d-flex flex-wrap justify-center">
         <AgentCard
@@ -26,23 +26,23 @@
   </template>
   
   <script>
-  import axios from 'axios';
-  import AgentCard from './agentCard.vue'
-  import CaseCard from './caseCard.vue'
-  
-  export default {
-    name: 'dashBoard',
+    import axios from 'axios';
+    import AgentCard from './agentCard.vue'
+    import CaseCard from './caseCard.vue'
     
-    components: {
-      AgentCard, // Register the component
-      CaseCard, // Register the component
-    },
+    export default {
+      name: 'dashBoard',
+      
+      components: {
+        AgentCard, // Register the component
+        CaseCard, // Register the component
+      },
     
     data() {
       return {
         agents: [], // Array to store agents data
         cases: [],
-      };
+        };
     },
 
     mounted() {

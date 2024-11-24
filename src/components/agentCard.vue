@@ -1,7 +1,6 @@
 <template>
     <v-card class="mx-2 my-2" elevation="16" style="width: 175px; height: 300px;">
       <v-card-title>{{ agent.name }}</v-card-title>
-      <v-card-subtitle>Agent Stats</v-card-subtitle>
       <v-card-text>
         <p>Meetings: {{ agent.meetings }}</p>
         <p>Call Time: {{ agent.call_time }} mins</p>
