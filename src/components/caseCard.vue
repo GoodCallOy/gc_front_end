@@ -4,9 +4,14 @@
       <div class="text-center mb-5">
         <v-card-title>{{ companyCase.name }}</v-card-title>
         <v-card-subtitle></v-card-subtitle>
-        <v-card-text>
-          <p><strong>Name:</strong> {{ companyCase.name }}</p>
+        <v-card-text class="text-center">
           <p><strong>Billing:</strong> {{ companyCase.billing }} mins</p>
+          <p><strong>Total Meetings:</strong> {{ aggregateStats.totalMeetings }}</p>
+          <p><strong>Total Call Time:</strong> {{ aggregateStats.totalCallTime }} mins</p>
+          <p><strong>Total Calls Made:</strong> {{ aggregateStats.totalCallsMade }}</p>
+          <p><strong>Total Outgoing Calls:</strong> {{ aggregateStats.totalOutgoingCalls }}</p>
+          <p><strong>Total Answered Calls:</strong> {{ aggregateStats.totalAnsweredCalls }}</p>
+          <p><strong>Total Response Rate:</strong> {{ aggregateStats.totalResponseRate }}%</p>
         </v-card-text>
       </div>
   
@@ -45,6 +50,34 @@
       filteredAgents() {
         return this.agents.filter(agent => agent.case === this.companyCase.name);
       },
+      aggregateStats() {
+      return this.filteredAgents.reduce(
+        (totals, agent) => {
+          totals.totalMeetings += agent.meetings || 0;
+          totals.totalCallTime += agent.call_time || 0;
+          totals.totalCallsMade += agent.calls_made || 0;
+          totals.totalOutgoingCalls += agent.outgoing_calls || 0;
+          totals.totalAnsweredCalls += agent.answered_calls || 0;
+          totals.totalResponseRate += agent.response_rate || 0;
+          return totals;
+        },
+        {
+          totalMeetings: 0,
+          totalCallTime: 0,
+          totalCallsMade: 0,
+          totalOutgoingCalls: 0,
+          totalAnsweredCalls: 0,
+          totalResponseRate: 0,
+        }
+      );
+    },
+    // Compute the average response rate
+    averageResponseRate() {
+      const agentsCount = this.filteredAgents.length;
+      return agentsCount > 0
+        ? this.aggregateStats.totalResponseRate / agentsCount
+        : 0;
+    },
     },
   };
   </script>

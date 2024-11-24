@@ -83,4 +83,20 @@ function selectItem(value) {
 </template>
 
 <style scoped>
+/* Ensure the drawer behaves consistently with custom styles */
+.v-navigation-drawer {
+  z-index: 1000;
+}
+
+/* Adjust styles for small screens using media queries */
+@media (max-width: 600px) {
+  .v-navigation-drawer {
+    position: absolute;
+  }
+
+  /* Ensure the drawer overlays content on small screens */
+  .v-navigation-drawer--temporary {
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+  }
+}
 </style>
