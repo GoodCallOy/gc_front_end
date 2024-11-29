@@ -5,12 +5,14 @@ import { ref } from 'vue';
 import DashBoard from './components/dashBoard.vue';
 import Agents from './components/agentsPage.vue';
 import AddAgent from './components/addAgent.vue';
+import AddCase from './components/addCase.vue';
 
 // Define a map of navigation items to components
 const componentsMap = {
   home: DashBoard,
   agents: Agents,
   addAgent: AddAgent,
+  addCase: AddCase,
 };
 
 // Reactive state for the currently selected navigation item
