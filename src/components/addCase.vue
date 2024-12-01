@@ -5,7 +5,7 @@
       <v-form v-model="valid" @submit.prevent="submitForm" lazy-validation>
         <v-text-field
           v-model="caseInfo.name"
-          label="Agent Name"
+          label="Case Name"
           :rules="nameRules"
           required
         />
@@ -31,13 +31,18 @@
           required
         />
   
-        <v-btn :disabled="!valid" color="primary">Submit</v-btn>
+        <div class="button-alert-container">
+        <v-btn :disabled="!valid" type="submit" color="primary">Submit</v-btn>
+        <v-alert 
+          v-if="message" 
+          :type="alertType" 
+          class="ml-3" 
+          dense 
+          dismissible>
+          {{ message }}
+        </v-alert>
+      </div>
       </v-form>
-  
-      <!-- Success/Failure Message -->
-      <v-alert v-if="message" :type="alertType" dismissible>
-        {{ message }}
-      </v-alert>
     </div>
   </template>
   
