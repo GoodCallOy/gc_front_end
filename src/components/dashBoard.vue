@@ -1,8 +1,28 @@
 <template>
     <div class="d-flex flex-column align-center" style="height: 100vh;">
       <h1 class="mb-3 mt-5">The DashBoard</h1>
+      
+      <div class="d-flex flex-column align-center">
+        <v-menu>
+          <template v-slot:activator="{ props }">
+            <v-btn
+              color="primary"
+              v-bind="props"
+            >
+            {{ displayDate }}
+            </v-btn>
+          </template>
+          <v-card>
+            <v-date-picker v-model="selectedDate" color="primary" />
+            <v-card-actions>
+              <v-spacer></v-spacer>
+              <v-btn text color="primary" @click="menu = false">Close</v-btn>
+            </v-card-actions>
+          </v-card>
+        </v-menu>
+      </div>
+
       <p>List of cases.</p>
-  
        <!-- List of Cases Cards -->
        <div class="d-flex flex-wrap justify-center mb-5">
         <CaseCard
@@ -38,11 +58,24 @@
         CaseCard, // Register the component
       },
     
-    data() {
-      return {
-        agents: [], // Array to store agents data
-        cases: [],
-        };
+      data() {
+    return {
+      agents: [],          // Array to store agents data
+      cases: [],           // Array to store cases data
+      menu: false, // Controls the menu visibility
+      selectedDate: new Date(), // Current selected date
+      selectedRangeType: 'day', // Range type (day, week, month)
+      rangeOptions: ['day', 'week', 'month'], // Range options
+    };
+    
+  },
+
+    computed: {
+      displayDate() {
+        const options = { year: 'numeric', month: 'short', day: 'numeric' };
+        const formattedDate = this.selectedDate.toLocaleDateString(undefined, options);
+        return `${formattedDate} (${this.selectedRangeType})`;
+      },
     },
 
     mounted() {
@@ -68,6 +101,9 @@
           console.error('Error fetching agents:', error);
         }
       },
+      onMenuToggle(newValue) {
+        console.log('Menu toggled:', newValue);
+      },
     },
   };
   </script>
@@ -80,5 +116,10 @@
     align-items: center;
     justify-content: center;
   }
+
+  .date-picker-btn {
+  text-transform: none; /* Avoids button text being uppercase */
+  min-width: 200px;
+}
   </style>
   

@@ -44,9 +44,9 @@
       </div>
       </v-form>
     </div>
-  </template>
+</template>
   
-  <script>
+<script>
   import axios from 'axios';
   
   export default {
@@ -77,11 +77,11 @@
     methods: {
       async submitForm() {
         const me = this;
-        console.log('Case object: ', me.case);
+        console.log('Case object: ', me.caseInfo);
         try {
           const response = await axios.post(
             'https://goodcall-back-end.onrender.com/api/v1/cases/',
-            me.case
+            me.caseInfo
           );
           console.log('Case added: ', response);
           me.message = 'Case added successfully!';
@@ -103,9 +103,9 @@
       },
     },
   };
-  </script>
+</script>
   
-  <style scoped>
+<style scoped>
   .v-form {
     width: 400px;
     max-width: 100%;
@@ -117,5 +117,13 @@
   .v-alert {
     margin-top: 20px;
   }
-  </style>
+  .button-alert-container {
+    display: flex;
+    align-items: center; /* Align items vertically */
+    margin-top: 20px;    /* Add spacing from inputs */
+  }
+  .ml-3 {
+    margin-left: 12px; /* Space between button and alert */
+  }
+</style>
   
