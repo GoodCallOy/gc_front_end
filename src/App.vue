@@ -1,5 +1,6 @@
 <script setup>
 import { ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 
 // Import your components
 import DashBoard from './components/dashBoard.vue';
@@ -24,6 +25,14 @@ const isDrawerOpen = ref(true); // Tracks whether the drawer is expanded
 // Function to handle navigation item selection
 function selectItem(value) {
   selectedItem.value = value;
+}
+
+// Use vue-i18n for language switching
+const { t, locale } = useI18n();
+
+// Function to toggle the language between English and Finnish
+function toggleLanguage() {
+  locale.value = locale.value === 'en' ? 'fi' : 'en';
 }
 </script>
 
@@ -51,28 +60,37 @@ function selectItem(value) {
       <v-list density="compact" nav>
         <v-list-item
           prepend-icon="mdi-laptop"
-          title="DashBoard"
+          :title="t('buttons.dashboard')"  
           value="home"
           @click="selectItem('home')"
         ></v-list-item>
         <v-list-item
           prepend-icon="mdi-account-multiple"
-          title="Agents"
+          :title="t('buttons.agents')"  
           value="agents"
           @click="selectItem('agents')"
         ></v-list-item>
         <v-list-item
           prepend-icon="mdi-folder-plus"
-          title="Add Case"
+          :title="t('buttons.addCase')"  
           value="addCase"
           @click="selectItem('addCase')"
         ></v-list-item>
         <v-list-item
           prepend-icon="mdi-account-plus"
-          title="Add Agents"
+          :title="t('buttons.addAgent')"  
           value="addAgent"
           @click="selectItem('addAgent')"
         ></v-list-item>
+        <v-divider></v-divider>
+
+        <!-- Language Toggle Button -->
+        <v-list-item
+          prepend-icon="mdi-earth"
+          :title="t('buttons.language')"
+          @click="toggleLanguage"
+        >
+        </v-list-item>
       </v-list>
     </v-navigation-drawer>
 

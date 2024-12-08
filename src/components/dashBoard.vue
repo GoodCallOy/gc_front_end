@@ -1,6 +1,6 @@
 <template>
   <div class="d-flex flex-column align-center" style="height: 100vh;">
-    <h1 class="mb-3 mt-5">The Dashboard</h1>
+    <h1 class="mb-3 mt-5">{{ $t('dashboard.title') }}</h1>
 
     <!-- Buttons for selecting Date, Month, and Week -->
     <div class="d-flex flex-row align-center ma-5">
@@ -15,7 +15,7 @@
           <v-date-picker v-model="selectedDate" color="primary" @input="menu1 = false" />
           <v-card-actions>
             <v-spacer></v-spacer>
-            <v-btn text color="primary" @click="menu1 = false">Close</v-btn>
+            <v-btn text color="primary" @click="menu1 = false">{{ $t('buttons.close') }}</v-btn>
           </v-card-actions>
         </v-card>
       </v-menu>
@@ -31,7 +31,7 @@
           <v-date-picker v-model="selectedMonth" color="primary" type="month" @input="menu2 = false" />
           <v-card-actions>
             <v-spacer></v-spacer>
-            <v-btn text color="primary" @click="menu2 = false">Close</v-btn>
+            <v-btn text color="primary" @click="menu2 = false">{{ $t('buttons.close') }}</v-btn>
           </v-card-actions>
         </v-card>
       </v-menu>
@@ -47,14 +47,14 @@
           <v-date-picker v-model="selectedWeekDate" color="primary" type="date" @input="menu3 = false" />
           <v-card-actions>
             <v-spacer></v-spacer>
-            <v-btn text color="primary" @click="menu3 = false">Close</v-btn>
+            <v-btn text color="primary" @click="menu3 = false">{{ $t('buttons.close') }}</v-btn>
           </v-card-actions>
         </v-card>
       </v-menu>
     </div>
 
     <!-- List of Cases -->
-    <p>List of cases.</p>
+    <p>{{ $t('dashboard.cases') }}.</p>
     <div class="d-flex flex-wrap justify-center mb-5">
       <CaseCard
         v-for="(singleCase, index) in cases"
@@ -65,7 +65,7 @@
     </div>
 
     <!-- List of Agents -->
-    <p class="mt-5">List of agents.</p>
+    <p class="mt-5">{{ $t('dashboard.agents') }}</p>
     <div class="d-flex flex-wrap justify-center">
       <AgentCard
         v-for="(agent, index) in agents"

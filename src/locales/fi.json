@@ -1,0 +1,17 @@
+{
+    "dashboard": {
+      "title": "Hallintapaneeli",
+      "cases": "Tapausten lista",
+      "agents": "Agenttien lista"
+    },
+    "buttons": {
+      "close": "Sulje",
+      "dashboard": "Kojelauta",
+      "agents": "Agentit",
+      "addCase": "lisää tapaus",
+      "addAgent": "Lisää agentti",
+      "language": "Suomi"
+
+    }
+  }
+  

@@ -1,0 +1,17 @@
+{
+    "dashboard": {
+      "title": "The Dashboard",
+      "cases": "List of cases",
+      "agents": "List of agents",
+      "language": "English"
+    },
+    "buttons": {
+      "close": "Close",
+      "dashboard": "Dashboard",
+      "agents": "Agents",
+      "addCase": "Add case",
+      "addAgent": "Add agent",
+      "language": "English"
+    }
+  }
+  
