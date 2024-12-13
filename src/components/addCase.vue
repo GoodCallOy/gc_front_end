@@ -11,7 +11,7 @@
         />
         <v-text-field
           v-model="caseInfo.billing"
-          label="Billing"
+          label="Billing per unit"
           type="number"
           :rules="numberRules"
           required
@@ -19,13 +19,13 @@
         <v-select
           v-model="caseInfo.state"
           :items="['Active', 'Inactive']"
-          label="State"
+          label="Status"
           :rules="stateRules"
           required
         />
         <v-select
           v-model="caseInfo.type"
-          :items="['Monthly', 'Hourly', 'Pilot']"
+          :items="['Daily','Hourly', 'Appointment', 'Interview', 'Completed Call']"
           label="Type"
           :rules="stateRules"
           required

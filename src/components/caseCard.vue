@@ -10,13 +10,12 @@
         <div class="stats-card">
           <v-card-subtitle></v-card-subtitle>
           <v-card-text class="text-center">
-            <p><strong>Billing:</strong> {{ companyCase.billing }} mins</p>
-            <p><strong>Total Meetings:</strong> {{ aggregateStats.totalMeetings }}</p>
-            <p><strong>Total Call Time:</strong> {{ aggregateStats.totalCallTime }} mins</p>
-            <p><strong>Total Calls Made:</strong> {{ aggregateStats.totalCallsMade }}</p>
-            <p><strong>Total Outgoing Calls:</strong> {{ aggregateStats.totalOutgoingCalls }}</p>
-            <p><strong>Total Answered Calls:</strong> {{ aggregateStats.totalAnsweredCalls }}</p>
-            <p><strong>Average Response Rate:</strong> {{ averageResponseRate }}%</p>
+            <p><strong>Total Billing:</strong> {{ companyCase.billing }}</p>
+            <p><strong>Total Meetings (Tapaamiset ):</strong> {{ aggregateStats.totalMeetings }}</p>
+            <p><strong>Dials / Meeting (Uloslähtenyttä):</strong> {{ aggregateStats.totalMeetings }}</p>
+            <p><strong>Hour/Meeting (Tunti):</strong> {{ aggregateStats.totalOutgoingCalls }}</p>
+            
+            
           </v-card-text>
         </div>
 
@@ -24,19 +23,24 @@
         <div class="stats-card">
           <v-card-subtitle></v-card-subtitle>
           <v-card-text class="text-center">
-            <p><strong>Billing:</strong> {{ companyCase.billing }} mins</p>
-            <p><strong>Total Meetings:</strong> {{ aggregateStats.totalMeetings }}</p>
-            <p><strong>Total Call Time:</strong> {{ aggregateStats.totalCallTime }} mins</p>
-            <p><strong>Total Calls Made:</strong> {{ aggregateStats.totalCallsMade }}</p>
-            <p><strong>Total Outgoing Calls:</strong> {{ aggregateStats.totalOutgoingCalls }}</p>
-            <p><strong>Total Answered Calls:</strong> {{ aggregateStats.totalAnsweredCalls }}</p>
-            <p><strong>Average Response Rate:</strong> {{ averageResponseRate }}%</p>
+            <p><strong> Active Call Time (Soittoaika ):</strong> {{ aggregateStats.totalCallTime }} mins</p>
+            <p><strong>Completed Calls Made (Läpiviedyt puhelut):</strong> {{ aggregateStats.totalCallsMade }}</p>
+            <p><strong>Total Outgoing Calls (Uloslähteneet puhelut):</strong> {{ aggregateStats.totalOutgoingCalls }}</p>
+            <p><strong>Total Answered Calls (Vastatut puhelut):</strong> {{ aggregateStats.totalAnsweredCalls }}</p>
+            <p><strong>Average Response Rate (Vastausprosentti ):</strong> {{ averageResponseRate }}%</p>
+            <p><strong>Answered call/Meeting (Vastattua puhelua):</strong> {{ aggregateStats.totalCallTime }}</p>
+            <p><strong>Completed calls/Meeting (Läpivietyä):</strong> {{ aggregateStats.totalCallsMade }}</p>
+            <p><strong>Hour/Meeting (Tunti):</strong> {{ aggregateStats.totalOutgoingCalls }}</p>
+            <p><strong>Calls/Hour (Puheluita ):</strong> {{ aggregateStats.totalAnsweredCalls }}</p>
+            <p><strong>Completed Calls/Hour (Läpivietyjä):</strong> {{ averageResponseRate }}</p>
+            <p><strong>Price/Appointment (Hinta):</strong> {{ averageResponseRate }}</p>
           </v-card-text>
         </div>
       </div>
     </div>
       
     <!-- Filtered Agent Cards -->
+    <v-card-title>Assigned Manager</v-card-title>
     <v-card-title>Assigned Agents</v-card-title>
     <div class="d-flex flex-wrap justify-center">
       <AgentCard
