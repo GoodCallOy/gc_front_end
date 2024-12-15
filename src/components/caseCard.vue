@@ -20,28 +20,28 @@
         </div>
 
         <!-- Second card -->
-        <div class="stats-card">
-          <v-card-subtitle></v-card-subtitle>
-          <v-card-text class="text-center">
-            <p><strong> Active Call Time (Soittoaika ):</strong> {{ aggregateStats.totalCallTime }} mins</p>
-            <p><strong>Completed Calls Made (Läpiviedyt puhelut):</strong> {{ aggregateStats.totalCallsMade }}</p>
-            <p><strong>Total Outgoing Calls (Uloslähteneet puhelut):</strong> {{ aggregateStats.totalOutgoingCalls }}</p>
-            <p><strong>Total Answered Calls (Vastatut puhelut):</strong> {{ aggregateStats.totalAnsweredCalls }}</p>
-            <p><strong>Average Response Rate (Vastausprosentti ):</strong> {{ averageResponseRate }}%</p>
-            <p><strong>Answered call/Meeting (Vastattua puhelua):</strong> {{ aggregateStats.totalCallTime }}</p>
-            <p><strong>Completed calls/Meeting (Läpivietyä):</strong> {{ aggregateStats.totalCallsMade }}</p>
-            <p><strong>Hour/Meeting (Tunti):</strong> {{ aggregateStats.totalOutgoingCalls }}</p>
-            <p><strong>Calls/Hour (Puheluita ):</strong> {{ aggregateStats.totalAnsweredCalls }}</p>
-            <p><strong>Completed Calls/Hour (Läpivietyjä):</strong> {{ averageResponseRate }}</p>
-            <p><strong>Price/Appointment (Hinta):</strong> {{ averageResponseRate }}</p>
-          </v-card-text>
-        </div>
+          <div v-if="currentPage !== 'dashboard'" class="stats-card2">
+            <v-card-subtitle></v-card-subtitle>
+            <v-card-text class="text-center">
+              <p><strong> Active Call Time (Soittoaika ):</strong> {{ aggregateStats.totalCallTime }} mins</p>
+              <p><strong>Completed Calls Made (Läpiviedyt puhelut):</strong> {{ aggregateStats.totalCallsMade }}</p>
+              <p><strong>Total Outgoing Calls (Uloslähteneet puhelut):</strong> {{ aggregateStats.totalOutgoingCalls }}</p>
+              <p><strong>Total Answered Calls (Vastatut puhelut):</strong> {{ aggregateStats.totalAnsweredCalls }}</p>
+              <p><strong>Average Response Rate (Vastausprosentti ):</strong> {{ averageResponseRate }}%</p>
+              <p><strong>Answered call/Meeting (Vastattua puhelua):</strong> {{ aggregateStats.totalCallTime }}</p>
+              <p><strong>Completed calls/Meeting (Läpivietyä):</strong> {{ aggregateStats.totalCallsMade }}</p>
+              <p><strong>Hour/Meeting (Tunti):</strong> {{ aggregateStats.totalOutgoingCalls }}</p>
+              <p><strong>Calls/Hour (Puheluita ):</strong> {{ aggregateStats.totalAnsweredCalls }}</p>
+              <p><strong>Completed Calls/Hour (Läpivietyjä):</strong> {{ averageResponseRate }}</p>
+              <p><strong>Price/Appointment (Hinta):</strong> {{ averageResponseRate }}</p>
+            </v-card-text>
+          </div>
       </div>
     </div>
       
     <!-- Filtered Agent Cards -->
-    <v-card-title>Assigned Manager</v-card-title>
-    <v-card-title>Assigned Agents</v-card-title>
+    <v-card-subtitle>Assigned Manager: </v-card-subtitle>
+    <v-card-subtitle>Assigned Agents</v-card-subtitle>
     <div class="d-flex flex-wrap justify-center">
       <AgentCard
         v-for="(agent, index) in filteredAgents"
@@ -61,13 +61,20 @@
   export default {
     name: 'CaseCard',
     props: {
+      currentPage: {
+        type: String,
+        default: () => "caseCard",
+        required: true,
+      },
       companyCase: {
         type: Object,
         required: true,
+        default: () => ({}),
       },
       agents: {
         type: Array,
         required: true,
+        default: () => [],
       },
     },
     components: {
@@ -135,6 +142,9 @@
           : 0;
       },
     },
+    created() {
+      console.log('currentPage:', this.currentPage);
+    }
   };
 </script>
 
@@ -159,6 +169,11 @@
 
 /* Individual card styling */
 .stats-card {
+  flex: 1; /* Makes the cards equal in size */
+  padding: 20px;
+  background-color: white; /* Ensure consistent background */
+}
+.stats-card2 {
   flex: 1; /* Makes the cards equal in size */
   max-width: 50%; /* Restrict max width for balance */
   padding: 20px;

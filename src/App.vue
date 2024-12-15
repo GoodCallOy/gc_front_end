@@ -7,6 +7,7 @@ import DashBoard from './components/dashBoard.vue';
 import Agents from './components/agentsPage.vue';
 import AddAgent from './components/addAgent.vue';
 import AddCase from './components/addCase.vue';
+import Cases from './components/casesPage.vue';
 
 // Define a map of navigation items to components
 const componentsMap = {
@@ -14,6 +15,7 @@ const componentsMap = {
   agents: Agents,
   addAgent: AddAgent,
   addCase: AddCase,
+  cases: Cases,
 };
 
 // Reactive state for the currently selected navigation item
@@ -45,6 +47,7 @@ function toggleLanguage() {
       width="256"
       rail-width="72"
       expand-on-hover
+      v-model="isDrawerOpen"
     >
       <!-- User Info (Shown Only in Expanded Mode) -->
       <v-list v-if="isDrawerOpen">
@@ -63,6 +66,12 @@ function toggleLanguage() {
           :title="t('buttons.dashboard')"  
           value="home"
           @click="selectItem('home')"
+        ></v-list-item>
+        <v-list-item
+          prepend-icon="mdi-file-document"
+          :title="t('buttons.cases')"  
+          value="cases"
+          @click="selectItem('cases')"
         ></v-list-item>
         <v-list-item
           prepend-icon="mdi-account-multiple"
@@ -97,7 +106,10 @@ function toggleLanguage() {
     <!-- Main Content Area -->
     <v-main app>
       <!-- Dynamically load the selected component -->
-      <component :is="componentsMap[selectedItem]" />
+      <component 
+        :is="componentsMap[selectedItem]" 
+      />
+      
     </v-main>
   </v-app>
 </template>
