@@ -5,7 +5,7 @@ import { useI18n } from 'vue-i18n';
 // Import your components
 import DashBoard from './components/dashBoard.vue';
 import Agents from './components/agentsPage.vue';
-import AddAgent from './components/addAgent.vue';
+import AddAgent from './components/addAgentStats.vue';
 import AddCase from './components/addCase.vue';
 import Cases from './components/casesPage.vue';
 

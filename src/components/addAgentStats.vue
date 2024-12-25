@@ -96,7 +96,7 @@
         const me = this
         console.log('Agent object: ', me.agent)
         try {
-          const response = await axios.post('https://goodcall-back-end.onrender.com/api/v1/agent/', me.agent);
+          const response = await axios.post('https://goodcall-back-end.onrender.com/api/v1/agentStats/', me.agent);
           console.log('Agent added: ', response)
           me.message = 'Agent added successfully!';
           me.alertType = 'success';

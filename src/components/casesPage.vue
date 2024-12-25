@@ -83,7 +83,7 @@
 
       <!-- List of Cases -->
       <p>{{ $t('dashboard.cases') }}.</p>
-      <div class="d-flex flex-wrap justify-center mb-5">
+      <div class="d-flex flex-wrap justify-center">
         <CaseCard
           v-for="(singleCase, index) in cases"
           :key="index"
@@ -110,7 +110,7 @@
   import CaseCard from './caseCard.vue';
   
   export default {
-    name: 'dashBoard',
+    name: 'casePage',
   
     components: {
       AgentCard, // Register the component
