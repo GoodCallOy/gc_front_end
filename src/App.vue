@@ -1,35 +1,10 @@
 <script setup>
 import { ref } from 'vue';
 import { useI18n } from 'vue-i18n';
-
-// Import your components
-import DashBoard from './components/dashBoard.vue';
-import Agents from './components/agentsPage.vue';
-import AddAgent from './components/addAgent.vue';
-import AddAgentStats from './components/addAgentStats.vue';
-import AddCase from './components/addCase.vue';
-import Cases from './components/casesPage.vue';
-
-// Define a map of navigation items to components
-const componentsMap = {
-  home: DashBoard,
-  agents: Agents,
-  addAgent: AddAgent,
-  addAgentStats: AddAgentStats,
-  addCase: AddCase,
-  cases: Cases,
-};
-
-// Reactive state for the currently selected navigation item
-const selectedItem = ref('home'); // Default to 'home'
+import { useRouter, useRoute } from 'vue-router';
 
 // Reactive state for the drawer's open/close status
 const isDrawerOpen = ref(true); // Tracks whether the drawer is expanded
-
-// Function to handle navigation item selection
-function selectItem(value) {
-  selectedItem.value = value;
-}
 
 // Use vue-i18n for language switching
 const { t, locale } = useI18n();
@@ -37,6 +12,15 @@ const { t, locale } = useI18n();
 // Function to toggle the language between English and Finnish
 function toggleLanguage() {
   locale.value = locale.value === 'en' ? 'fi' : 'en';
+}
+
+// Vue Router hooks for navigation
+const router = useRouter();
+const route = useRoute();
+
+// Function to navigate to a page
+function navigateTo(value) {
+  router.push({ name: value });
 }
 </script>
 
@@ -66,38 +50,38 @@ function toggleLanguage() {
         <v-list-item
           prepend-icon="mdi-laptop"
           :title="t('buttons.dashboard')"  
-          value="home"
-          @click="selectItem('home')"
+          :active="route.name === 'home'"
+          @click="navigateTo('home')"
         ></v-list-item>
         <v-list-item
           prepend-icon="mdi-file-document"
           :title="t('buttons.cases')"  
-          value="cases"
-          @click="selectItem('cases')"
+          :active="route.name === 'cases'"
+          @click="navigateTo('cases')"
         ></v-list-item>
         <v-list-item
           prepend-icon="mdi-account-multiple"
           :title="t('buttons.agents')"  
-          value="agents"
-          @click="selectItem('agents')"
+          :active="route.name === 'agents'"
+          @click="navigateTo('agents')"
         ></v-list-item>
         <v-list-item
           prepend-icon="mdi-folder-plus"
           :title="t('buttons.addCase')"  
-          value="addCase"
-          @click="selectItem('addCase')"
+          :active="route.name === 'addCase'"
+          @click="navigateTo('addCase')"
         ></v-list-item>
         <v-list-item
           prepend-icon="mdi-account-plus"
           :title="t('buttons.addAgent')"  
-          value="addAgent"
-          @click="selectItem('addAgent')"
+          :active="route.name === 'addAgent'"
+          @click="navigateTo('addAgent')"
         ></v-list-item>
         <v-list-item
           prepend-icon="mdi-account-plus"
-          :title="t('buttons.addAgent')"  
-          value="addAgentStats"
-          @click="selectItem('addAgentStats')"
+          :title="t('buttons.addAgentStats')"  
+          :active="route.name === 'addAgentStats'"
+          @click="navigateTo('addAgentStats')"
         ></v-list-item>
         <v-divider></v-divider>
         <!-- Language Toggle Button -->
@@ -112,11 +96,8 @@ function toggleLanguage() {
 
     <!-- Main Content Area -->
     <v-main app>
-      <!-- Dynamically load the selected component -->
-      <component 
-        :is="componentsMap[selectedItem]" 
-      />
-      
+      <!-- Render the active route -->
+      <router-view />
     </v-main>
   </v-app>
 </template>

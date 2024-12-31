@@ -1,7 +1,7 @@
 <template>
   <v-card class="mx-auto my-2 mr-1" elevation="16" style="width: auto; max-width: 400px; padding: 20px;">
     <!-- Centered Case Information -->
-    <div class="text-center mb-5">
+    <div class="text-center">
       <v-card-title>{{ companyCase.name }}</v-card-title>
       
       <!-- Statistics -->
@@ -13,9 +13,7 @@
             <p><strong>Total Billing:</strong> {{ companyCase.billing }}</p>
             <p><strong>Total Meetings (Tapaamiset ):</strong> {{ aggregateStats.totalMeetings }}</p>
             <p><strong>Dials / Meeting (Uloslähtenyttä):</strong> {{ aggregateStats.totalMeetings }}</p>
-            <p><strong>Hour/Meeting (Tunti):</strong> {{ aggregateStats.totalOutgoingCalls }}</p>
-            
-            
+            <p><strong>Hour/Meeting (Tunti):</strong> {{ aggregateStats.totalOutgoingCalls }}</p>       
           </v-card-text>
         </div>
 
@@ -38,6 +36,12 @@
           </div>
       </div>
     </div>
+    <div class="d-flex justify-center">
+      <v-btn color="primary" class="mb-5" @click="showCase">
+        show case
+      </v-btn>
+    </div>
+    
       
     <!-- Filtered Agent Cards -->
     <v-card-subtitle>Assigned Manager: </v-card-subtitle>
@@ -169,6 +173,13 @@
       getAgentNameInCase(inputCaseName) {
         const agentsInCase = this.groupAgentsByCases(inputCaseName);
         return agentsInCase.map((agent) => agent.name).join(', ');
+      },
+
+      showCase() {
+        this.$router.push({
+          name: 'singleCase',
+          query: { case: this.companyCase.name },
+        });
       }
     }
   };
