@@ -5,7 +5,8 @@ import { useI18n } from 'vue-i18n';
 // Import your components
 import DashBoard from './components/dashBoard.vue';
 import Agents from './components/agentsPage.vue';
-import AddAgent from './components/addAgentStats.vue';
+import AddAgent from './components/addAgent.vue';
+import AddAgentStats from './components/addAgentStats.vue';
 import AddCase from './components/addCase.vue';
 import Cases from './components/casesPage.vue';
 
@@ -14,6 +15,7 @@ const componentsMap = {
   home: DashBoard,
   agents: Agents,
   addAgent: AddAgent,
+  addAgentStats: AddAgentStats,
   addCase: AddCase,
   cases: Cases,
 };
@@ -91,8 +93,13 @@ function toggleLanguage() {
           value="addAgent"
           @click="selectItem('addAgent')"
         ></v-list-item>
+        <v-list-item
+          prepend-icon="mdi-account-plus"
+          :title="t('buttons.addAgent')"  
+          value="addAgentStats"
+          @click="selectItem('addAgentStats')"
+        ></v-list-item>
         <v-divider></v-divider>
-
         <!-- Language Toggle Button -->
         <v-list-item
           prepend-icon="mdi-earth"

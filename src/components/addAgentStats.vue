@@ -1,6 +1,6 @@
 <template>
     <div class="d-flex flex-column align-center" style="height: 100vh; justify-content: center;">
-      <h1 class="mb-3 mt-5">Add New Agent</h1>
+      <h1 class="mb-3 mt-5">Add New Agent Stats</h1>
   
       <!-- Agent Form -->
       <v-form v-model="valid" @submit.prevent="submitForm" lazy-validation>
