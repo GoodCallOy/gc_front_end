@@ -41,7 +41,7 @@
       
     <!-- Filtered Agent Cards -->
     <v-card-subtitle>Assigned Manager: </v-card-subtitle>
-    <v-card-subtitle>Assigned Agents</v-card-subtitle>
+    <v-card-subtitle>Assigned Agents: {{ getAgentNameInCase(companyCase.name) }} </v-card-subtitle>
     <div class="d-flex flex-wrap justify-center">
       <AgentCard
         v-for="(agent, index) in filteredAgents"
@@ -86,6 +86,7 @@
       };
     },
     computed: {
+    
       // Filter agents by the current case and date range
       filteredAgents() {
         const endDate = new Date();
@@ -144,6 +145,31 @@
     },
     created() {
       console.log('currentPage:', this.currentPage);
+    },
+    methods: {
+      groupAgentsByCases(inputCaseName) {
+        console.log('inputCaseName:', inputCaseName);
+        const grouped = {};
+
+        this.agents.forEach((agent) => {
+          agent.cases.forEach((caseName) => {
+            // Initialize the array for the case if it doesn't exist
+            if (!grouped[caseName]) {
+              grouped[caseName] = [];
+            }
+            // Add the agent to the case's array
+            grouped[caseName].push(agent);
+          });
+        });
+        console.log('grouped:', grouped);
+        console.log('grouped inputCaseName:', grouped[inputCaseName]);
+        return grouped[inputCaseName] || [];
+      },
+
+      getAgentNameInCase(inputCaseName) {
+        const agentsInCase = this.groupAgentsByCases(inputCaseName);
+        return agentsInCase.map((agent) => agent.name).join(', ');
+      }
     }
   };
 </script>
