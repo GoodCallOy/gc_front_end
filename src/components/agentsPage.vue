@@ -5,7 +5,7 @@
       <!-- List of Agent Cards -->
       <div class="d-flex flex-wrap justify-center">
         <v-card
-          v-for="(agent, index) in agents"
+          v-for="(agent, index) in agentsAndStats"
           :key="index"
           class="mx-2 my-2"
           elevation="16"
@@ -34,21 +34,50 @@
     data() {
       return {
         agents: [], // Array to store agents data
+        agentStats: [], // Array to store agents data
+        agentsAndStats: [],
       };
     },
-    mounted() {
+    async mounted() {
       // Fetch the list of agents when the component is mounted
-      this.getAgents();
+      try {
+      // Wait for both data fetching functions to complete
+      await Promise.all([this.getAgents(), this.getAgentStats()]);
+
+      // Enrich the agents with stats
+      this.agentsAndStats = this.getEnrichedAgents();
+      console.log('agentsAndStats', this.agentsAndStats);
+    } catch (error) {
+      console.error('Error during data fetching:', error);
+    }
     },
+
     methods: {
       async getAgents() {
         try {
           const response = await axios.get('https://goodcall-back-end.onrender.com/api/v1/agent/');
-          this.agents = response.data; // Store the fetched data in the agents array
+          this.agents = response.data;  // Store the fetched data in the agents array
         } catch (error) {
           console.error('Error fetching agents:', error);
         }
       },
+      async getAgentStats() {
+        try {
+          const response = await axios.get('https://goodcall-back-end.onrender.com/api/v1/agentStats/');
+          this.agentStats = response.data;  // Store the fetched data in the agents array
+          console.log('agentStats', this.agentStats)
+        } catch (error) {
+          console.error('Error fetching agents:', error);
+        }
+      },
+
+      
+      getEnrichedAgents() {
+        return this.agents.map(agent => {
+          const stats = this.agentStats.find(stat => stat.name === agent.name);
+          return { ...agent, ...stats }; // Merge agent and stats
+        });
+      }
     },
   };
   </script>

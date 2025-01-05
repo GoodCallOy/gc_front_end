@@ -152,7 +152,6 @@
     },
     methods: {
       groupAgentsByCases(inputCaseName) {
-        console.log('inputCaseName:', inputCaseName);
         const grouped = {};
 
         this.agents.forEach((agent) => {
@@ -165,8 +164,6 @@
             grouped[caseName].push(agent);
           });
         });
-        console.log('grouped:', grouped);
-        console.log('grouped inputCaseName:', grouped[inputCaseName]);
         return grouped[inputCaseName] || [];
       },
 
