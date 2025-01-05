@@ -1,6 +1,6 @@
 <template>
     <div class="d-flex flex-column align-center" style="height: 100vh;">
-      <h1 class="mb-3 mt-5">{{ $t('cases.title') }}</h1>
+      <h1 class="mb-3 mt-5">{{ this.$route.query.case }}</h1>
   
       <!-- Buttons for selecting Date, Month, and Week -->
       <div class="d-flex flex-row align-center ma-5">
@@ -81,46 +81,34 @@
         </v-menu>
       </div>
 
-      <!-- List of Cases -->
-      <p>{{ $t('dashboard.cases') }}.</p>
-      <div class="d-flex flex-wrap justify-center">
+      
+      <div class=" justify-center" style="width: 100vw;">
         <CaseCard
-          v-for="(singleCase, index) in cases"
-          :key="index"
-          :companyCase="singleCase"
+          :companyCase="selectedCase"
           :agents="agents"
         />
       </div>
   
       <!-- List of Agents -->
-      <p class="mt-5">{{ $t('dashboard.agents') }}</p>
-      <div class="d-flex flex-wrap justify-center">
-        <AgentCard
-          v-for="(agent, index) in agents"
-          :key="index"
-          :agent="agent"
-        />
-      </div>
+      
     </div>
   </template>
   
   <script>
-  import axios from 'axios';
-  import AgentCard from './agentCard.vue';
   import CaseCard from './caseCard.vue';
+  import { mapGetters, mapActions, mapState, mapMutations } from 'vuex';
   
   export default {
     name: 'SinglCase',
   
     components: {
-      AgentCard, // Register the component
       CaseCard,  // Register the component
+      
     },
   
     data() {
       return {
-        agents: [],          // Array to store agents data
-        cases: [],           // Array to store cases data
+        dateRange: 'day',
         menu1: false,        // Controls the first menu (Date)
         menu2: false,        // Controls the second menu (Month)
         menu3: false,        // Controls the third menu (Week)
@@ -134,8 +122,16 @@
         weeks: Array.from({ length: 52 }, (_, i) => i + 1), // Array of week numbers
       };
     },
-  
+    
     computed: {
+      ...mapGetters(['enrichedAgents', 'agents', 'cases']), // Map Vuex getter to local computed property
+      ...mapState(["currentPage"]),
+
+      currentPage() {
+        console.log('currentPage1', this.$store.getters.currentPage)
+        return this.$store.getters.currentPage;
+      },
+
       displayDate() {
         const options = { year: 'numeric', month: 'short', day: 'numeric' };
         return this.selectedDate.toLocaleDateString(undefined, options);
@@ -150,31 +146,29 @@
         const weekNumber = this.getWeekNumber(this.selectedWeekDate);
         return `Week ${weekNumber} (${this.selectedWeekDate.getFullYear()})`;
       },
+
+      selectedCase() {
+        const caseName = this.$route.query.case; // Get the case name from the query string
+        const selected = this.cases.find(singleCase => singleCase.name === caseName); // Find the specific case by name
+        return selected;
+      },
     },
   
     mounted() {
-      // Fetch the list of agents when the component is mounted
-      this.getAgents();
-      this.getCases();
+      this.fetchAgents(); // Fetch agents when the component is mounted
+      this.fetchAgentStats(); // Fetch agent stats when the component is mounted
+      this.fetchCases();
+      this.updatePage('singleCase');
+
     },
   
     methods: {
-      async getAgents() {
-        try {
-          const response = await axios.get('https://goodcall-back-end.onrender.com/api/v1/agent/');
-          this.agents = response.data; // Store the fetched data in the agents array
-        } catch (error) {
-          console.error('Error fetching agents:', error);
-        }
-      },
-  
-      async getCases() {
-        try {
-          const response = await axios.get('https://goodcall-back-end.onrender.com/api/v1/cases/');
-          this.cases = response.data; // Store the fetched data in the cases array
-        } catch (error) {
-          console.error('Error fetching cases:', error);
-        }
+      
+      ...mapActions(['fetchAgents', 'fetchAgentStats', 'fetchCases']), // Map Vuex actions to local methods
+      ...mapMutations(["setCurrentPage"]), // Maps mutation to update `currentPage`
+      
+      updatePage(newPage) {
+        this.setCurrentPage(newPage); // Update `currentPage` in the store
       },
   
       getWeekNumber(date) {

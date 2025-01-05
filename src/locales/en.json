@@ -11,6 +11,12 @@
       "agents": "List of agents",
       "language": "English"
     },
+    "singlecase": {
+      "title": "Current Case",
+      "cases": "List of cases",
+      "agents": "List of agents",
+      "language": "English"
+    },
     "buttons": {
       "close": "Close",
       "dashboard": "Dashboard",

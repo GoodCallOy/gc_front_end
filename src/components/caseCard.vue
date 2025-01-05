@@ -1,5 +1,7 @@
 <template>
-  <v-card class="mx-auto my-2 mr-1" elevation="16" style="width: auto; max-width: 400px; padding: 20px;">
+  <v-card :class="['mx-2 my-2', { 'full-width-card': currentPage === 'singleCase' }]"
+  :style="currentPage === 'singleCase' ? 'width: 100%; margin: 0;' : 'width: auto; max-width: 400px; padding: 20px;'"
+  :elevation="currentPage === 'singleCase' ? 0 : 16">
     <!-- Centered Case Information -->
     <div class="text-center">
       <v-card-title>{{ companyCase.name }}</v-card-title>
@@ -18,14 +20,20 @@
         </div>
 
         <!-- Second card -->
-          <div v-if="currentPage !== 'dashboard'" class="stats-card2">
+          <div v-if="currentPage !== 'dashBoard'" class="stats-card2">
             <v-card-subtitle></v-card-subtitle>
             <v-card-text class="text-center">
               <p><strong> Active Call Time (Soittoaika ):</strong> {{ aggregateStats.totalCallTime }} mins</p>
               <p><strong>Completed Calls Made (Läpiviedyt puhelut):</strong> {{ aggregateStats.totalCallsMade }}</p>
               <p><strong>Total Outgoing Calls (Uloslähteneet puhelut):</strong> {{ aggregateStats.totalOutgoingCalls }}</p>
               <p><strong>Total Answered Calls (Vastatut puhelut):</strong> {{ aggregateStats.totalAnsweredCalls }}</p>
-              <p><strong>Average Response Rate (Vastausprosentti ):</strong> {{ averageResponseRate }}%</p>
+              <p><strong>Average Response Rate (Vastausprosentti ):</strong> {{ averageResponseRate }}%</p>   
+            </v-card-text>
+          </div>
+        <!-- Second card -->
+          <div v-if="currentPage !== 'dashBoard'" class="stats-card2">
+            <v-card-subtitle></v-card-subtitle>
+            <v-card-text class="text-center">
               <p><strong>Answered call/Meeting (Vastattua puhelua):</strong> {{ aggregateStats.totalCallTime }}</p>
               <p><strong>Completed calls/Meeting (Läpivietyä):</strong> {{ aggregateStats.totalCallsMade }}</p>
               <p><strong>Hour/Meeting (Tunti):</strong> {{ aggregateStats.totalOutgoingCalls }}</p>
@@ -36,22 +44,29 @@
           </div>
       </div>
     </div>
-    <div class="d-flex justify-center">
+    <div  v-if="currentPage === 'dashBoard'" class="d-flex justify-center">
       <v-btn color="primary" class="mb-5" @click="showCase">
         show case
       </v-btn>
-    </div>
-    
+    </div>   
       
     <!-- Filtered Agent Cards -->
-    <v-card-subtitle>Assigned Manager: </v-card-subtitle>
-    <v-card-subtitle>Assigned Agents: {{ getAgentNameInCase(companyCase.name) }} </v-card-subtitle>
-    <div class="d-flex flex-wrap justify-center">
+    <v-card-subtitle><strong>Assigned Manager:</strong> </v-card-subtitle>
+    <v-card-subtitle><strong>Assigned Agents: {{ getAgentNameInCase(companyCase.name) }} </strong></v-card-subtitle>
+
+    <div class="d-flex flex-wrap justify-center mt-5">
       <AgentCard
         v-for="(agent, index) in filteredAgents"
         :key="index"
         :agent="agent"
         class="m-2"
+      />
+    </div>
+    <div v-if="currentPage !== 'dashBoard'" class="d-flex flex-wrap justify-center">
+      <AgentCard
+        v-for="(agent, index) in filteredAgentsList"
+        :key="index"
+        :agent="agent"
       />
     </div>
   </v-card>
@@ -61,35 +76,36 @@
   
 <script>
   import AgentCard from './agentCard.vue';
+  import { mapGetters, mapActions, mapState } from 'vuex';
+
 
   export default {
     name: 'CaseCard',
     props: {
-      currentPage: {
-        type: String,
-        default: () => "caseCard",
-        required: true,
-      },
       companyCase: {
         type: Object,
         required: true,
         default: () => ({}),
       },
-      agents: {
-        type: Array,
-        required: true,
-        default: () => [],
-      },
+      
     },
     components: {
       AgentCard,
     },
+
     data() {
-      return {
-        
-      };
-    },
+    return {
+      dateRange: 'day', // Default value: 'day', 'week', or 'month'
+    };
+  },
+    
     computed: {
+      ...mapGetters(['enrichedAgents', 'agents', 'cases']), // Map Vuex getter to local computed property
+      ...mapState(["currentPage"]),
+
+      currentPage() {
+        return this.$store.getters.currentPage;
+      },
     
       // Filter agents by the current case and date range
       filteredAgents() {
@@ -146,11 +162,23 @@
           ? (this.aggregateStats.totalResponseRate / agentsCount).toFixed(2)
           : 0;
       },
+
+      filteredAgentsList() {
+        return this.agents.filter(agent =>
+          agent.cases && agent.cases.includes(this.companyCase.name)
+        );
+      },
     },
-    created() {
-      console.log('currentPage:', this.currentPage);
+
+    mounted() {
+      this.fetchAgents(); // Fetch agents when the component is mounted
+      this.fetchAgentStats(); // Fetch agent stats when the component is mounted
+      this.fetchCases();
     },
+
     methods: {
+      ...mapActions(['fetchAgents', 'fetchAgentStats', 'fetchCases']), // Map Vuex actions to local methods
+
       groupAgentsByCases(inputCaseName) {
         const grouped = {};
 
@@ -212,6 +240,11 @@
   max-width: 50%; /* Restrict max width for balance */
   padding: 20px;
   background-color: white; /* Ensure consistent background */
+}
+.full-width-card {
+  width: 100%;
+  margin: 0;
+  padding: 20px; /* Optional: Adjust padding as needed */
 }
 </style>
   

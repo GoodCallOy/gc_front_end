@@ -1,11 +1,11 @@
 import { createStore } from 'vuex';
 import axios from 'axios';
-
 const store = createStore({
   state: {
     agents: [],
     agentStats: [],
     cases: [],
+    currentPage: "",
   },
   getters: {
     enrichedAgents(state) {
@@ -14,11 +14,15 @@ const store = createStore({
         return { ...agent, ...stats };
       });
     },
+
     cases(state){
         return state.cases
     },
     agents(state){
         return state.agents
+    },
+    currentPage(state){
+        return state.currentPage
     }
   },
 
@@ -57,6 +61,9 @@ const store = createStore({
     },
     setCases(state, cases) {
       state.cases = cases;
+    },
+    setCurrentPage(state, currentPage) {
+      state.currentPage = currentPage;
     },
   },
 });

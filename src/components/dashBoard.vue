@@ -30,7 +30,7 @@
 
 import AgentCard from './agentCard.vue';
 import CaseCard from './caseCard.vue';
-import { mapGetters, mapActions } from 'vuex';
+import { mapGetters, mapActions, mapState, mapMutations } from 'vuex';
 
 export default {
   name: 'dashBoard',
@@ -41,16 +41,28 @@ export default {
 
   computed: {
     ...mapGetters(['enrichedAgents', 'agents', 'cases']), // Map Vuex getter to local computed property
+    ...mapState(["currentPage"]), // Maps the `currentPage` state to a computed property
+
+    currentPage() {
+      console.log('currentPage', this.$store.getters.currentPage)
+      return this.$store.getters.currentPage;
+    },
   },
 
   mounted() {
     this.fetchAgents(); // Fetch agents when the component is mounted
     this.fetchAgentStats(); // Fetch agent stats when the component is mounted
     this.fetchCases();
+    this.updatePage('dashBoard');
   },
 
   methods: {
     ...mapActions(['fetchAgents', 'fetchAgentStats', 'fetchCases']), // Map Vuex actions to local methods
+
+    ...mapMutations(["setCurrentPage"]), // Maps mutation to update `currentPage`
+    updatePage(newPage) {
+      this.setCurrentPage(newPage); // Update `currentPage` in the store
+    },
   },
 };
 </script>
