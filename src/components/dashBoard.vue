@@ -40,7 +40,7 @@ export default {
   },
 
   computed: {
-    ...mapGetters(['enrichedAgents', 'agents', 'cases']), // Map Vuex getter to local computed property
+    ...mapGetters(['enrichedAgents', 'agents', 'cases', 'agentStats', 'currentPage']), // Map Vuex getter to local computed property
     ...mapState(["currentPage"]), // Maps the `currentPage` state to a computed property
 
     currentPage() {
@@ -49,11 +49,12 @@ export default {
     },
   },
 
-  mounted() {
+  async mounted() {
     this.fetchAgents(); // Fetch agents when the component is mounted
     this.fetchAgentStats(); // Fetch agent stats when the component is mounted
     this.fetchCases();
     this.updatePage('dashBoard');
+    await this.fetchAgentStats();
   },
 
   methods: {
@@ -63,6 +64,9 @@ export default {
     updatePage(newPage) {
       this.setCurrentPage(newPage); // Update `currentPage` in the store
     },
+    printDebug() {
+        console.log('agentStats', this.agentStats)
+      }
   },
 };
 </script>

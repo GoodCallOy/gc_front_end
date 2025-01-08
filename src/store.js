@@ -21,6 +21,9 @@ const store = createStore({
     agents(state){
         return state.agents
     },
+    agentStats(state) {
+      return state.agentStats
+    },
     currentPage(state){
         return state.currentPage
     }

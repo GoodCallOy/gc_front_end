@@ -13,9 +13,9 @@
           <v-card-subtitle></v-card-subtitle>
           <v-card-text class="text-center">
             <p><strong>Total Billing:</strong> {{ companyCase.billing }}</p>
-            <p><strong>Total Meetings (Tapaamiset ):</strong> {{ aggregateStats.totalMeetings }}</p>
-            <p><strong>Dials / Meeting (Uloslähtenyttä):</strong> {{ aggregateStats.totalMeetings }}</p>
-            <p><strong>Hour/Meeting (Tunti):</strong> {{ aggregateStats.totalOutgoingCalls }}</p>       
+            <p><strong>Total Meetings (Tapaamiset ):</strong> {{ caseStats.totalMeetings }}</p>
+            <p><strong>Dials / Meeting (Uloslähtenyttä):</strong> {{ caseStats.totalMeetings }}</p>
+            <p><strong>Hour/Meeting (Tunti):</strong> {{ caseStats.totalOutgoingCalls }}</p>       
           </v-card-text>
         </div>
 
@@ -23,23 +23,23 @@
           <div v-if="currentPage !== 'dashBoard'" class="stats-card2">
             <v-card-subtitle></v-card-subtitle>
             <v-card-text class="text-center">
-              <p><strong> Active Call Time (Soittoaika ):</strong> {{ aggregateStats.totalCallTime }} mins</p>
-              <p><strong>Completed Calls Made (Läpiviedyt puhelut):</strong> {{ aggregateStats.totalCallsMade }}</p>
-              <p><strong>Total Outgoing Calls (Uloslähteneet puhelut):</strong> {{ aggregateStats.totalOutgoingCalls }}</p>
-              <p><strong>Total Answered Calls (Vastatut puhelut):</strong> {{ aggregateStats.totalAnsweredCalls }}</p>
-              <p><strong>Average Response Rate (Vastausprosentti ):</strong> {{ averageResponseRate }}%</p>   
+              <p><strong> Active Call Time (Soittoaika ):</strong> {{ caseStats.totalCallTime }} mins</p>
+              <p><strong>Completed Calls Made (Läpiviedyt puhelut):</strong> {{ caseStats.totalCallsMade }}</p>
+              <p><strong>Total Outgoing Calls (Uloslähteneet puhelut):</strong> {{ caseStats.totalOutgoingCalls }}</p>
+              <p><strong>Total Answered Calls (Vastatut puhelut):</strong> {{ caseStats.totalAnsweredCalls }}</p>
+              <p><strong>Average Response Rate (Vastausprosentti ):</strong> {{ caseStats.totalResponseRate }}%</p>   
             </v-card-text>
           </div>
         <!-- Second card -->
           <div v-if="currentPage !== 'dashBoard'" class="stats-card2">
             <v-card-subtitle></v-card-subtitle>
             <v-card-text class="text-center">
-              <p><strong>Answered call/Meeting (Vastattua puhelua):</strong> {{ aggregateStats.totalCallTime }}</p>
-              <p><strong>Completed calls/Meeting (Läpivietyä):</strong> {{ aggregateStats.totalCallsMade }}</p>
-              <p><strong>Hour/Meeting (Tunti):</strong> {{ aggregateStats.totalOutgoingCalls }}</p>
-              <p><strong>Calls/Hour (Puheluita ):</strong> {{ aggregateStats.totalAnsweredCalls }}</p>
-              <p><strong>Completed Calls/Hour (Läpivietyjä):</strong> {{ averageResponseRate }}</p>
-              <p><strong>Price/Appointment (Hinta):</strong> {{ averageResponseRate }}</p>
+              <p><strong>Answered call/Meeting (Vastattua puhelua):</strong> {{ caseStats.totalCallTime }}</p>
+              <p><strong>Completed calls/Meeting (Läpivietyä):</strong> {{ caseStats.totalCallsMade }}</p>
+              <p><strong>Hour/Meeting (Tunti):</strong> {{ caseStats.totalOutgoingCalls }}</p>
+              <p><strong>Calls/Hour (Puheluita ):</strong> {{ caseStats.totalAnsweredCalls }}</p>
+              <p><strong>Completed Calls/Hour (Läpivietyjä):</strong> {{ caseStats.averageResponseRate }}</p>
+              <p><strong>Price/Appointment (Hinta):</strong> {{ caseStats.averageResponseRate }}</p>
             </v-card-text>
           </div>
       </div>
@@ -99,11 +99,12 @@
       mergedData: [],
       filteredAgents1: [],
       agentsWithStats: [],
+      caseStats: null,
     };
   },
     
     computed: {
-      ...mapGetters(['enrichedAgents', 'agents', 'cases']), // Map Vuex getter to local computed property
+      ...mapGetters(['enrichedAgents', 'agents', 'cases', 'agentStats', 'currentPage']), // Map Vuex getter to local computed property
       ...mapState(["currentPage"]),
 
       currentPage() {
@@ -138,8 +139,77 @@
           );
         });
       },
+      
+
+      averageResponseRate() {
+        const agentsCount = this.filteredAgents.length;
+        return agentsCount > 0
+          ? (this.aggregateStats.totalResponseRate / agentsCount).toFixed(2)
+          : 0;
+      },
+
+      filteredAgentsList() {
+        return this.enrichedAgents.filter(agents =>
+        agents.cases && agents.cases.includes(this.companyCase.name)
+        );
+      },
+      
+    },
+
+    watch: {
+  agentStats: {
+    handler() {
+      this.agentsWithStats = this.mergeStatsData(this.companyCase.name);
+      this.caseStats = this.aggregateStats();
+    },
+    immediate: true,
+    deep: true,
+  },
+},
+
+    mounted() {
+      this.fetchAgents(); // Fetch agents when the component is mounted
+      this.fetchAgentStats(); // Fetch agent stats when the component is mounted
+      this.fetchCases();
+      
+      this.filteredAgents1 = this.getAgentsInCase(this.companyCase.name);
+      this.agentsWithStats = this.mergeStatsData(this.companyCase.name);
+      this.caseStats = this.aggregateStats();
+      this.printDebug();
+    },
+
+    methods: {
+      ...mapActions(['fetchAgents', 'fetchAgentStats', 'fetchCases']), // Map Vuex actions to local methods
+
+      getAgentsInCase(inputCaseName) {
+        const filteredAgents = this.agents.filter(agent => agent.cases.includes(inputCaseName));
+        return filteredAgents;
+      },
+
+      getAgentNameInCase() {
+        const agentsInCase = this.getAgentsInCase(this.companyCase.name);
+        return agentsInCase.map((agent) => agent.name).join(', ');
+      },
+
+      mergeStatsData(inputCaseName) {
+        const mergedData = this.filteredAgents1.map(agent => {
+          const stats = this.agentStats.find(stat => stat.name === agent.name && stat.case === inputCaseName);
+          return {
+            ...agent,
+            meetings: stats ? stats.meetings : 0,
+            call_time: stats ? stats.call_time : 0,
+            calls_made: stats ? stats.calls_made : 0,
+            outgoing_calls: stats ? stats.outgoing_calls : 0,
+            answered_calls: stats ? stats.answered_calls : 0,
+            response_rate: stats ? stats.response_rate : 0,
+            case: this.companyCase.name,
+          };
+        });
+        return mergedData;
+      },
       aggregateStats() {
-        return this.filteredAgents.reduce(
+        console.log('this.agentsWithStats', this.agentsWithStats);
+        return this.agentsWithStats.reduce(
           (totals, agent) => {
             totals.totalMeetings += agent.meetings || 0;
             totals.totalCallTime += agent.call_time || 0;
@@ -160,75 +230,6 @@
         );
       },
 
-      averageResponseRate() {
-        const agentsCount = this.filteredAgents.length;
-        return agentsCount > 0
-          ? (this.aggregateStats.totalResponseRate / agentsCount).toFixed(2)
-          : 0;
-      },
-
-      filteredAgentsList() {
-        return this.enrichedAgents.filter(agents =>
-        agents.cases && agents.cases.includes(this.companyCase.name)
-        );
-      },
-      
-    },
-
-    mounted() {
-      this.fetchAgents(); // Fetch agents when the component is mounted
-      this.fetchAgentStats(); // Fetch agent stats when the component is mounted
-      this.fetchCases();
-      this.printDebug();
-      this.filteredAgents1 = this.getAgentsInCase(this.companyCase.name);
-      this.agentsWithStats = this.mergeStatsData(this.companyCase.name);
-    },
-
-    methods: {
-      ...mapActions(['fetchAgents', 'fetchAgentStats', 'fetchCases']), // Map Vuex actions to local methods
-
-      groupAgentsByCases(inputCaseName) {
-        const grouped = {};
-
-        this.agents.forEach((agent) => {
-          agent.cases.forEach((caseName) => {
-            // Initialize the array for the case if it doesn't exist
-            if (!grouped[caseName]) {
-              grouped[caseName] = [];
-            }
-            // Add the agent to the case's array
-            grouped[caseName].push(agent);
-          });
-        });
-        return grouped[inputCaseName] || [];
-      },
-
-      getAgentsInCase(inputCaseName) {
-        const filteredAgents = this.agents.filter(agent => agent.cases.includes(inputCaseName));
-        return filteredAgents;
-      },
-
-      getAgentNameInCase() {
-        const agentsInCase = this.getAgentsInCase(this.companyCase.name);
-        return agentsInCase.map((agent) => agent.name).join(', ');
-      },
-
-      mergeStatsData(inputCaseName) {
-        const mergedData = this.filteredAgents1.map(agent => {
-          const stats = this.enrichedAgents.find(stat => stat.name === agent.name && stat.case === inputCaseName);
-          return {
-            ...agent,
-            meetings: stats ? stats.meetings : 0,
-            call_time: stats ? stats.call_time : 0,
-            calls_made: stats ? stats.calls_made : 0,
-            outgoing_calls: stats ? stats.outgoing_calls : 0,
-            answered_calls: stats ? stats.answered_calls : 0,
-            response_rate: stats ? stats.response_rate : 0,
-            case: this.companyCase.name,
-          };
-        });
-        return mergedData;
-      },
       
       showCase() {
         this.$router.push({
@@ -237,7 +238,7 @@
         });
       },
       printDebug() {
-        console.log('debug info')
+        console.log('aggregateStats', this.caseStats)
       }
     }
   };

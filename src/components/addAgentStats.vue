@@ -156,6 +156,10 @@
           console.log('Agent added: ', response)
           me.message = 'Agent added successfully!';
           me.alertType = 'success';
+
+          // Refresh the Vuex store with updated stats
+          await me.fetchAgentStats(); // Dispatch Vuex action to fetch the latest stats
+
           me.clearForm();
         } catch (error) {
           console.error('Error adding agent:', error);
