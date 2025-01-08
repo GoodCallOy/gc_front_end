@@ -4,7 +4,7 @@
   :elevation="currentPage === 'singleCase' ? 0 : 16">
     <!-- Centered Case Information -->
     <div class="text-center">
-      <v-card-title>{{ companyCase.name }}</v-card-title>
+      <v-card-title v-if="currentPage === 'dashBoard'">{{ companyCase.name }}</v-card-title>
       
       <!-- Statistics -->
       <div class="d-flex stats-container">
@@ -64,7 +64,7 @@
     </div>
     <div v-if="currentPage !== 'dashBoard'" class="d-flex flex-wrap justify-center">
       <AgentCard
-        v-for="(agent, index) in filteredAgentsList"
+        v-for="(agent, index) in agentsWithStats"
         :key="index"
         :agent="agent"
       />
@@ -96,6 +96,9 @@
     data() {
     return {
       dateRange: 'day', // Default value: 'day', 'week', or 'month'
+      mergedData: [],
+      filteredAgents1: [],
+      agentsWithStats: [],
     };
   },
     
@@ -156,6 +159,7 @@
           }
         );
       },
+
       averageResponseRate() {
         const agentsCount = this.filteredAgents.length;
         return agentsCount > 0
@@ -164,16 +168,20 @@
       },
 
       filteredAgentsList() {
-        return this.agents.filter(agent =>
-          agent.cases && agent.cases.includes(this.companyCase.name)
+        return this.enrichedAgents.filter(agents =>
+        agents.cases && agents.cases.includes(this.companyCase.name)
         );
       },
+      
     },
 
     mounted() {
       this.fetchAgents(); // Fetch agents when the component is mounted
       this.fetchAgentStats(); // Fetch agent stats when the component is mounted
       this.fetchCases();
+      this.printDebug();
+      this.filteredAgents1 = this.getAgentsInCase(this.companyCase.name);
+      this.agentsWithStats = this.mergeStatsData(this.companyCase.name);
     },
 
     methods: {
@@ -195,16 +203,41 @@
         return grouped[inputCaseName] || [];
       },
 
-      getAgentNameInCase(inputCaseName) {
-        const agentsInCase = this.groupAgentsByCases(inputCaseName);
+      getAgentsInCase(inputCaseName) {
+        const filteredAgents = this.agents.filter(agent => agent.cases.includes(inputCaseName));
+        return filteredAgents;
+      },
+
+      getAgentNameInCase() {
+        const agentsInCase = this.getAgentsInCase(this.companyCase.name);
         return agentsInCase.map((agent) => agent.name).join(', ');
       },
 
+      mergeStatsData(inputCaseName) {
+        const mergedData = this.filteredAgents1.map(agent => {
+          const stats = this.enrichedAgents.find(stat => stat.name === agent.name && stat.case === inputCaseName);
+          return {
+            ...agent,
+            meetings: stats ? stats.meetings : 0,
+            call_time: stats ? stats.call_time : 0,
+            calls_made: stats ? stats.calls_made : 0,
+            outgoing_calls: stats ? stats.outgoing_calls : 0,
+            answered_calls: stats ? stats.answered_calls : 0,
+            response_rate: stats ? stats.response_rate : 0,
+            case: this.companyCase.name,
+          };
+        });
+        return mergedData;
+      },
+      
       showCase() {
         this.$router.push({
           name: 'singleCase',
           query: { case: this.companyCase.name },
         });
+      },
+      printDebug() {
+        console.log('debug info')
       }
     }
   };

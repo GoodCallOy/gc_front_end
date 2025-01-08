@@ -128,7 +128,7 @@
       ...mapState(["currentPage"]),
 
       currentPage() {
-        console.log('currentPage1', this.$store.getters.currentPage)
+        console.log('currentPage', this.$store.getters.currentPage)
         return this.$store.getters.currentPage;
       },
 
