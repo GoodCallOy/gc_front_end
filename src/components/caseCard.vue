@@ -1,10 +1,12 @@
 <template>
-  <v-card :class="['mx-2 my-2', { 'full-width-card': currentPage === 'singleCase' }]"
-  :style="currentPage === 'singleCase' ? 'width: 100%; margin: 0;' : 'width: auto; max-width: 400px; padding: 20px;'"
-  :elevation="currentPage === 'singleCase' ? 0 : 16">
+  <v-card
+    :class="['mx-2 my-2', { 'full-width-card': currentPage === 'singleCase' }]"
+    :style="cardStyles"
+    :elevation="currentPage === 'singleCase' ? 0 : 16"
+  >
     <!-- Centered Case Information -->
-    <div class="text-center">
-      <v-card-title v-if="currentPage === 'dashBoard'">{{ companyCase.name }}</v-card-title>
+    <div v-if="currentPage === 'dashBoard'" class="text-center">
+      <v-card-title class="text-h5">{{ companyCase.name }}</v-card-title>
       
       <!-- Statistics -->
       <div class="d-flex stats-container">
@@ -13,46 +15,134 @@
           <v-card-subtitle></v-card-subtitle>
           <v-card-text class="text-center">
             <p><strong>Total Billing:</strong> {{ companyCase.billing }}</p>
-            <p><strong>Total Meetings (Tapaamiset ):</strong> {{ caseStats.totalMeetings }}</p>
-            <p><strong>Dials / Meeting (Uloslähtenyttä):</strong> {{ caseStats.totalMeetings }}</p>
-            <p><strong>Hour/Meeting (Tunti):</strong> {{ caseStats.totalOutgoingCalls }}</p>       
+            <p><strong>Total Meetings (Tapaamiset):</strong> {{ caseStats.totalMeetings }}</p>
+            <p><strong>Dials / Meeting (Uloslähtenyttä):</strong> {{ caseStats.totalOutgoingCalls }}</p>
+            <p><strong>Hour/Meeting (Tunti):</strong> {{ caseStats.totalCallTime }}</p>
           </v-card-text>
         </div>
-
-        <!-- Second card -->
-          <div v-if="currentPage !== 'dashBoard'" class="stats-card2">
-            <v-card-subtitle></v-card-subtitle>
-            <v-card-text class="text-center">
-              <p><strong> Active Call Time (Soittoaika ):</strong> {{ caseStats.totalCallTime }} mins</p>
-              <p><strong>Completed Calls Made (Läpiviedyt puhelut):</strong> {{ caseStats.totalCallsMade }}</p>
-              <p><strong>Total Outgoing Calls (Uloslähteneet puhelut):</strong> {{ caseStats.totalOutgoingCalls }}</p>
-              <p><strong>Total Answered Calls (Vastatut puhelut):</strong> {{ caseStats.totalAnsweredCalls }}</p>
-              <p><strong>Average Response Rate (Vastausprosentti ):</strong> {{ caseStats.totalResponseRate }}%</p>   
-            </v-card-text>
-          </div>
-        <!-- Second card -->
-          <div v-if="currentPage !== 'dashBoard'" class="stats-card2">
-            <v-card-subtitle></v-card-subtitle>
-            <v-card-text class="text-center">
-              <p><strong>Answered call/Meeting (Vastattua puhelua):</strong> {{ caseStats.totalCallTime }}</p>
-              <p><strong>Completed calls/Meeting (Läpivietyä):</strong> {{ caseStats.totalCallsMade }}</p>
-              <p><strong>Hour/Meeting (Tunti):</strong> {{ caseStats.totalOutgoingCalls }}</p>
-              <p><strong>Calls/Hour (Puheluita ):</strong> {{ caseStats.totalAnsweredCalls }}</p>
-              <p><strong>Completed Calls/Hour (Läpivietyjä):</strong> {{ caseStats.averageResponseRate }}</p>
-              <p><strong>Price/Appointment (Hinta):</strong> {{ caseStats.averageResponseRate }}</p>
-            </v-card-text>
-          </div>
       </div>
     </div>
-    <div  v-if="currentPage === 'dashBoard'" class="d-flex justify-center">
+
+    <div class="d-flex flex-row justify-center">
+      <div v-if="currentPage !== 'dashBoard'" class="d-flex flex-column justify-center gap-2">
+      <v-banner
+          class="my-4 custom-banner"
+          color="yellow-accent-1"
+          icon="mdi-cash-100"
+          dense
+          max-width="500"
+        >
+          <v-banner-text class="text-center text-h6 font-weight-black">
+            <p ><strong>Total Billing:</strong> {{ companyCase.billing }}</p>  
+          </v-banner-text>
+      </v-banner>
+      <v-banner
+        class="my-1 custom-banner"
+        color="deep-purple-accent-2"
+        icon="mdi-file-star"
+        dense
+        max-width="500"
+      >
+        <v-banner-text class="text-center text-h6 font-weight-black">
+          <p><strong>Total Meetings (Tapaamiset):</strong> {{ caseStats.totalMeetings }}</p>  
+        </v-banner-text>
+      </v-banner>
+      <v-banner
+          class="my-1 custom-banner"
+          color="deep-purple-accent-4"
+          icon="mdi-phone-dial"
+          dense
+          max-width="500"
+        >
+          <v-banner-text class="text-center text-h6 font-weight-black">
+            <p><strong>Dials / Meeting (Uloslähtenyttä):</strong> {{ caseStats.totalOutgoingCalls }}</p>  
+          </v-banner-text>
+      </v-banner>
+      <v-banner
+          class="my-1 custom-banner"
+          color="deep-purple-accent-4"
+          icon="mdi-file-chart"
+          dense
+          max-width="500"
+        >
+          <v-banner-text class="text-center text-h6 font-weight-black">
+            <p><strong>Hour/Meeting (Tunti):</strong> {{ caseStats.totalCallTime }}</p>
+          </v-banner-text>
+      </v-banner>
+    </div>
+    <div v-if="currentPage !== 'dashBoard'" class="d-flex flex-column justify-center gap-2">
+      <v-banner
+          class="my-4 custom-banner"
+          color="light-green-accent-1"
+          icon="mdi-phone-classic"
+          dense
+          max-width="500"
+        >
+          <v-banner-text class="text-center text-h6 font-weight-black">
+            <p><strong>Active Call Time (Soittoaika):</strong> {{ caseStats.totalCallTime }} mins</p>  
+          </v-banner-text>
+        </v-banner>
+        <v-banner
+          class="my-1 custom-banner"
+          color="deep-purple-accent-4"
+          icon="mdi-phone-incoming"
+          dense
+          max-width="500"
+        >
+          <v-banner-text class="text-center text-h6 font-weight-black">
+            <p><strong>Completed Calls Made (Läpiviedyt puhelut):</strong> {{ caseStats.totalCallsMade }}</p>
+          </v-banner-text>
+        </v-banner>
+        <v-banner
+            class="my-1 custom-banner"
+            color="deep-purple-accent-4"
+            icon="mdi-phone-outgoing"
+            dense
+            max-width="500"
+          >
+            <v-banner-text class="text-center text-h6 font-weight-black">
+              <p><strong>Total Outgoing Calls (Uloslähteneet puhelut):</strong> {{ caseStats.totalOutgoingCalls }}</p>
+            </v-banner-text>
+        </v-banner>
+        <v-banner
+            class="my-1 custom-banner"
+            color="deep-purple-accent-4"
+            icon="mdi-file-phone"
+            dense
+            max-width="500"
+          >
+            <v-banner-text class="text-center text-h6 font-weight-black">
+              <p><strong>Total Answered Calls (Vastatut puhelut):</strong> {{ caseStats.totalAnsweredCalls }}</p>
+            </v-banner-text>
+        </v-banner>
+      </div>
+    </div>
+    <div v-if="currentPage !== 'dashBoard'" class="d-flex flex-row justify-center gap-2">
+
+      <v-banner
+            class="my-1 custom-banner"
+            color="deep-purple-accent-4"
+            icon="mdi-circle-multiple"
+            dense
+            max-width="350"
+          >
+            <v-banner-text class="text-center text-h6 font-weight-black">
+              <p><strong>Average Response Rate (Vastausprosentti):</strong> {{ caseStats.totalResponseRate }}%</p>
+            </v-banner-text>
+        </v-banner>
+    </div>
+
+    <div v-if="currentPage === 'dashBoard'" class="d-flex justify-center">
       <v-btn color="primary" class="mb-5" @click="showCase">
-        show case
+        Show Case
       </v-btn>
     </div>   
-      
+
     <!-- Filtered Agent Cards -->
-    <v-card-subtitle><strong>Assigned Manager:</strong> </v-card-subtitle>
-    <v-card-subtitle><strong>Assigned Agents: {{ getAgentNameInCase(companyCase.name) }} </strong></v-card-subtitle>
+    <v-card-subtitle><strong>Assigned Manager:</strong></v-card-subtitle>
+    <v-card-subtitle>
+      <strong>Assigned Agents: {{ getAgentNameInCase(companyCase.name) }}</strong>
+    </v-card-subtitle>
 
     <div class="d-flex flex-wrap justify-center mt-5">
       <AgentCard
@@ -62,6 +152,7 @@
         class="m-2"
       />
     </div>
+
     <div v-if="currentPage !== 'dashBoard'" class="d-flex flex-wrap justify-center">
       <AgentCard
         v-for="(agent, index) in agentsWithStats"
@@ -72,213 +163,172 @@
   </v-card>
 </template>
 
-
-  
 <script>
-  import AgentCard from './agentCard.vue';
-  import { mapGetters, mapActions, mapState } from 'vuex';
+import AgentCard from './agentCard.vue';
+import { mapGetters, mapActions, mapState } from 'vuex';
 
-
-  export default {
-    name: 'CaseCard',
-    props: {
-      companyCase: {
-        type: Object,
-        required: true,
-        default: () => ({}),
-      },
-      
+export default {
+  name: 'CaseCard',
+  props: {
+    companyCase: {
+      type: Object,
+      required: true,
+      default: () => ({}),
     },
-    components: {
-      AgentCard,
-    },
-
-    data() {
+  },
+  components: {
+    AgentCard,
+  },
+  data() {
     return {
-      dateRange: 'day', // Default value: 'day', 'week', or 'month'
-      mergedData: [],
-      filteredAgents1: [],
+      dateRange: 'day',
       agentsWithStats: [],
       caseStats: null,
     };
   },
-    
-    computed: {
-      ...mapGetters(['enrichedAgents', 'agents', 'cases', 'agentStats', 'currentPage']), // Map Vuex getter to local computed property
-      ...mapState(["currentPage"]),
-
-      currentPage() {
-        return this.$store.getters.currentPage;
-      },
-    
-      // Filter agents by the current case and date range
-      filteredAgents() {
-        const endDate = new Date();
-        let startDate;
-        switch (this.dateRange) {
-          case 'week':
-            startDate = new Date();
-            startDate.setDate(endDate.getDate() - 7);
-            break;
-          case 'month':
-            startDate = new Date();
-            startDate.setMonth(endDate.getMonth() - 1);
-            break;
-          default: // 'day'
-            startDate = new Date();
-            startDate.setDate(endDate.getDate() - 1);
-            break;
-        }
-
-        return this.agents.filter(agent => {
-          const activityDate = new Date(agent.lastActivityDate);
-          return (
-            agent.case === this.companyCase.name &&
-            activityDate >= startDate &&
-            activityDate <= endDate
-          );
-        });
-      },
-      
-
-      averageResponseRate() {
-        const agentsCount = this.filteredAgents.length;
-        return agentsCount > 0
-          ? (this.aggregateStats.totalResponseRate / agentsCount).toFixed(2)
-          : 0;
-      },
-
-      filteredAgentsList() {
-        return this.enrichedAgents.filter(agents =>
-        agents.cases && agents.cases.includes(this.companyCase.name)
+  computed: {
+    ...mapState(['currentPage']),
+    ...mapGetters(['enrichedAgents', 'agents', 'cases', 'agentStats']),
+    cardStyles() {
+      return this.currentPage === 'singleCase'
+        ? { width: '100%', margin: '0' }
+        : { width: 'auto', maxWidth: '400px', padding: '20px' };
+    },
+    filteredAgents() {
+      const endDate = new Date();
+      const startDate = new Date();
+      if (this.dateRange === 'week') {
+        startDate.setDate(endDate.getDate() - 7);
+      } else if (this.dateRange === 'month') {
+        startDate.setMonth(endDate.getMonth() - 1);
+      } else {
+        startDate.setDate(endDate.getDate() - 1);
+      }
+      return this.agents.filter(agent => {
+        const activityDate = new Date(agent.lastActivityDate);
+        return (
+          agent.case === this.companyCase.name &&
+          activityDate >= startDate &&
+          activityDate <= endDate
         );
-      },
-      
+      });
     },
-
-    watch: {
-  agentStats: {
-    handler() {
-      this.agentsWithStats = this.mergeStatsData(this.companyCase.name);
-      this.caseStats = this.aggregateStats();
-    },
-    immediate: true,
-    deep: true,
   },
-},
-
-    mounted() {
-      this.fetchAgents(); // Fetch agents when the component is mounted
-      this.fetchAgentStats(); // Fetch agent stats when the component is mounted
-      this.fetchCases();
-      
-      this.filteredAgents1 = this.getAgentsInCase(this.companyCase.name);
+  watch: {
+    agentStats: {
+      handler() {
+        this.updateStats();
+      },
+      immediate: true,
+    },
+  },
+  mounted() {
+    this.fetchAgents();
+    this.fetchAgentStats();
+    this.fetchCases();
+    this.updateStats();
+  },
+  methods: {
+    ...mapActions(['fetchAgents', 'fetchAgentStats', 'fetchCases']),
+    getAgentNameInCase() {
+      const agentsInCase = this.agents.filter(agent =>
+        agent.cases.includes(this.companyCase.name)
+      );
+      return agentsInCase.map(agent => agent.name).join(', ');
+    },
+    updateStats() {
       this.agentsWithStats = this.mergeStatsData(this.companyCase.name);
       this.caseStats = this.aggregateStats();
-      this.printDebug();
     },
-
-    methods: {
-      ...mapActions(['fetchAgents', 'fetchAgentStats', 'fetchCases']), // Map Vuex actions to local methods
-
-      getAgentsInCase(inputCaseName) {
-        const filteredAgents = this.agents.filter(agent => agent.cases.includes(inputCaseName));
-        return filteredAgents;
-      },
-
-      getAgentNameInCase() {
-        const agentsInCase = this.getAgentsInCase(this.companyCase.name);
-        return agentsInCase.map((agent) => agent.name).join(', ');
-      },
-
-      mergeStatsData(inputCaseName) {
-        const mergedData = this.filteredAgents1.map(agent => {
-          const stats = this.agentStats.find(stat => stat.name === agent.name && stat.case === inputCaseName);
+    mergeStatsData(caseName) {
+      return this.agents
+        .filter(agent => agent.cases.includes(caseName))
+        .map(agent => {
+          const stats = this.agentStats.find(
+            stat => stat.name === agent.name && stat.case === caseName
+          );
           return {
             ...agent,
-            meetings: stats ? stats.meetings : 0,
-            call_time: stats ? stats.call_time : 0,
-            calls_made: stats ? stats.calls_made : 0,
-            outgoing_calls: stats ? stats.outgoing_calls : 0,
-            answered_calls: stats ? stats.answered_calls : 0,
-            response_rate: stats ? stats.response_rate : 0,
-            case: this.companyCase.name,
+            meetings: stats?.meetings || 0,
+            call_time: stats?.call_time || 0,
+            calls_made: stats?.calls_made || 0,
+            outgoing_calls: stats?.outgoing_calls || 0,
+            answered_calls: stats?.answered_calls || 0,
+            response_rate: stats?.response_rate || 0,
           };
         });
-        return mergedData;
-      },
-      aggregateStats() {
-        console.log('this.agentsWithStats', this.agentsWithStats);
-        return this.agentsWithStats.reduce(
-          (totals, agent) => {
-            totals.totalMeetings += agent.meetings || 0;
-            totals.totalCallTime += agent.call_time || 0;
-            totals.totalCallsMade += agent.calls_made || 0;
-            totals.totalOutgoingCalls += agent.outgoing_calls || 0;
-            totals.totalAnsweredCalls += agent.answered_calls || 0;
-            totals.totalResponseRate += agent.response_rate || 0;
-            return totals;
-          },
-          {
-            totalMeetings: 0,
-            totalCallTime: 0,
-            totalCallsMade: 0,
-            totalOutgoingCalls: 0,
-            totalAnsweredCalls: 0,
-            totalResponseRate: 0,
-          }
-        );
-      },
-
-      
-      showCase() {
-        this.$router.push({
-          name: 'singleCase',
-          query: { case: this.companyCase.name },
-        });
-      },
-      printDebug() {
-        console.log('aggregateStats', this.caseStats)
-      }
-    }
-  };
+    },
+    aggregateStats() {
+      return this.agentsWithStats.reduce(
+        (totals, agent) => {
+          totals.totalMeetings += agent.meetings || 0;
+          totals.totalCallTime += agent.call_time || 0;
+          totals.totalCallsMade += agent.calls_made || 0;
+          totals.totalOutgoingCalls += agent.outgoing_calls || 0;
+          totals.totalAnsweredCalls += agent.answered_calls || 0;
+          totals.totalResponseRate += agent.response_rate || 0;
+          return totals;
+        },
+        {
+          totalMeetings: 0,
+          totalCallTime: 0,
+          totalCallsMade: 0,
+          totalOutgoingCalls: 0,
+          totalAnsweredCalls: 0,
+          totalResponseRate: 0,
+        }
+      );
+    },
+    showCase() {
+      this.$router.push({
+        name: 'singleCase',
+        query: { case: this.companyCase.name },
+      });
+    },
+  },
+};
 </script>
 
-  
 <style scoped>
-  /* Ensures proper wrapping and alignment */
-  .d-flex.flex-wrap {
-    gap: 16px; /* Adds spacing between cards */
-  }
-  
-  .text-center {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-  }
-  /* Flexbox container for side-by-side layout */
-.stats-container {
-  display: flex;
-  justify-content: space-between; /* Space between the two cards */
-  gap: 10px; /* Optional, for consistent spacing */
+.d-flex.flex-wrap {
+  gap: 16px;
 }
 
-/* Individual card styling */
-.stats-card {
-  flex: 1; /* Makes the cards equal in size */
-  padding: 20px;
-  background-color: white; /* Ensure consistent background */
+.text-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
+
+.stats-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  justify-content: space-between;
+}
+
+.stats-container2 {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.stats-card,
 .stats-card2 {
-  flex: 1; /* Makes the cards equal in size */
-  max-width: 50%; /* Restrict max width for balance */
+  flex: 1;
+  min-width: 250px;
+  max-width: 400px;
+  background-color: white;
   padding: 20px;
-  background-color: white; /* Ensure consistent background */
 }
+
 .full-width-card {
   width: 100%;
   margin: 0;
-  padding: 20px; /* Optional: Adjust padding as needed */
+  padding: 20px;
+}
+
+/* Remove any borders or box shadows */
+.custom-banner {
+  border: none !important;
 }
 </style>
-  
