@@ -27,7 +27,10 @@
         <v-date-input 
           clearable 
           v-model="agent.calling_date" 
-          label="Calling Date">
+          label="Calling Date range"
+          multiple="range"
+          required
+        >      
         </v-date-input>
         <v-text-field
           v-model="agent.meetings"
@@ -92,12 +95,12 @@
         agent: {
           name: '',
           case: '',
-          calling_date: null,
           meetings: null,
           call_time: null,
           calls_made: null,
           outgoing_calls: null,
           answered_calls: null,
+          calling_date: [],
         },
         message: '',
         alertType: 'success', // For success or error alerts
@@ -166,11 +169,22 @@
         this.setCurrentPage(newPage); // Update `currentPage` in the store
       },
       async submitForm() {
-        const me = this
-        console.log('Agent object: ', me.agent)
+        const me = this;
         try {
-          const response = await axios.post('https://goodcall-back-end.onrender.com/api/v1/agentStats/', me.agent);
-          console.log('Agent added: ', response)
+          // Transform calling_date to start and end
+          const [start, end] = me.agent.calling_date;
+          const payload = {
+            ...me.agent,
+            calling_date: {
+              start: start ? new Date(start).toISOString() : null,
+              end: end ? new Date(end).toISOString() : null,
+            },
+          };
+
+          console.log('Payload to send: ', JSON.stringify(payload, null, 2));
+
+          const response = await axios.post('https://goodcall-back-end.onrender.com/api/v1/agentStats/', payload);
+          console.log('Agent added: ', response);
           me.message = 'Agent added successfully!';
           me.alertType = 'success';
 
