@@ -26,7 +26,7 @@
         ></v-select>
         <v-date-input 
           clearable 
-          v-model="agent.callingDate" 
+          v-model="agent.calling_date" 
           label="Calling Date">
         </v-date-input>
         <v-text-field
@@ -64,8 +64,9 @@
         <v-text-field
           v-model="agent.response_rate"
           label="Response Rate (%)"
-          type="number"
-        />
+          readonly
+          outlined
+        ></v-text-field>
         
         <v-btn :disabled="!valid" @click="submitForm" color="primary">Submit</v-btn>
       </v-form>
@@ -90,14 +91,13 @@
         valid: false,
         agent: {
           name: '',
-          call_time: null,
+          case: '',
+          calling_date: null,
           meetings: null,
+          call_time: null,
           calls_made: null,
           outgoing_calls: null,
           answered_calls: null,
-          response_rate: null,
-          case: '',
-          callingDate: null,
         },
         message: '',
         alertType: 'success', // For success or error alerts
@@ -137,7 +137,19 @@
         console.log('casesList', casesList);
         return casesList;
       },
+      responseRate() {
+        const { outgoing_calls, answered_calls } = this.agent;
+        if (!outgoing_calls || outgoing_calls === 0) return 0;
+        return ((answered_calls || 0) / outgoing_calls * 100).toFixed(2);
+      },
     },
+
+    watch: {
+      responseRate(newRate) {
+        this.agent.response_rate = parseFloat(newRate);
+      },
+    },
+
     mounted() {
       this.fetchAgents(); // Fetch agents when the component is mounted
       this.fetchAgentStats(); // Fetch agent stats when the component is mounted
@@ -174,14 +186,15 @@
       },
       clearForm() {
         this.agent = {
-          name: '',
+          name: null,
+          case: null,
+          calling_date: null,
           meetings: null,
           call_time: null,
           calls_made: null,
           outgoing_calls: null,
           answered_calls: null,
-          response_rate: null,
-          case: '',
+          
         };
       },
     },
