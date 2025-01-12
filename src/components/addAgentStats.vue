@@ -14,6 +14,21 @@
           required
           outlined
         ></v-select>
+        <v-select
+          v-model="agent.case"
+          :items="casesList"
+          item-text="title"
+          item-value="value"
+          label="Select a Case"
+          outlined
+          required
+          :rules="nameRules"
+        ></v-select>
+        <v-date-input 
+          clearable 
+          v-model="agent.callingDate" 
+          label="Calling Date">
+        </v-date-input>
         <v-text-field
           v-model="agent.meetings"
           label="Meeting"
@@ -51,18 +66,7 @@
           label="Response Rate (%)"
           type="number"
         />
-        <v-select
-          v-model="agent.case"
-          :items="casesList"
-          item-text="title"
-          item-value="value"
-          label="Select a Case"
-          outlined
-          required
-          :rules="nameRules"
-        ></v-select>
-
-  
+        
         <v-btn :disabled="!valid" @click="submitForm" color="primary">Submit</v-btn>
       </v-form>
   
@@ -93,6 +97,7 @@
           answered_calls: null,
           response_rate: null,
           case: '',
+          callingDate: null,
         },
         message: '',
         alertType: 'success', // For success or error alerts
