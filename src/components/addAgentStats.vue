@@ -172,23 +172,26 @@
         try {
           console.log('this.agent.calling_date: ', this.agent.calling_date);
 
-          const firstElement = new Date(this.agent.calling_date[0]).toISOString() || null; 
-          const lastElementRaw = this.agent.calling_date.length > 0 ? this.agent.calling_date[this.agent.calling_date.length - 1] : null;
-          const lastElement = new Date(lastElementRaw).toISOString() || null; 
+          const firstElement = this.agent.calling_date?.[0] 
+            ? new Date(this.agent.calling_date[0]).toISOString() 
+            : null;
+
+          const lastElement = this.agent.calling_date?.[this.agent.calling_date.length - 1] 
+            ? new Date(this.agent.calling_date[this.agent.calling_date.length - 1]).toISOString() 
+            : null;
 
           console.log('firstElement: ', firstElement);
           console.log('lastElement: ', lastElement);
-          // Transform calling_date array into an objec
-          
+
           const dateArray = {
             start: firstElement,
             end: lastElement,
           };
 
           const payload = {
-          ...this.agent,
-          calling_date: dateArray, // Transform array to object
-        };
+            ...this.agent,
+            calling_date: dateArray, // Transform array to object
+          };
         
           console.log('Payload to send: ', payload);
 
