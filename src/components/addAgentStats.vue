@@ -169,35 +169,48 @@
         this.setCurrentPage(newPage); // Update `currentPage` in the store
       },
       async submitForm() {
-        const me = this;
         try {
-          // Transform calling_date to start and end
-          const [start, end] = me.agent.calling_date;
-          const payload = {
-            ...me.agent,
-            calling_date: {
-              start: start ? new Date(start).toISOString() : null,
-              end: end ? new Date(end).toISOString() : null,
-            },
+          console.log('this.agent.calling_date: ', this.agent.calling_date);
+
+          const firstElement = new Date(this.agent.calling_date[0]).toISOString() || null; 
+          const lastElementRaw = this.agent.calling_date.length > 0 ? this.agent.calling_date[this.agent.calling_date.length - 1] : null;
+          const lastElement = new Date(lastElementRaw).toISOString() || null; 
+
+          console.log('firstElement: ', firstElement);
+          console.log('lastElement: ', lastElement);
+          // Transform calling_date array into an objec
+          
+          const dateArray = {
+            start: firstElement,
+            end: lastElement,
           };
 
-          console.log('Payload to send: ', JSON.stringify(payload, null, 2));
+          const payload = {
+          ...this.agent,
+          calling_date: dateArray, // Transform array to object
+        };
+        
+          console.log('Payload to send: ', payload);
 
-          const response = await axios.post('https://goodcall-back-end.onrender.com/api/v1/agentStats/', payload);
+          const response = await axios.post(
+            'https://goodcall-back-end.onrender.com/api/v1/agentStats/',
+            payload
+          );
           console.log('Agent added: ', response);
-          me.message = 'Agent added successfully!';
-          me.alertType = 'success';
+          this.message = 'Agent added successfully!';
+          this.alertType = 'success';
 
           // Refresh the Vuex store with updated stats
-          await me.fetchAgentStats(); // Dispatch Vuex action to fetch the latest stats
+          await this.fetchAgentStats();
 
-          me.clearForm();
+          this.clearForm();
         } catch (error) {
           console.error('Error adding agent:', error);
-          me.message = 'Failed to add agent. Please try again.';
-          me.alertType = 'error';
+          this.message = 'Failed to add agent. Please try again.';
+          this.alertType = 'error';
         }
       },
+
       clearForm() {
         this.agent = {
           name: null,
