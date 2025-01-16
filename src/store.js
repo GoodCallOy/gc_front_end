@@ -6,6 +6,7 @@ const store = createStore({
     agentStats: [],
     cases: [],
     currentPage: "",
+    dateRange: [],
   },
   getters: {
     enrichedAgents(state) {
@@ -16,17 +17,20 @@ const store = createStore({
     },
 
     cases(state){
-        return state.cases
+      return state.cases
     },
     agents(state){
-        return state.agents
+      return state.agents
     },
     agentStats(state) {
       return state.agentStats
     },
     currentPage(state){
-        return state.currentPage
-    }
+      return state.currentPage
+    },
+    currentDateRange(state){
+      return state.dateRange
+    },
   },
 
   actions: {
@@ -54,6 +58,19 @@ const store = createStore({
         console.error('Error fetching agent stats:', error);
       }
     },
+    async fetchCurrentDateRange({ commit }) {
+      const currentDate = new Date();
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(currentDate.getDate() - 7);
+  
+      const selectedDateRange = [
+        sevenDaysAgo.toISOString().split('T')[0], // Format as YYYY-MM-DD
+        currentDate.toISOString().split('T')[0],
+      ];
+  
+      commit('setDateRange', selectedDateRange);
+      return selectedDateRange; // Optional, for immediate usage after dispatch
+    },
   },
   mutations: {
     setAgents(state, agents) {
@@ -67,6 +84,9 @@ const store = createStore({
     },
     setCurrentPage(state, currentPage) {
       state.currentPage = currentPage;
+    },
+    setDateRange(state, range) {
+      state.dateRange = range;
     },
   },
 });

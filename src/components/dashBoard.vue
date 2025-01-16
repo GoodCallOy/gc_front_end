@@ -11,6 +11,7 @@
         :companyCase="singleCase"
         :agents="agents"
         :currentPage="'dashboard'"
+        :dateRange="selectedDateRange"
       />
     </div>
 
@@ -37,6 +38,19 @@ export default {
   components: {
     AgentCard, // Register the component
     CaseCard,  // Register the component
+  },
+
+  data() {
+    const currentDate = new Date();
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(currentDate.getDate() - 7);
+
+    return {
+      selectedDateRange: [
+        sevenDaysAgo.toISOString().split('T')[0],
+        currentDate.toISOString().split('T')[0],
+      ],
+    };
   },
 
   computed: {
