@@ -143,7 +143,7 @@
       responseRate() {
         const { outgoing_calls, answered_calls } = this.agent;
         if (!outgoing_calls || outgoing_calls === 0) return 0;
-        return ((answered_calls || 0) / outgoing_calls * 100).toFixed(2);
+        return ((answered_calls || 0) / outgoing_calls * 100).toFixed(1);
       },
     },
 

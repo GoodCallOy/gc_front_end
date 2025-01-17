@@ -263,23 +263,10 @@ export default {
       console.log('Updated Stats:', this.caseStats);
     },
     mergeStatsData(caseName) {
-
-      console.log('this.dateRange:', this.dateRange);
-      console.log('this.currentDateRange:', this.currentDateRange);
-      console.log('dateRange Type:', typeof this.dateRange);
-     
       const rawDateRange = toRaw(this.dateRange || this.currentDateRange);
       const [startDate, endDate] = Array.isArray(rawDateRange)
         ? rawDateRange
         : [rawDateRange.startDate, rawDateRange.endDate];
-
-      console.log('Normalized startDate:', startDate);
-      console.log('Normalized endDate:', endDate);
-
-      // if (!startDate || !endDate) {
-      //   console.error('Invalid date range:', this.dateRange);
-      //   return [];
-      // }
 
       const agentsInCase = this.agents.filter(agent =>
         agent.cases.includes(this.companyCase.name)
@@ -295,11 +282,6 @@ export default {
           // Correct the assignment of CStartdate and CEnddate
           const CStartdate = new Date(startDate).getTime(); // Use startDate as CStartdate
           const CEnddate = new Date(endDate).getTime(); // Use endDate as CEnddate
-
-          console.log('CStartdate:', CStartdate);
-          console.log('CEnddate:', CEnddate);
-          console.log('statStart:', statStart);
-          console.log('statEnd:', statEnd);
 
           // Check if the stat falls within the date range
           return (
@@ -328,7 +310,7 @@ export default {
           totals.totalCallsMade += agent.calls_made || 0;
           totals.totalOutgoingCalls += agent.outgoing_calls || 0;
           totals.totalAnsweredCalls += agent.answered_calls || 0;
-          totals.totalResponseRate += agent.response_rate || 0;
+          totals.totalResponseRate = ((totals.totalAnsweredCalls || 0) / totals.totalOutgoingCalls * 100 || 0).toFixed(1) || 0;
           return totals;
         },
         {
