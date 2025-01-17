@@ -138,11 +138,16 @@
       </v-btn>
     </div>   
 
-    <!-- Filtered Agent Cards -->
-    <v-card-subtitle><strong>Assigned Manager:</strong></v-card-subtitle>
-    <v-card-subtitle>
-      <strong>Assigned Agents: {{ getAgentNameInCase(companyCase.name) }}</strong>
-    </v-card-subtitle>
+    <div class="d-flex flex-column ml-5">
+      <!-- Filtered Agent Cards -->
+      <v-card-subtitle>
+        <strong>Assigned Manager:</strong>
+      </v-card-subtitle>
+      <v-card-subtitle>
+        <strong>Assigned Agents: {{ getAgentNameInCase(companyCase.name) }}</strong>
+      </v-card-subtitle>
+    </div>
+    
 
     <div class="d-flex flex-wrap justify-center mt-5">
       <AgentCard
