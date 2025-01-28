@@ -255,8 +255,6 @@ export default {
     },
     updateStats() {
       const rawDateRange = toRaw(this.dateRange);
-      console.log('Raw dateRange:', rawDateRange);
-
       if (!Array.isArray(rawDateRange)) {
         console.error('Invalid date range:', rawDateRange);
         return;
@@ -264,14 +262,19 @@ export default {
 
       this.agentsWithStats = this.mergeStatsData(this.companyCase.name);
       this.caseStats = this.aggregateStats();
-
-      console.log('Updated Stats:', this.caseStats);
     },
     mergeStatsData(caseName) {
+
       const rawDateRange = toRaw(this.dateRange || this.currentDateRange);
       const [startDate, endDate] = Array.isArray(rawDateRange)
         ? rawDateRange
         : [rawDateRange.startDate, rawDateRange.endDate];
+
+
+      // if (!startDate || !endDate) {
+      //   console.error('Invalid date range:', this.dateRange);
+      //   return [];
+      // }
 
       const agentsInCase = this.agents.filter(agent =>
         agent.cases.includes(this.companyCase.name)
@@ -287,6 +290,7 @@ export default {
           // Correct the assignment of CStartdate and CEnddate
           const CStartdate = new Date(startDate).getTime(); // Use startDate as CStartdate
           const CEnddate = new Date(endDate).getTime(); // Use endDate as CEnddate
+
 
           // Check if the stat falls within the date range
           return (

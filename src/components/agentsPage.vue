@@ -3,47 +3,44 @@
       <h1 class="mb-3 mt-5">Agents by Name</h1>
   
       <!-- List of Agent Cards -->
-      <div class="d-flex flex-wrap justify-center">
-        <v-card
-          v-for="(agent, index) in enrichedAgents"
-          :key="index"
-          class="mx-2 my-2"
-          elevation="16"
-          style="width: 200px; height: 300px;"
-        >
-          <v-card-title>{{ agent.name }}</v-card-title>
-          <v-card-subtitle>Agents Stats</v-card-subtitle>
-          <v-card-text>
-            <p>Meetings: {{ agent.meeting }}</p>
-            <p>Call Time: {{ agent.call_time }} mins</p>
-            <p>Calls Made: {{ agent.calls_made }}</p>
-            <p>outgoing_calls: {{ agent.outgoing_calls }}</p>
-            <p>answered_calls: {{ agent.answered_calls }}</p>
-            <p>resopnse_rate: {{ agent.resopnse_rate }}%</p>
-          </v-card-text>
-        </v-card>
+      <div class="d-flex flex-wrap justify-center">   
+        <AgentCard
+        v-for="(agent, index) in enrichedAgents"
+        :key="index"
+        :agent="agent"
+      />
       </div>
     </div>
   </template>
   
   <script>
-import { mapGetters, mapActions } from 'vuex';
+import { mapGetters, mapActions, mapState, mapMutations } from 'vuex';
+import AgentCard from './agentCard.vue';
   
   export default {
     name: 'dashBoard',
+
+    components: { AgentCard }, // Register the component
     
     computed: {
-    ...mapGetters(['enrichedAgents', 'agents', 'cases']), // Map Vuex getter to local computed property
+      ...mapGetters(['enrichedAgents', 'agents', 'cases', 'agentStats', 'currentPage']), // Map Vuex getter to local computed property
+      ...mapState(["currentPage"]),
   },
 
     mounted() {
       this.fetchAgents(); // Fetch agents when the component is mounted
       this.fetchAgentStats(); // Fetch agent stats when the component is mounted
       this.fetchCases();
+      this.updatePage('agentPage');
     },
 
     methods: {
-      ...mapActions(['fetchAgents', 'fetchAgentStats', 'fetchCases']), // Map Vuex actions to local methods
+      ...mapActions(['fetchAgents', 'fetchAgentStats', 'fetchCases','fetchCurrentDateRange']),
+      ...mapMutations(['setCurrentPage']),
+
+      updatePage(newPage) {
+        this.setCurrentPage(newPage); // Update `currentPage` in the store
+      },
     },
   };
 

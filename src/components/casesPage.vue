@@ -89,6 +89,8 @@
           :key="index"
           :companyCase="singleCase"
           :agents="agents"
+          :currentPage="'dashboard'"
+          :dateRange="selectedDateRange"
         />
       </div>
   
@@ -118,6 +120,10 @@
     },
   
     data() {
+      const currentDate = new Date();
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(currentDate.getDate() - 7);
+
       return {
         agents: [],          // Array to store agents data
         cases: [],           // Array to store cases data
@@ -132,6 +138,11 @@
           'July', 'August', 'September', 'October', 'November', 'December',
         ], // Names of the months
         weeks: Array.from({ length: 52 }, (_, i) => i + 1), // Array of week numbers
+
+        selectedDateRange: [
+        sevenDaysAgo.toISOString().split('T')[0],
+        currentDate.toISOString().split('T')[0],
+      ],
       };
     },
   

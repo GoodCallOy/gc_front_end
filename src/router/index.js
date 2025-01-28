@@ -6,6 +6,7 @@ import AddAgentStats from '@/components/addAgentStats.vue';
 import AddCase from '@/components/addCase.vue';
 import Cases from '@/components/casesPage.vue';
 import SingleCase from '@/components/singleCase.vue';
+import SingleAgent from '@/components/singleAgent.vue';
 
 const routes = [
   { path: '/', name: 'home', component: DashBoard },
@@ -19,6 +20,12 @@ const routes = [
     name: 'singleCase', 
     component: SingleCase,
     props: route => ({ activeCase: route.query.case }), // Pass active case as a prop
+  },
+  { 
+    path: '/singleAgent', 
+    name: 'singleAgent', 
+    component: SingleAgent,
+    props: route => ({ activeAgent: route.query.agent }), // Pass active case as a prop
   },
 ];
 
