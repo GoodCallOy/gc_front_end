@@ -4,7 +4,7 @@
 
     <!-- List of Cases -->
     <p>{{ $t('dashboard.cases') }}.</p>
-    <div class="d-flex flex-wrap justify-center mb-5">
+    <div class="grid-container">
       <CaseCard
         v-for="(singleCase, index) in cases"
         :key="index"
@@ -86,15 +86,20 @@ export default {
 </script>
 
 <style scoped>
-.small-card {
-  max-width: 450px;
-  max-height: 300px;
-  overflow: auto;
-}
+  .small-card {
+    max-width: 450px;
+    max-height: 300px;
+    overflow: auto;
+  }
 
-.small-btn {
-  font-size: 12px;
-  padding: 4px 8px;
-  min-width: 85px;
-}
+  .small-btn {
+    font-size: 12px;
+    padding: 4px 8px;
+    min-width: 85px;
+  }
+  .grid-container {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr); /* 3 per row */
+    gap: 16px; /* Adjust spacing */
+  }
 </style>

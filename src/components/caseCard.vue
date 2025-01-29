@@ -5,7 +5,7 @@
     :elevation="currentPage === 'singleCase' ? 0 : 16"
   >
     <!-- Centered Case Information -->
-    <div v-if="currentPage === 'dashBoard'" class="text-center">
+    <div v-if="currentPage === 'dashBoard' || currentPage === 'casePage'" class="text-center">
       <v-card-title class="text-h5">{{ companyCase.name }}</v-card-title>
       
       <!-- Statistics -->
@@ -24,7 +24,7 @@
     </div>
 
     <div class="d-flex flex-row justify-center">
-      <div v-if="currentPage !== 'dashBoard'" class="d-flex flex-column justify-center gap-2">
+      <div v-if="currentPage !== 'dashBoard' && currentPage !== 'casePage'" class="d-flex flex-column justify-center gap-2">
       <v-banner
           class="my-4 custom-banner"
           color="yellow-accent-1"
@@ -70,7 +70,7 @@
           </v-banner-text>
       </v-banner>
     </div>
-    <div v-if="currentPage !== 'dashBoard'" class="d-flex flex-column justify-center gap-2">
+    <div v-if="currentPage !== 'dashBoard' && currentPage !== 'casePage'" class="d-flex flex-column justify-center gap-2">
       <v-banner
           class="my-4 custom-banner"
           color="light-green-accent-1"
@@ -117,7 +117,7 @@
         </v-banner>
       </div>
     </div>
-    <div v-if="currentPage !== 'dashBoard'" class="d-flex flex-row justify-center gap-2">
+    <div v-if="currentPage !== 'dashBoard' && currentPage !== 'casePage'" class="d-flex flex-row justify-center gap-2">
 
       <v-banner
             class="my-1 custom-banner"
@@ -132,7 +132,7 @@
         </v-banner>
     </div>
 
-    <div v-if="currentPage === 'dashBoard'" class="d-flex justify-center">
+    <div v-if="currentPage === 'dashBoard' || currentPage === 'casePage'" class="d-flex justify-center">
       <v-btn color="primary" class="mb-5" @click="showCase">
         Show Case
       </v-btn>
@@ -158,7 +158,7 @@
       />
     </div>
 
-    <div v-if="currentPage !== 'dashBoard'" class="d-flex flex-wrap justify-center">
+    <div v-if="currentPage !== 'dashBoard' && currentPage !== 'casePage'" class="d-flex flex-wrap justify-center">
       <AgentCard
         v-for="(agent, index) in agentsWithStats"
         :key="index"

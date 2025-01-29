@@ -89,7 +89,7 @@
           :key="index"
           :companyCase="singleCase"
           :agents="agents"
-          :currentPage="'dashboard'"
+          :currentPage="'casePage'"
           :dateRange="selectedDateRange"
         />
       </div>
@@ -110,6 +110,8 @@
   import axios from 'axios';
   import AgentCard from './agentCard.vue';
   import CaseCard from './caseCard.vue';
+  import { mapState, mapMutations } from 'vuex';
+
   
   export default {
     name: 'casePage',
@@ -147,6 +149,8 @@
     },
   
     computed: {
+      ...mapState(["currentPage"]), // Maps the `currentPage` state to a computed property
+
       displayDate() {
         const options = { year: 'numeric', month: 'short', day: 'numeric' };
         return this.selectedDate.toLocaleDateString(undefined, options);
@@ -167,9 +171,14 @@
       // Fetch the list of agents when the component is mounted
       this.getAgents();
       this.getCases();
+      this.updatePage('casePage');
     },
   
     methods: {
+      ...mapMutations(["setCurrentPage"]), // Maps mutation to update `currentPage`
+      updatePage(newPage) {
+        this.setCurrentPage(newPage); // Update `currentPage` in the store
+      },
       async getAgents() {
         try {
           const response = await axios.get('https://goodcall-back-end.onrender.com/api/v1/agent/');
