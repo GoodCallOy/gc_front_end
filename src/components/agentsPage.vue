@@ -32,6 +32,7 @@ import AgentCard from './agentCard.vue';
       this.fetchAgentStats(); // Fetch agent stats when the component is mounted
       this.fetchCases();
       this.updatePage('agentPage');
+      // this.printDebug();
     },
 
     methods: {
@@ -41,6 +42,9 @@ import AgentCard from './agentCard.vue';
       updatePage(newPage) {
         this.setCurrentPage(newPage); // Update `currentPage` in the store
       },
+      printDebug() {
+       
+      } 
     },
   };
 

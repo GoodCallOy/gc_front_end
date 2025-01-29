@@ -71,13 +71,14 @@
           outlined
         ></v-text-field>
         
-        <v-btn :disabled="!valid" @click="submitForm" color="primary">Submit</v-btn>
+        <div class="button-alert-container">
+          <v-btn :disabled="!valid" @click="handleSubmit" color="primary" class="mr-3">Submit</v-btn>
+           <!-- Success/Failure Message -->
+          <v-alert v-if="message" :type="alertType" dismissible>
+            {{ message }}
+          </v-alert>
+        </div>
       </v-form>
-  
-      <!-- Success/Failure Message -->
-      <v-alert v-if="message" :type="alertType" dismissible>
-        {{ message }}
-      </v-alert>
     </div>
   </template>
   
@@ -128,7 +129,6 @@
           title: agent.name, // Display name in the dropdown
           value: agent.name, // Value when selected
         }));
-        console.log('agentList', agentList);
         return agentList;
       },
       casesList() {
@@ -137,7 +137,6 @@
           title: singleCase.name, // Display name in the dropdown
           value: singleCase.name, // Value when selected
         }));
-        console.log('casesList', casesList);
         return casesList;
       },
       responseRate() {
@@ -168,10 +167,17 @@
       updatePage(newPage) {
         this.setCurrentPage(newPage); // Update `currentPage` in the store
       },
+      handleSubmit() {
+        this.setDefaultResponseRate();
+        this.submitForm();
+      },
+      setDefaultResponseRate() {
+        if (this.agent.response_rate === null || isNaN(this.agent.response_rate)) {
+          this.agent.response_rate = 0;
+        }
+      },
       async submitForm() {
         try {
-          console.log('this.agent.calling_date: ', this.agent.calling_date);
-
           const firstElement = this.agent.calling_date?.[0] 
             ? new Date(this.agent.calling_date[0]).toISOString() 
             : null;
@@ -179,9 +185,6 @@
           const lastElement = this.agent.calling_date?.[this.agent.calling_date.length - 1] 
             ? new Date(this.agent.calling_date[this.agent.calling_date.length - 1]).toISOString() 
             : null;
-
-          console.log('firstElement: ', firstElement);
-          console.log('lastElement: ', lastElement);
 
           const dateArray = {
             start: firstElement,
@@ -192,15 +195,13 @@
             ...this.agent,
             calling_date: dateArray, // Transform array to object
           };
-        
-          console.log('Payload to send: ', payload);
 
           const response = await axios.post(
             'https://goodcall-back-end.onrender.com/api/v1/agentStats/',
             payload
           );
           console.log('Agent added: ', response);
-          this.message = 'Agent added successfully!';
+          this.message = 'Stats added successfully!';
           this.alertType = 'success';
 
           // Refresh the Vuex store with updated stats
@@ -245,6 +246,11 @@
   
   .v-alert {
     margin-top: 20px;
+  }
+  .button-alert-container {
+    display: flex;
+    align-items: center; /* Align items vertically */
+    margin-top: 20px;    /* Add spacing from inputs */
   }
   </style>
   

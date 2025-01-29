@@ -36,12 +36,13 @@
   
       <div class="d-flex py-3 justify-space-between">
         <v-list-item>
-          <v-list-item-subtitle>Meetings: {{ agent.meetings }}</v-list-item-subtitle>
-          <v-list-item-subtitle>Call Time: {{ agent.call_time }} mins</v-list-item-subtitle>
-          <v-list-item-subtitle>Calls Made: {{ agent.calls_made }}</v-list-item-subtitle>
-          <v-list-item-subtitle>Outgoing Calls: {{ agent.outgoing_calls }}</v-list-item-subtitle>
-          <v-list-item-subtitle>Answered Calls: {{ agent.answered_calls }}</v-list-item-subtitle>
-          <v-list-item-subtitle>Answered Calls: Response Rate: {{ agent.response_rate }}%</v-list-item-subtitle>
+          <v-list-item-subtitle class="mt-1">Meetings: {{ agent.meetings }}</v-list-item-subtitle>
+          <v-list-item-subtitle class="mt-1">Call Time: {{ agent.call_time }} mins</v-list-item-subtitle>
+          <v-list-item-subtitle class="mt-1">Calls Made: {{ agent.calls_made }}</v-list-item-subtitle>
+          <v-list-item-subtitle class="mt-1">Outgoing Calls: {{ agent.outgoing_calls }}</v-list-item-subtitle>
+          <v-list-item-subtitle class="mt-1">Answered Calls: {{ agent.answered_calls }}</v-list-item-subtitle>
+          <v-list-item-subtitle class="mt-1">Response Rate: {{ agent.response_rate }}%</v-list-item-subtitle>
+          <v-list-item-subtitle class="mt-5">Date: {{ agent.monthKey }}</v-list-item-subtitle>
           <v-card-text>
       </v-card-text>
         </v-list-item>
@@ -58,12 +59,12 @@
           </v-list-item>
            
             <v-list-item>
-                <v-list-item-subtitle>Meetings: {{ agent.meetings }}</v-list-item-subtitle>
-                <v-list-item-subtitle>Call Time: {{ agent.call_time }} mins</v-list-item-subtitle>
-                <v-list-item-subtitle>Calls Made: {{ agent.calls_made }}</v-list-item-subtitle>
-                <v-list-item-subtitle>Outgoing Calls: {{ agent.outgoing_calls }}</v-list-item-subtitle>
-                <v-list-item-subtitle>Answered Calls: {{ agent.answered_calls }}</v-list-item-subtitle>
-                <v-list-item-subtitle>Answered Calls: Response Rate: {{ agent.response_rate }}%</v-list-item-subtitle>
+                <v-list-item-subtitle>Meetings: {{ YTDStats[0].meetings }}</v-list-item-subtitle>
+                <v-list-item-subtitle>Call Time: {{ YTDStats[0].call_time }} mins</v-list-item-subtitle>
+                <v-list-item-subtitle>Calls Made: {{ YTDStats[0].calls_made }}</v-list-item-subtitle>
+                <v-list-item-subtitle>Outgoing Calls: {{ YTDStats[0].outgoing_calls }}</v-list-item-subtitle>
+                <v-list-item-subtitle>Answered Calls: {{ YTDStats[0].answered_calls }}</v-list-item-subtitle>
+                <v-list-item-subtitle>Response Rate: {{ YTDStats[0].response_rate }}%</v-list-item-subtitle>
             </v-list-item>
           </v-list>
         </div>
@@ -81,11 +82,13 @@
   </template>
 
 <script>
-import { mapGetters, mapActions, mapState, mapMutations } from 'vuex';
-
   export default {
     props: {
         agent: {
+        type: Object,
+        required: true, // The agent data must be passed as a prop
+        },
+        YTDStats: {
         type: Object,
         required: true, // The agent data must be passed as a prop
         },
@@ -93,35 +96,15 @@ import { mapGetters, mapActions, mapState, mapMutations } from 'vuex';
     data: () => ({
       expand: false,
     }),
-    computed: {
-        ...mapGetters(['enrichedAgents', 'agents', 'cases', 'agentStats', 'currentPage']), // Map Vuex getter to local computed property
-        ...mapState(["currentPage"]), // Maps the `currentPage` state to a computed property
+    
 
-        currentPage() {
-        console.log('currentPage', this.$store.getters.currentPage)
-        return this.$store.getters.currentPage;
-        },
-    },
-
-    async mounted() {
-        this.fetchAgents(); // Fetch agents when the component is mounted
-        this.fetchAgentStats(); // Fetch agent stats when the component is mounted
-        this.fetchCases();
-        this.updatePage('sigleStatCard');
-        await this.fetchAgentStats();
-        // this.printDebug();
+    async mounted() { 
+      // this.printDebug();
     },
     methods: {
-    ...mapActions(['fetchAgents', 'fetchAgentStats', 'fetchCases']), // Map Vuex actions to local methods
-
-    ...mapMutations(["setCurrentPage"]), // Maps mutation to update `currentPage`
-    updatePage(newPage) {
-      this.setCurrentPage(newPage); // Update `currentPage` in the store
-    },
-    printDebug() {
-        console.log('agentStats', this.agentStats)
-        console.log('agent', this.agent)
+      printDebug() {
+        console.log('YTDStats', this.YTDStats)
       }
-  },
+    },
   }
 </script>
