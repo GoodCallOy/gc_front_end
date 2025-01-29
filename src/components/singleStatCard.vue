@@ -37,7 +37,7 @@
       <div class="d-flex py-3 justify-space-between">
         <v-list-item>
           <v-list-item-subtitle class="mt-1">Meetings: {{ agent.meetings }}</v-list-item-subtitle>
-          <v-list-item-subtitle class="mt-1">Call Time: {{ agent.call_time }} mins</v-list-item-subtitle>
+          <v-list-item-subtitle class="mt-1">Call Time: {{ agent.call_time }} hours</v-list-item-subtitle>
           <v-list-item-subtitle class="mt-1">Calls Made: {{ agent.calls_made }}</v-list-item-subtitle>
           <v-list-item-subtitle class="mt-1">Outgoing Calls: {{ agent.outgoing_calls }}</v-list-item-subtitle>
           <v-list-item-subtitle class="mt-1">Answered Calls: {{ agent.answered_calls }}</v-list-item-subtitle>

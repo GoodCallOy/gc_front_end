@@ -41,7 +41,7 @@
         />
         <v-text-field
           v-model="agent.call_time"
-          label="Call Time (minutes)"
+          label="Call Time (hours)"
           type="number"
           :rules="numberRules"
           required

@@ -10,7 +10,7 @@
         outlined
       ></v-date-input>
     </div>
-    <div class="justify-center mt-5 d-flex flex-wrap flex-row">
+    <div class="grid-container">
       <singleStatCard class="mr-5"
       v-for="(singleCase, index) in CaseStatsGroupedByMonth"
         :key="index"
@@ -198,18 +198,23 @@ export default {
 </script>
 
 <style scoped>
-.date-range-picker {
-  width: 25vw;
-  margin-bottom: 20px; /* Add margin to control spacing */
-}
+  .date-range-picker {
+    width: 25vw;
+    margin-bottom: 20px; /* Add margin to control spacing */
+  }
 
-.card-container {
-  width: 100vw;
-}
+  .card-container {
+    width: 100vw;
+  }
 
-.small-btn {
-  font-size: 12px;
-  padding: 4px 8px;
-  min-width: 85px;
-}
+  .small-btn {
+    font-size: 12px;
+    padding: 4px 8px;
+    min-width: 85px;
+  }
+  .grid-container {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr); /* 3 per row */
+    gap: 16px; /* Adjust spacing */
+  }
 </style>

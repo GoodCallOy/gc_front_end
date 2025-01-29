@@ -3,7 +3,7 @@
       <v-card-title>{{ agent.name }}</v-card-title>
       <v-card-text>
         <p>Meetings: {{ agent.meetings }}</p>
-        <p>Call Time: {{ agent.call_time }} mins</p>
+        <p>Call Time: {{ agent.call_time }} hours</p>
         <p>Calls Made: {{ agent.calls_made }}</p>
         <p>Outgoing Calls: {{ agent.outgoing_calls }}</p>
         <p>Answered Calls: {{ agent.answered_calls }}</p>
