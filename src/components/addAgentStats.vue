@@ -1,5 +1,5 @@
 <template>
-    <div class="d-flex flex-column align-center" style="height: 100vh; justify-content: center;">
+    <div class="d-flex flex-column align-center" style="height: 100vh; justify-content: center; margin-bottom: 5%;">
       <h1 class="mb-3 mt-5">Add New Agent Stats</h1>
   
       <!-- Agent Form -->

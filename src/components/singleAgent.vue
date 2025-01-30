@@ -1,5 +1,5 @@
 <template>
-  <div class="d-flex flex-column align-center" style="height: 100vh;">
+  <div class="d-flex flex-column align-center" style="height:100vh; margin-bottom: 10%;">
     <h1 class="mb-3 mt-5">{{ $route.query.agent }}</h1>
 
     <div class="d-flex justify-center date-range-picker">
