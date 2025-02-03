@@ -1,5 +1,5 @@
 <template>
-  <div class="d-flex flex-column align-center" style="height:100vh; margin-bottom: 10%;">
+  <div class="d-flex flex-column align-center" style="height:100vh; margin-bottom: 15%;">
     <h1 class="mb-3 mt-5">{{ $route.query.agent }}</h1>
 
     <div class="d-flex justify-center date-range-picker">
@@ -10,11 +10,12 @@
         outlined
       ></v-date-input>
     </div>
-    <div class="grid-container">
-      <singleStatCard class="mr-5"
+    <div class="grid-container" >
+      <singleStatCard
       v-for="(singleCase, index) in CaseStatsGroupedByMonth"
         :key="index"
-        :agent="singleCase" 
+        :agent=this.$route.query.agent
+        :selectedCase="singleCase" 
         :YTDStats="CaseStatsYTD"
       />
     </div>
@@ -214,7 +215,7 @@ export default {
   }
   .grid-container {
     display: grid;
-    grid-template-columns: repeat(6, 1fr); /* 3 per row */
+    grid-template-columns: repeat(5, 1fr); /* 3 per row */
     gap: 16px; /* Adjust spacing */
   }
 </style>

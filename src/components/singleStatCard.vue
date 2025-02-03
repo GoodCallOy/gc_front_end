@@ -5,7 +5,7 @@
     >
       <v-card-item>
         <template v-slot:title>
-            {{ agent.case }}
+            {{ selectedCase.caseId }}
         </template>
         <!-- <template v-slot:subtitle>
           <v-icon
@@ -36,14 +36,17 @@
   
       <div class="d-flex py-3 justify-space-between">
         <v-list-item>
-          <v-list-item-subtitle class="mt-1">Meetings: {{ agent.meetings }}</v-list-item-subtitle>
-          <v-list-item-subtitle class="mt-1">Call Time: {{ agent.call_time }} hours</v-list-item-subtitle>
-          <v-list-item-subtitle class="mt-1">Calls Made: {{ agent.calls_made }}</v-list-item-subtitle>
-          <v-list-item-subtitle class="mt-1">Outgoing Calls: {{ agent.outgoing_calls }}</v-list-item-subtitle>
-          <v-list-item-subtitle class="mt-1">Answered Calls: {{ agent.answered_calls }}</v-list-item-subtitle>
-          <v-list-item-subtitle class="mt-1">Response Rate: {{ agent.response_rate }}%</v-list-item-subtitle>
-          <v-list-item-subtitle class="mt-5">Date: {{ agent.monthKey }}</v-list-item-subtitle>
+          <v-list-item-subtitle class="mt-1">Meetings: {{ selectedCase.meetings }}</v-list-item-subtitle>
+          <v-list-item-subtitle class="mt-1">Call Time: {{ selectedCase.call_time }} hours</v-list-item-subtitle>
+          <v-list-item-subtitle class="mt-1">Calls Made: {{ selectedCase.calls_made }}</v-list-item-subtitle>
+          <v-list-item-subtitle class="mt-1">Outgoing Calls: {{ selectedCase.outgoing_calls }}</v-list-item-subtitle>
+          <v-list-item-subtitle class="mt-1">Answered Calls: {{ selectedCase.answered_calls }}</v-list-item-subtitle>
+          <v-list-item-subtitle class="mt-1">Response Rate: {{ selectedCase.response_rate }}%</v-list-item-subtitle>
+          <v-list-item-subtitle class="mt-5">Date: {{ selectedCase.monthKey }}</v-list-item-subtitle>
           <v-card-text>
+            <v-btn color="primary" class="mb-5" @click="viewAgent">
+              View Agent
+            </v-btn>
       </v-card-text>
         </v-list-item>
   
@@ -88,6 +91,10 @@
         type: Object,
         required: true, // The agent data must be passed as a prop
         },
+        selectedCase: {
+        type: Object,
+        required: true, // The agent data must be passed as a prop
+        },
         YTDStats: {
         type: Object,
         required: true, // The agent data must be passed as a prop
@@ -99,11 +106,21 @@
     
 
     async mounted() { 
-      // this.printDebug();
+      this.printDebug();
     },
     methods: {
+      viewAgent() {
+      this.$router.push({
+        name: 'agentInCase',
+        query: { 
+          agent: this.agent,
+          selectedCase: JSON.stringify(this.selectedCase)
+        },
+      });
+    },
       printDebug() {
         console.log('YTDStats', this.YTDStats)
+        console.log('agent', this.agent)
       }
     },
   }

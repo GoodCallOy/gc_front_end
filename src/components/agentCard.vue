@@ -22,46 +22,46 @@
   </template>
   
   <script>
-  import { mapGetters, mapState, mapActions } from 'vuex';
+    import { mapGetters, mapState, mapActions } from 'vuex';
 
-  export default {
-    name: 'AgentCard',
-    props: {
+    export default {
+      name: 'AgentCard',
+      props: {
 
-      agent: {
-        type: Object,
-        required: true, // The agent data must be passed as a prop
+        agent: {
+          type: Object,
+          required: true, // The agent data must be passed as a prop
+        },
+      },
+
+      computed: {
+        ...mapGetters(['enrichedAgents', 'agents', 'cases', 'agentStats', 'currentPage']),
+        ...mapState(['currentPage']),
+    
+        selectedAgent() {
+          const agentName = this.$route.query.agent;
+          return this.agents.find(singleAgent => singleAgent.name === agentName);
+        },
+        
+      },
+
+      mounted() {
+        this.fetchAgents();
+        this.fetchAgentStats();
+        this.fetchCases();
+      },
+
+      methods: {
+      ...mapActions(['fetchAgents', 'fetchAgentStats', 'fetchCases']),
+
+      viewAgent() {
+        this.$router.push({
+          name: 'singleAgent',
+          query: { agent: this.agent.name },
+        });
       },
     },
-
-    computed: {
-      ...mapGetters(['enrichedAgents', 'agents', 'cases', 'agentStats', 'currentPage']),
-      ...mapState(['currentPage']),
-  
-      selectedAgent() {
-        const agentName = this.$route.query.agent;
-        return this.agents.find(singleAgent => singleAgent.name === agentName);
-      },
-      
-    },
-
-    mounted() {
-      this.fetchAgents();
-      this.fetchAgentStats();
-      this.fetchCases();
-    },
-
-    methods: {
-    ...mapActions(['fetchAgents', 'fetchAgentStats', 'fetchCases']),
-
-    viewAgent() {
-      this.$router.push({
-        name: 'singleAgent',
-        query: { agent: this.agent.name },
-      });
-    },
-  },
-  };
+    };
   </script>
   
   <style scoped>
