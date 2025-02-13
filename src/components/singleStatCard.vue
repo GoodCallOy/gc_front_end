@@ -59,15 +59,15 @@
             
               <v-list-item-title>Year to date stats</v-list-item-title>
            
-          </v-list-item>
+            </v-list-item>
            
-            <v-list-item>
-                <v-list-item-subtitle>Meetings: {{ YTDStats[0].meetings }}</v-list-item-subtitle>
-                <v-list-item-subtitle>Call Time: {{ YTDStats[0].call_time }} mins</v-list-item-subtitle>
-                <v-list-item-subtitle>Calls Made: {{ YTDStats[0].calls_made }}</v-list-item-subtitle>
-                <v-list-item-subtitle>Outgoing Calls: {{ YTDStats[0].outgoing_calls }}</v-list-item-subtitle>
-                <v-list-item-subtitle>Answered Calls: {{ YTDStats[0].answered_calls }}</v-list-item-subtitle>
-                <v-list-item-subtitle>Response Rate: {{ YTDStats[0].response_rate }}%</v-list-item-subtitle>
+            <v-list-item v-if="filteredStats">
+              <v-list-item-subtitle>Meetings: {{ filteredStats.meetings }}</v-list-item-subtitle>
+              <v-list-item-subtitle>Call Time: {{ filteredStats.call_time }} mins</v-list-item-subtitle>
+              <v-list-item-subtitle>Calls Made: {{ filteredStats.calls_made }}</v-list-item-subtitle>
+              <v-list-item-subtitle>Outgoing Calls: {{ filteredStats.outgoing_calls }}</v-list-item-subtitle>
+              <v-list-item-subtitle>Answered Calls: {{ filteredStats.answered_calls }}</v-list-item-subtitle>
+              <v-list-item-subtitle>Response Rate: {{ filteredStats.response_rate }}%</v-list-item-subtitle>
             </v-list-item>
           </v-list>
         </div>
@@ -88,7 +88,7 @@
   export default {
     props: {
         agent: {
-        type: Object,
+        type: String,
         required: true, // The agent data must be passed as a prop
         },
         selectedCase: {
@@ -103,7 +103,12 @@
     data: () => ({
       expand: false,
     }),
-    
+    computed: {
+      filteredStats() {
+          // Find the stat object that matches the selectedCase.caseId
+          return this.YTDStats.find(stat => stat.caseId === this.selectedCase.caseId);
+        }
+    },
 
     async mounted() { 
       this.printDebug();

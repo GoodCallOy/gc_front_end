@@ -10,6 +10,8 @@
         outlined
       ></v-date-input>
     </div>
+
+    
     
     <div class="justify-center card-container">
       <CaseStatsCard
@@ -42,8 +44,9 @@ export default {
 
 
   computed: {
-    ...mapGetters(['enrichedAgents', 'cases','currentDateRange']),
-    ...mapState(['currentPage']),
+    ...mapGetters(['enrichedAgents', 'agents', 'cases', 'agentStats', 'currentPage']),
+    ...mapState(["currentPage"]), 
+
 
     selectedCase() {
       const caseName = this.$route.query.case;

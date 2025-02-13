@@ -10,6 +10,12 @@
         outlined
       ></v-date-input>
     </div>
+    <div class="d-flex flex-row justify-center mb-5" style="width: 75vw;">
+    <v-btn color="primary" class="mr-5" @click="filterData('prevMonth')">Previous Month</v-btn>
+    <v-btn color="primary" class="mr-5" @click="filterData('last3Months')">3m</v-btn>
+    <v-btn color="primary" class="mr-5" @click="filterData('last6Months')">6m</v-btn>
+    <v-btn color="primary" class="mr-5" @click="filterData('currentYear')">MTD</v-btn>
+  </div>
     <div class="grid-container" >
       <singleStatCard
       v-for="(singleCase, index) in CaseStatsGroupedByMonth"
@@ -42,6 +48,8 @@ export default {
       CaseStatsGroupedByCase: [],
       CaseStatsGroupedByMonth: [],
       CaseStatsYTD: [],
+      
+   
     };
   },
 
@@ -144,7 +152,7 @@ export default {
           acc[monthKey].response_rate = acc[monthKey].outgoing_calls > 0
             ? parseFloat(((acc[monthKey].answered_calls / acc[monthKey].outgoing_calls) * 100).toFixed(2))
             : 0;
-
+          console.log('acc', acc);  
           return acc;
         }, {}));
       });
