@@ -12,7 +12,7 @@
     </div>
     
     <div class="justify-center card-container">
-      <CaseCard
+      <CaseStatsCard
         :companyCase="selectedCase"
         :agents="agents"
         :dateRange="selectedDateRange"
@@ -22,13 +22,13 @@
 </template>
 
 <script>
-import CaseCard from './caseCard.vue';
+import CaseStatsCard from './caseStatsCard.vue';
 import { mapGetters, mapActions, mapState, mapMutations } from 'vuex';
 
 export default {
   name: 'SingleCase',
 
-  components: { CaseCard },
+  components: { CaseStatsCard, },
 
   data() {
   const currentDate = new Date();

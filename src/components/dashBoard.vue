@@ -41,6 +41,7 @@ export default {
   },
 
   data() {
+
     const currentDate = new Date();
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(currentDate.getDate() - 7);
@@ -61,14 +62,37 @@ export default {
       console.log('currentPage', this.$store.getters.currentPage)
       return this.$store.getters.currentPage;
     },
+    casesGrouped() {
+      const casesMap = {};
+
+      // Loop over each agent from the store
+      this.agentStats.forEach(agent => {
+        // Ensure agent.cases exists and is an array
+        if (Array.isArray(agent.case)) {
+         
+            // Initialize array for this case if it doesn't exist
+            if (!casesMap[agent.case]) {
+              casesMap[agent.case] = [];
+            }
+            // Add the agent to the corresponding case group
+            casesMap[agent.case].push(agent);
+        }
+      });
+
+      // Convert the casesMap object into an array of objects
+      return Object.entries(casesMap).map(([caseName, agents]) => ({
+        caseName,
+        agents
+      }));
+    }
   },
 
   async mounted() {
     this.fetchAgents(); // Fetch agents when the component is mounted
-    this.fetchAgentStats(); // Fetch agent stats when the component is mounted
     this.fetchCases();
     this.updatePage('dashBoard');
     await this.fetchAgentStats();
+    this.printDebug();
   },
 
   methods: {
@@ -79,7 +103,7 @@ export default {
       this.setCurrentPage(newPage); // Update `currentPage` in the store
     },
     printDebug() {
-        console.log('agentStats', this.agentStats)
+        console.log('mappedCases', this.casesGrouped)
       }
   },
 };
