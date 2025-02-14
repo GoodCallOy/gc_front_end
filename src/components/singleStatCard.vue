@@ -110,7 +110,7 @@
         }
     },
 
-    async mounted() { 
+    mounted() { 
       this.printDebug();
     },
     methods: {
@@ -124,8 +124,7 @@
       });
     },
       printDebug() {
-        console.log('YTDStats', this.YTDStats)
-        console.log('agent', this.agent)
+        
       }
     },
   }

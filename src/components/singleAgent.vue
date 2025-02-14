@@ -84,7 +84,8 @@ export default {
     },
   },
 
-  async mounted() {
+  mounted() {
+  const initialize = async () => {
     await this.fetchAgents();
     await this.fetchAgentStats();
     await this.fetchCases();
@@ -93,9 +94,11 @@ export default {
     this.populateCaseStatsGroupedByCase();
     this.populateCaseStatsGroupedByMonth();
     this.populateCaseStatsYTD();
-    this.printDebug();  
-  },
-
+    this.printDebug();
+  };
+  
+  initialize();
+},
   methods: {
     ...mapActions(['fetchAgents', 'fetchAgentStats', 'fetchCases', 'fetchCurrentDateRange']),
     ...mapMutations(['setCurrentPage']),
@@ -104,6 +107,7 @@ export default {
       this.setCurrentPage(newPage);
       },
     populateCasesSortedByAgent() {
+      console.log('agentStats', this.agentStats);
       this.casesSortedByAgent = this.agentStats
       .filter(singleCase =>singleCase.name.includes(this.selectedAgent))
     },
@@ -125,6 +129,7 @@ export default {
           const caseMonth = caseDate.getMonth() + 1; // 1-based month
           const caseYear = caseDate.getFullYear();
           const monthKey = `${caseYear}-${caseMonth}`;
+          console.log('monthKey', monthKey);
 
           if (!acc[monthKey]) {
             acc[monthKey] = { 
@@ -151,11 +156,11 @@ export default {
           // Recalculate response rate and limit to 2 decimal places
           acc[monthKey].response_rate = acc[monthKey].outgoing_calls > 0
             ? parseFloat(((acc[monthKey].answered_calls / acc[monthKey].outgoing_calls) * 100).toFixed(2))
-            : 0;
-          console.log('acc', acc);  
+            : 0;  
           return acc;
         }, {}));
       });
+      console.log('Final CaseStatsGroupedByMonth:', this.CaseStatsGroupedByMonth);
     },
     populateCaseStatsYTD() {
       const currentYear = new Date().getFullYear();
@@ -200,7 +205,7 @@ export default {
       }));
     },
     printDebug() {
-        
+        console.log('selectedDateRange', this.selectedDateRange );
       }
   },
 };

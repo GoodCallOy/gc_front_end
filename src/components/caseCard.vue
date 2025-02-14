@@ -172,6 +172,7 @@ export default {
       );
 
       return agentsInCase.map(agent => {
+        console.log('this.agentStats', this.agentStats);
         const stats = this.agentStats.find(stat => {
           if (stat.name !== agent.name || stat.case !== caseName) return false;
 
