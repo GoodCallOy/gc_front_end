@@ -10,15 +10,13 @@
         outlined
       ></v-date-input>
     </div>
-    <div class="d-flex flex-row justify-center mb-5" style="width: 75vw;">
-    <v-btn color="primary" class="mr-5" @click="filterData('prevMonth')">Previous Month</v-btn>
-    <v-btn color="primary" class="mr-5" @click="filterData('last3Months')">3m</v-btn>
-    <v-btn color="primary" class="mr-5" @click="filterData('last6Months')">6m</v-btn>
-    <v-btn color="primary" class="mr-5" @click="filterData('currentYear')">MTD</v-btn>
-  </div>
+    <div>
+      <MonthButtons @childEvent="handleUdatedDateRange">
+      </MonthButtons>
+    </div>
     <div class="grid-container" >
       <singleStatCard
-      v-for="(singleCase, index) in CaseStatsGroupedByMonth"
+      v-for="(singleCase, index) in filteredStats"
         :key="index"
         :agent=this.$route.query.agent
         :selectedCase="singleCase" 
@@ -30,26 +28,29 @@
 
 <script>
 import singleStatCard from './singleStatCard.vue';
+import MonthButtons from './monthButtons.vue';
 import { mapGetters, mapActions, mapState, mapMutations } from 'vuex';
 
 export default {
   name: 'SingleAgent',
 
-  components: { singleStatCard },
+  components: { singleStatCard, MonthButtons },
 
   data() {
     const currentDate = new Date();
     const sevenDaysAgo = new Date();
+    const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+    const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
     sevenDaysAgo.setDate(currentDate.getDate() - 7);
    
     return {
-      selectedDateRange: [sevenDaysAgo, currentDate],
+      // selectedDateRange: [sevenDaysAgo, currentDate],
+      selectedDateRange: [startOfMonth, endOfMonth],  // Set current month
       casesSortedByAgent: [],
       CaseStatsGroupedByCase: [],
       CaseStatsGroupedByMonth: [],
       CaseStatsYTD: [],
-      
-   
+      filteredStats: [],
     };
   },
 
@@ -73,18 +74,28 @@ export default {
 
   watch: {
     selectedDateRange(newRange) {
-      console.log('Date range changed:', newRange);
+      console.log("Date range changed:", newRange);
 
       const [startDate, endDate] = newRange.map(date => new Date(date));
       if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
-        console.error('Invalid date range detected:', newRange);
-      } else {
-        console.log('Valid date range:', { startDate, endDate });
+        console.error("Invalid date range detected:", newRange);
+        return;
       }
+
+      console.log("Valid date range:", { startDate, endDate });
+
+      // Update the filtered stats
+      this.filteredStats = this.FilterCaseStatsGroupedByMonth(startDate, endDate);
+      console.log('filteredStats', this.filteredStats);
     },
   },
 
   mounted() {
+    const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+  const endOfMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0);
+
+  this.selectedDateRange = [startOfMonth, endOfMonth]; // Ensures it's set on load
+  console.log("✅ Initial selectedDateRange:", this.selectedDateRange);
   const initialize = async () => {
     await this.fetchAgents();
     await this.fetchAgentStats();
@@ -107,7 +118,6 @@ export default {
       this.setCurrentPage(newPage);
       },
     populateCasesSortedByAgent() {
-      console.log('agentStats', this.agentStats);
       this.casesSortedByAgent = this.agentStats
       .filter(singleCase =>singleCase.name.includes(this.selectedAgent))
     },
@@ -162,6 +172,20 @@ export default {
       });
       console.log('Final CaseStatsGroupedByMonth:', this.CaseStatsGroupedByMonth);
     },
+    FilterCaseStatsGroupedByMonth(startDate, endDate) {
+      const now = new Date();
+      const filterStart = startDate || new Date(now.getFullYear(), now.getMonth(), 1);
+      const filterEnd = endDate || new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+      const filteredStats = this.CaseStatsGroupedByMonth.filter(stat => {
+        const statDate = new Date(stat.calling_date); // Ensure correct property
+        return statDate >= filterStart && statDate <= filterEnd;
+      });
+
+      console.log("🚀 Final Filtered Stats:", filteredStats); // LOG THE FINAL OUTPUT
+
+      return filteredStats;
+    },
     populateCaseStatsYTD() {
       const currentYear = new Date().getFullYear();
 
@@ -203,6 +227,9 @@ export default {
           ? parseFloat(((caseObj.answered_calls / caseObj.outgoing_calls) * 100).toFixed(2))
           : 0
       }));
+    },
+    handleUdatedDateRange(newRange) {
+      this.selectedDateRange = newRange;
     },
     printDebug() {
         console.log('selectedDateRange', this.selectedDateRange );

@@ -9,10 +9,10 @@
         multiple="range"
         outlined
       ></v-date-input>
+    </div><div>
+      <MonthButtons @childEvent="handleUdatedDateRange">
+      </MonthButtons>
     </div>
-
-    
-    
     <div class="justify-center card-container">
       <CaseStatsCard
         :companyCase="selectedCase"
@@ -25,12 +25,13 @@
 
 <script>
 import CaseStatsCard from './caseStatsCard.vue';
+import MonthButtons from './monthButtons.vue';
 import { mapGetters, mapActions, mapState, mapMutations } from 'vuex';
 
 export default {
   name: 'SingleCase',
 
-  components: { CaseStatsCard, },
+  components: { CaseStatsCard, MonthButtons},
 
   data() {
   const currentDate = new Date();
@@ -80,6 +81,9 @@ export default {
 
     updatePage(newPage) {
       this.setCurrentPage(newPage);
+    },
+    handleUdatedDateRange(newDateRange) {
+      this.selectedDateRange = newDateRange;
     },
   },
 };

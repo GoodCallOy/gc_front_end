@@ -2,6 +2,11 @@
   <div class="d-flex flex-column align-center" style="height: 100vh;">
     <h1 class="mb-3 mt-5">{{ $t('dashboard.title') }}</h1>
 
+    <div>
+      <MonthButtons @childEvent="handleUdatedDateRange">
+      </MonthButtons>
+    </div>
+
     <!-- List of Cases -->
     <p>{{ $t('dashboard.cases') }}.</p>
     <div class="grid-container">
@@ -31,13 +36,15 @@
 
 import AgentCard from './agentCard.vue';
 import CaseCard from './caseCard.vue';
+import MonthButtons from './monthButtons.vue';    
 import { mapGetters, mapActions, mapState, mapMutations } from 'vuex';
 
 export default {
   name: 'dashBoard',
   components: {
-    AgentCard, // Register the component
-    CaseCard,  // Register the component
+    AgentCard, 
+    CaseCard,  
+    MonthButtons,
   },
 
   data() {
