@@ -37,12 +37,10 @@ export default {
   components: { singleStatCard, MonthButtons },
 
   data() {
-    const currentDate = new Date();
-    const sevenDaysAgo = new Date();
-    const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-    const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
-    sevenDaysAgo.setDate(currentDate.getDate() - 7);
-   
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
     return {
       // selectedDateRange: [sevenDaysAgo, currentDate],
       selectedDateRange: [startOfMonth, endOfMonth],  // Set current month
@@ -74,40 +72,57 @@ export default {
 
   watch: {
     selectedDateRange(newRange) {
-      console.log("Date range changed:", newRange);
+      console.log("📆 Date range changed:", newRange);
 
-      const [startDate, endDate] = newRange.map(date => new Date(date));
-      if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
-        console.error("Invalid date range detected:", newRange);
+      if (!this.CaseStatsGroupedByMonth.length) {
+        console.warn("🚨 No data available yet for filtering!");
         return;
       }
 
-      console.log("Valid date range:", { startDate, endDate });
+      const [startDate, endDate] = newRange.map(date => new Date(date));
+      if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+        console.error("❌ Invalid date range detected:", newRange);
+        return;
+      }
 
-      // Update the filtered stats
+      console.log("✅ Filtering stats between:", { startDate, endDate });
+
       this.filteredStats = this.FilterCaseStatsGroupedByMonth(startDate, endDate);
-      console.log('filteredStats', this.filteredStats);
+      console.log('🛠 Filtered Stats:', this.filteredStats);
     },
+    CaseStatsGroupedByMonth(newStats) {
+      if (newStats.length > 0) {
+        console.log("📊 New monthly case stats available:", newStats);
+        this.filteredStats = this.FilterCaseStatsGroupedByMonth(...this.selectedDateRange);
+      } else {
+        console.warn("🚨 Still no case stats, waiting...");
+      }
+    }
   },
 
   mounted() {
-    const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-  const endOfMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0);
-
-  this.selectedDateRange = [startOfMonth, endOfMonth]; // Ensures it's set on load
+    this.selectedDateRange = [new Date(new Date().getFullYear(), new Date().getMonth(), 1), 
+                            new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0)];
   console.log("✅ Initial selectedDateRange:", this.selectedDateRange);
+
+
   const initialize = async () => {
     await this.fetchAgents();
     await this.fetchAgentStats();
     await this.fetchCases();
+
+    console.log("✅ Agent stats fetched:", this.agentStats);
+
     this.updatePage('singleAgent');
+
     this.populateCasesSortedByAgent(); 
     this.populateCaseStatsGroupedByCase();
     this.populateCaseStatsGroupedByMonth();
+    this.FilterCaseStatsGroupedByMonth();
     this.populateCaseStatsYTD();
     this.printDebug();
   };
-  
+
   initialize();
 },
   methods: {
@@ -176,7 +191,8 @@ export default {
       const now = new Date();
       const filterStart = startDate || new Date(now.getFullYear(), now.getMonth(), 1);
       const filterEnd = endDate || new Date(now.getFullYear(), now.getMonth() + 1, 0);
-
+      console.log("filterStart", filterStart);
+      console.log("filterEnd", filterEnd);  
       const filteredStats = this.CaseStatsGroupedByMonth.filter(stat => {
         const statDate = new Date(stat.calling_date); // Ensure correct property
         return statDate >= filterStart && statDate <= filterEnd;
