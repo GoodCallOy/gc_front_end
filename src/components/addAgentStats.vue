@@ -197,7 +197,7 @@
           };
 
           const response = await axios.post(
-            'https://goodcall-back-end.onrender.com/api/v1/agentStats/',
+            'https://goodcall.fi/api/v1/agentStats/',
             payload
           );
           console.log('Agent added: ', response);

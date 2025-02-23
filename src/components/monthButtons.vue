@@ -21,16 +21,19 @@ export default {
         },
         set3MonthsBack() {
             const now = new Date();
-            const startOf3MonthsBack = new Date(now.getFullYear(), now.getMonth() - 3, 1);
-            const endOf3MonthsBack = new Date(now.getFullYear(), now.getMonth() - 2, 0);
+            const startOf3MonthsBack = new Date(now.getFullYear(), now.getMonth() - 3, 1); // First day 3 months ago
+            const endOf3MonthsBack = new Date(now.getFullYear(), now.getMonth() + 1, 0); // Last day of the previous month
 
             const selectedDateRange = [startOf3MonthsBack, endOf3MonthsBack];
             this.$emit('childEvent', selectedDateRange);
-        },
+            
+            console.log("🔄 Setting Date Range to Last 3 Months:", selectedDateRange);
+        },  
+
         set6MonthsBack() {
             const now = new Date();
             const startOf6MonthsBack = new Date(now.getFullYear(), now.getMonth() - 6, 1);
-            const endOf6MonthsBack = new Date(now.getFullYear(), now.getMonth() - 5, 0);
+            const endOf6MonthsBack = new Date(now.getFullYear(), now.getMonth() + 1, 0);
 
             const selectedDateRange = [startOf6MonthsBack, endOf6MonthsBack];
             this.$emit('childEvent', selectedDateRange);
@@ -43,7 +46,7 @@ export default {
             const endOfLastYear = new Date(lastYear, 11, 31); // Dec 31st
 
             const selectedDateRange = [startOfLastYear, endOfLastYear];
-            console.log("🔄 Switched to last year:", this.selectedDateRange);
+            console.log("🔄 Switched to last year:", selectedDateRange);
             this.$emit('childEvent', selectedDateRange);
         },
         setCurrentYear() {

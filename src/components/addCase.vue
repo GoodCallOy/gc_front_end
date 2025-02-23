@@ -80,7 +80,7 @@
         console.log('Case object: ', me.caseInfo);
         try {
           const response = await axios.post(
-            'https://goodcall-back-end.onrender.com/api/v1/cases/',
+            'https://goodcall.fi/api/v1/cases/',
             me.caseInfo
           );
           console.log('Case added: ', response);

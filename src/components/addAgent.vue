@@ -74,7 +74,7 @@
   
         try {
           const response = await axios.post(
-            "https://goodcall-back-end.onrender.com/api/v1/agent/",
+            "https://goodcall.fi/api/v1/agent/",
             payload
           );
           console.log("Agent added: ", response);
