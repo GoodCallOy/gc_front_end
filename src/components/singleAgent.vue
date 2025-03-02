@@ -29,6 +29,7 @@
 <script>
 import singleStatCard from './singleStatCard.vue';
 import MonthButtons from './monthButtons.vue';
+import { populateCasesSortedByAgent } from '../js/statsUtils';
 import { mapGetters, mapActions, mapState, mapMutations } from 'vuex';
 
 export default {
@@ -85,14 +86,12 @@ export default {
         return;
       }
 
-      console.log("✅ Filtering stats between:", { startDate, endDate });
-
       this.filteredStats = this.FilterCaseStatsGroupedByMonth(startDate, endDate);
-      console.log('🛠 Filtered Stats:', this.filteredStats);
+  
     },
     CaseStatsGroupedByMonth(newStats) {
       if (newStats.length > 0) {
-        console.log("📊 New monthly case stats available:", newStats);
+       
         this.filteredStats = this.FilterCaseStatsGroupedByMonth(...this.selectedDateRange);
       } else {
         console.warn("🚨 Still no case stats, waiting...");
@@ -103,7 +102,6 @@ export default {
   mounted() {
     this.selectedDateRange = [new Date(new Date().getFullYear(), new Date().getMonth(), 1), 
                             new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0)];
-  console.log("✅ Initial selectedDateRange:", this.selectedDateRange);
 
 
   const initialize = async () => {
@@ -111,7 +109,7 @@ export default {
     await this.fetchAgentStats();
     await this.fetchCases();
 
-    console.log("✅ Agent stats fetched:", this.agentStats);
+    console.log("✅ :", this.agentStats);
 
     this.updatePage('singleAgent');
 
@@ -120,6 +118,7 @@ export default {
     this.populateCaseStatsGroupedByMonth();
     this.FilterCaseStatsGroupedByMonth();
     this.populateCaseStatsYTD();
+    this.loadCases();
     this.printDebug();
   };
 
@@ -128,6 +127,10 @@ export default {
   methods: {
     ...mapActions(['fetchAgents', 'fetchAgentStats', 'fetchCases', 'fetchCurrentDateRange']),
     ...mapMutations(['setCurrentPage']),
+
+    loadCases() {
+      this.casesSortedByAgent = populateCasesSortedByAgent(this.agentStats, this.selectedAgent);
+    },
 
     updatePage(newPage) {
       this.setCurrentPage(newPage);
@@ -154,7 +157,6 @@ export default {
           const caseMonth = caseDate.getMonth() + 1; // 1-based month
           const caseYear = caseDate.getFullYear();
           const monthKey = `${caseYear}-${caseMonth}`;
-          console.log('monthKey', monthKey);
 
           if (!acc[monthKey]) {
             acc[monthKey] = { 
@@ -191,14 +193,10 @@ export default {
       const now = new Date();
       const filterStart = startDate || new Date(now.getFullYear(), now.getMonth(), 1);
       const filterEnd = endDate || new Date(now.getFullYear(), now.getMonth() + 1, 0);
-      console.log("filterStart", filterStart);
-      console.log("filterEnd", filterEnd);  
       const filteredStats = this.CaseStatsGroupedByMonth.filter(stat => {
         const statDate = new Date(stat.calling_date); // Ensure correct property
         return statDate >= filterStart && statDate <= filterEnd;
       });
-
-      console.log("🚀 Final Filtered Stats:", filteredStats); // LOG THE FINAL OUTPUT
 
       return filteredStats;
     },

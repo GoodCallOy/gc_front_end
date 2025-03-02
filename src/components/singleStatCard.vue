@@ -89,15 +89,15 @@
     props: {
         agent: {
         type: String,
-        required: true, // The agent data must be passed as a prop
+        required: true, 
         },
         selectedCase: {
         type: Object,
-        required: true, // The agent data must be passed as a prop
+        required: true, 
         },
         YTDStats: {
         type: Object,
-        required: true, // The agent data must be passed as a prop
+        required: true, 
         },
     },
     data: () => ({
@@ -106,6 +106,7 @@
     computed: {
       filteredStats() {
           // Find the stat object that matches the selectedCase.caseId
+          console.log('selectedCase.caseId', this.selectedCase.caseId);
           return this.YTDStats.find(stat => stat.caseId === this.selectedCase.caseId);
         }
     },
@@ -119,7 +120,7 @@
         name: 'agentInCase',
         query: { 
           agent: this.agent,
-          selectedCase: JSON.stringify(this.selectedCase)
+          selectedCase: this.selectedCase.caseId
         },
       });
     },
