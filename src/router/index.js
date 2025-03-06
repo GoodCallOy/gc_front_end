@@ -8,6 +8,7 @@ import Cases from '@/components/casesPage.vue';
 import SingleCase from '@/components/singleCase.vue';
 import SingleAgent from '@/components/singleAgent.vue';
 import AgentInCase from '@/components/agentInCase.vue';
+import AddAgentGoals from '@/components/addAgentGoals.vue';
 
 const routes = [
   { path: '/', name: 'home', component: DashBoard },
@@ -16,6 +17,7 @@ const routes = [
   { path: '/add-agent-stats', name: 'addAgentStats', component: AddAgentStats },
   { path: '/add-case', name: 'addCase', component: AddCase },
   { path: '/cases', name: 'cases', component: Cases },
+  { path: '/add-agent-goals', name: 'addAgentGoals', component: AddAgentGoals },
   { 
     path: '/singleCase', 
     name: 'singleCase', 

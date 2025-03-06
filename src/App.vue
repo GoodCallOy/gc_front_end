@@ -83,6 +83,12 @@ function navigateTo(value) {
           :active="route.name === 'addAgentStats'"
           @click="navigateTo('addAgentStats')"
         ></v-list-item>
+        <v-list-item
+          prepend-icon="mdi-account-plus"
+          :title="t('buttons.addAgentGoals')"  
+          :active="route.name === 'addAgentGoals'"
+          @click="navigateTo('addAgentGoals')"
+        ></v-list-item>
         <v-divider></v-divider>
         <!-- Language Toggle Button -->
         <v-list-item
