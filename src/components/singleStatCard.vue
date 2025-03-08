@@ -29,7 +29,7 @@
           <v-col
             class="text-h3"
             cols="5"
-          >64
+          > {{ agentGoals.length > 0 ? agentGoals[0].goal : 0 }}
           </v-col>
         </v-row>
       </v-card-text>
@@ -85,6 +85,9 @@
   </template>
 
 <script>
+import { fetchAgentgoalsByAgentAndMonth } from '../js/statsUtils';
+
+
   export default {
     props: {
         agent: {
@@ -102,6 +105,7 @@
     },
     data: () => ({
       expand: false,
+      agentGoals: [],
     }),
     computed: {
       filteredStats() {
@@ -111,10 +115,19 @@
         }
     },
 
-    mounted() { 
+    async mounted() { 
+      await this.fetchAgentgoals();
       this.printDebug();
+      
     },
     methods: {
+      async fetchAgentgoals() {
+        try {
+        this.agentGoals = await fetchAgentgoalsByAgentAndMonth(this.agent, '2025-03');
+      } catch (error) {
+        console.error("Error fetching agent goals:", error);
+      }
+      },
       viewAgent() {
       this.$router.push({
         name: 'agentInCase',
@@ -125,7 +138,7 @@
       });
     },
       printDebug() {
-        
+        console.log('this.agentGoals', this.agentGoals);
       }
     },
   }
