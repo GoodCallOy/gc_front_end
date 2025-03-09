@@ -29,7 +29,7 @@
 <script>
 import singleStatCard from './singleStatCard.vue';
 import MonthButtons from './monthButtons.vue';
-import { populateCasesSortedByAgent, fetchAgentgoalsByAgentAndMonth } from '../js/statsUtils';
+import { populateCasesSortedByAgent } from '../js/statsUtils';
 import { mapGetters, mapActions, mapState, mapMutations } from 'vuex';
 
 export default {
@@ -87,6 +87,7 @@ export default {
       }
 
       this.filteredStats = this.FilterCaseStatsGroupedByMonth(startDate, endDate);
+      console.log("🔍 Filtered stats:", this.filteredStats);
   
     },
     CaseStatsGroupedByMonth(newStats) {
@@ -119,7 +120,6 @@ export default {
     this.FilterCaseStatsGroupedByMonth();
     this.populateCaseStatsYTD();
     this.loadCases();
-    this.fetchAgentgoals();
     this.printDebug();
   };
 
@@ -131,10 +131,6 @@ export default {
 
     loadCases() {
       this.casesSortedByAgent = populateCasesSortedByAgent(this.agentStats, this.selectedAgent);
-    },
-
-    fetchAgentgoals() {
-      this.agentGoals = fetchAgentgoalsByAgentAndMonth('Elina', '2025-03');
     },
 
     updatePage(newPage) {

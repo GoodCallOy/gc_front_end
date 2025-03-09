@@ -108,6 +108,7 @@ import { getMonthKey } from '../js/dateUtils';
     }),
     computed: {
       monthKey() {
+        console.log('this.agentGoals', this.agentGoals);
         return this.agentGoals.length > 0 ? getMonthKey(this.agentGoals[0].goal_date.start) : "";
       },
       filteredStats() {
