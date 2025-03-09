@@ -26,11 +26,10 @@
             cols="7"
           >Goal:  
           </v-col>
-          <v-col
-            class="text-h3"
-            cols="5"
-          > {{ agentGoals.length > 0 ? agentGoals[0].goal : 0 }}
+          <v-col class="text-h3" cols="5">
+            {{ monthKey === selectedCase.monthKey ? (agentGoals.length > 0 ? agentGoals[0].goal : 0) : 0 }} 
           </v-col>
+
         </v-row>
       </v-card-text>
   
@@ -86,7 +85,7 @@
 
 <script>
 import { fetchAgentgoalsByAgentAndMonth } from '../js/statsUtils';
-
+import { getMonthKey } from '../js/dateUtils';
 
   export default {
     props: {
@@ -108,6 +107,9 @@ import { fetchAgentgoalsByAgentAndMonth } from '../js/statsUtils';
       agentGoals: [],
     }),
     computed: {
+      monthKey() {
+        return this.agentGoals.length > 0 ? getMonthKey(this.agentGoals[0].goal_date.start) : "";
+      },
       filteredStats() {
           // Find the stat object that matches the selectedCase.caseId
           console.log('selectedCase.caseId', this.selectedCase.caseId);

@@ -1,5 +1,4 @@
 import axios from 'axios';
-
 export function populateCasesSortedByAgent(agentStats, selectedAgent) {
     return agentStats.filter(singleCase => singleCase.name.includes(selectedAgent));
   }
@@ -108,7 +107,7 @@ export function populateCasesSortedByAgent(agentStats, selectedAgent) {
   export async function fetchAgentgoalsByAgentAndMonth(agent, month) {
     try {
       const response = await axios.get(`https://goodcall.fi/api/v1/agentgoals/${agent}?month=${month}`);
-      console.log('AgentGoals array',response)
+      console.log('AgentGoals array',response.data)
       return response.data;
     } catch (error) {
       console.error('Error fetching agent stats:', error);
