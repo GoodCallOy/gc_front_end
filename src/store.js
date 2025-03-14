@@ -36,7 +36,7 @@ const store = createStore({
   actions: {
     async fetchAgents({ commit }) {
       try {
-        const response = await axios.get('https://goodcall.fi/api/v1/agent/');
+        const response = await axios.get(`https://goodcall.fi/api/v1/agent/?t=${new Date().getTime()}`);
         commit('setAgents', response.data);
       } catch (error) {
         console.error('Error fetching agents:', error);
@@ -44,7 +44,7 @@ const store = createStore({
     },
     async fetchAgentStats({ commit }) {
       try {
-        const response = await axios.get('https://goodcall.fi/api/v1/agentStats/');
+        const response = await axios.get('https://goodcall.fi/api/v1/agentStats/?t=${new Date().getTime()}');
         commit('setAgentStats', response.data);
       } catch (error) {
         console.error('Error fetching agent stats:', error);
@@ -52,7 +52,7 @@ const store = createStore({
     },
     async fetchCases({ commit }) {
       try {
-        const response = await axios.get('https://goodcall.fi/api/v1/cases/');
+        const response = await axios.get('https://goodcall.fi/api/v1/cases/?t=${new Date().getTime()}');
         commit('setCases', response.data);
       } catch (error) {
         console.error('Error fetching agent stats:', error);

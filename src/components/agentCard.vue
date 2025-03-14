@@ -13,15 +13,18 @@
 
       <v-card-text>
         <div v-if="currentPage !== 'singleAgent'" class="d-flex justify-center">
-          <v-btn color="primary" class="mb-5" @click="viewAgent">
-            View Agent
+          <v-btn color="primary" class="mb-5 mr-2" @click="viewAgent">
+            View
+          </v-btn>
+          <v-btn color="primary" class="mb-5" @click="editAgent">
+            Edit
           </v-btn>
         </div>  
       </v-card-text>
     </v-card>
-  </template>
+</template>
   
-  <script>
+<script>
     import { mapGetters, mapState, mapActions } from 'vuex';
 
     export default {
@@ -52,19 +55,27 @@
       },
 
       methods: {
-      ...mapActions(['fetchAgents', 'fetchAgentStats', 'fetchCases']),
+        ...mapActions(['fetchAgents', 'fetchAgentStats', 'fetchCases']),
 
-      viewAgent() {
-        this.$router.push({
-          name: 'singleAgent',
-          query: { agent: this.agent.name },
-        });
+        viewAgent() {
+          this.$router.push({
+            name: 'singleAgent',
+            query: { agent: this.agent.name },
+          });
+        },
+        editAgent() {
+          console.log('Edit agent');
+          console.log('this.agent.name', this.agent.name);
+          this.$router.push({
+          name: 'editAgent',
+          query: { activeAgent: this.agent.name },
+          });
+        },
       },
-    },
     };
-  </script>
+</script>
   
-  <style scoped>
+<style scoped>
   /* Optional scoped styles for the card */
   .v-card {
     display: flex;
@@ -72,5 +83,5 @@
     justify-content: space-between;
     align-items: center;
   }
-  </style>
+</style>
   

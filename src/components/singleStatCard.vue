@@ -46,6 +46,9 @@
             <v-btn color="primary" class="mb-5" @click="viewAgent">
               View Agent
             </v-btn>
+            <v-btn color="primary" class="mb-5" @click="editAgent">
+              Edit Agent
+            </v-btn>
       </v-card-text>
         </v-list-item>
   
@@ -139,6 +142,12 @@ import { getMonthKey } from '../js/dateUtils';
           agent: this.agent,
           selectedCase: this.selectedCase.caseId
         },
+      });
+    },
+      editAgent() {
+        this.$router.push({
+            name: 'editAgent',
+            query: { activeAgent: this.agent.name },
       });
     },
     getAgentGoal() {

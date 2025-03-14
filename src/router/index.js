@@ -9,6 +9,7 @@ import SingleCase from '@/components/singleCase.vue';
 import SingleAgent from '@/components/singleAgent.vue';
 import AgentInCase from '@/components/agentInCase.vue';
 import AddAgentGoals from '@/components/addAgentGoals.vue';
+import EditAgent from '@/components/editAgent.vue';
 
 const routes = [
   { path: '/', name: 'home', component: DashBoard },
@@ -28,7 +29,9 @@ const routes = [
     path: '/singleAgent', 
     name: 'singleAgent', 
     component: SingleAgent,
-    props: route => ({ activeAgent: route.query.agent }), // Pass active case as a prop
+    props: route => ({ 
+      activeAgent: route.query.agent
+     }), // Pass active agent as a prop
   },
   { 
     path: '/agentInCase', 
@@ -39,6 +42,12 @@ const routes = [
       activeCase: route.query.case,
     }),
   },
+  {
+    path: '/editAgent',
+    name: 'editAgent',
+    component: EditAgent,
+    props: route => ({ activeAgent: route.query.activeAgent || "" }) // Pass activeAgent from query
+  }
 ];
 
 const router = createRouter({

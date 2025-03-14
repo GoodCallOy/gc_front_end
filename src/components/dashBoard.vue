@@ -109,8 +109,11 @@ export default {
     updatePage(newPage) {
       this.setCurrentPage(newPage); // Update `currentPage` in the store
     },
+    handleUdatedDateRange(newRange) {
+      this.selectedDateRange = newRange;
+    },
     printDebug() {
-        console.log('mappedCases', this.casesGrouped)
+       
       }
   },
 };
