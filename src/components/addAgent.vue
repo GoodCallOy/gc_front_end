@@ -81,6 +81,9 @@
           me.message = "Agent added successfully!";
           me.alertType = "success";
           me.clearForm();
+          setTimeout(() => {
+             me.message = "";
+          }, 3000);
         } catch (error) {
           console.error("Error adding agent:", error);
           me.message = "Failed to add agent. Please try again.";

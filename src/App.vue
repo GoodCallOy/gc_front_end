@@ -53,12 +53,12 @@ function navigateTo(value) {
           :active="route.name === 'home'"
           @click="navigateTo('home')"
         ></v-list-item>
-        <v-list-item
+        <!-- <v-list-item
           prepend-icon="mdi-file-document"
           :title="t('buttons.cases')"  
           :active="route.name === 'cases'"
           @click="navigateTo('cases')"
-        ></v-list-item>
+        ></v-list-item> -->
         <v-list-item
           prepend-icon="mdi-account-multiple"
           :title="t('buttons.agents')"  

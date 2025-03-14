@@ -78,10 +78,12 @@
           );
           const agent = response.data;
   
+            console.log("Agent data retrieved: ", agent);
           // Populate the form with the retrieved agent data
           this.agent.name = agent.name || "";
           this.agent.position = agent.position || "";
           this.agent.casesInput = agent.cases ? agent.cases.join(", ") : "";
+          this.agent._id = agent._id;
         } catch (error) {
           console.error("Error fetching agent data:", error);
           this.message = "Failed to retrieve agent data. Please try again.";
@@ -102,13 +104,17 @@
         console.log("Payload sent to backend: ", payload);
   
         try {
-          const response = await axios.put(
+          const response = await axios.post(
             `https://goodcall.fi/api/v1/agent/${me.agent._id}`, // Use the agent's ID for update
             payload
           );
           console.log("Agent updated: ", response);
           me.message = "Agent updated successfully!";
           me.alertType = "success";
+
+          setTimeout(() => {
+             me.message = "";
+          }, 3000);
         } catch (error) {
           console.error("Error updating agent:", error);
           me.message = "Failed to update agent. Please try again.";

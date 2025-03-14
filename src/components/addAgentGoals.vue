@@ -184,6 +184,9 @@
           await this.fetchAgentStats();
 
           this.clearForm();
+          setTimeout(() => {
+            this.message = "";
+          }, 3000);
         } catch (error) {
           console.error('Error adding agent:', error);
           this.message = 'Failed to add agent. Please try again.';

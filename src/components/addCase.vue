@@ -87,6 +87,9 @@
           me.message = 'Case added successfully!';
           me.alertType = 'success';
           me.clearForm();
+          setTimeout(() => {
+             me.message = "";
+          }, 3000);
         } catch (error) {
           console.error('Error adding Case:', error);
           me.message = 'Failed to add Case. Please try again.';
