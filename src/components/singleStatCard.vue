@@ -27,7 +27,7 @@
           >Goal:  
           </v-col>
           <v-col class="text-h3" cols="5">
-            {{ monthKey === selectedCase.monthKey ? (agentGoals.length > 0 ? agentGoals[0].goal : 0) : 0 }} 
+            {{ getAgentGoal() }}
           </v-col>
 
         </v-row>
@@ -108,7 +108,6 @@ import { getMonthKey } from '../js/dateUtils';
     }),
     computed: {
       monthKey() {
-        console.log('this.agentGoals', this.agentGoals);
         return this.agentGoals.length > 0 ? getMonthKey(this.agentGoals[0].goal_date.start) : "";
       },
       filteredStats() {
@@ -125,8 +124,10 @@ import { getMonthKey } from '../js/dateUtils';
     },
     methods: {
       async fetchAgentgoals() {
+        console.log('this.selectedCase.monthKey', this.selectedCase.monthKey);
+        console.log('this.agent', this.agent);
         try {
-        this.agentGoals = await fetchAgentgoalsByAgentAndMonth(this.agent, '2025-03');
+        this.agentGoals = await fetchAgentgoalsByAgentAndMonth(this.agent, this.selectedCase.monthKey);
       } catch (error) {
         console.error("Error fetching agent goals:", error);
       }
@@ -140,6 +141,15 @@ import { getMonthKey } from '../js/dateUtils';
         },
       });
     },
+    getAgentGoal() {
+    if (!this.agentGoals.length) return 0;
+      console.log('this.agentGoals', this.agentGoals);
+    const matchingGoal = this.agentGoals.find(
+      goal => goal.case === this.selectedCase.caseId && goal.monthKey === this.selectedCase.monthKey
+    );
+
+    return matchingGoal ? matchingGoal.goal : 0;
+  },
       printDebug() {
         console.log('this.agentGoals', this.agentGoals);
       }

@@ -106,6 +106,9 @@ export function populateCasesSortedByAgent(agentStats, selectedAgent) {
   }
   export async function fetchAgentgoalsByAgentAndMonth(agent, month) {
     try {
+      console.log('agent in function', agent)
+      console.log('month in function', month)
+      
       const response = await axios.get(`https://goodcall.fi/api/v1/agentgoals/${agent}?month=${month}`);
       console.log('AgentGoals array',response.data)
       return response.data;

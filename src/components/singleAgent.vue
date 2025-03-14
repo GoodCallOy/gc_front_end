@@ -73,8 +73,6 @@ export default {
 
   watch: {
     selectedDateRange(newRange) {
-      console.log("📆 Date range changed:", newRange);
-
       if (!this.CaseStatsGroupedByMonth.length) {
         console.warn("🚨 No data available yet for filtering!");
         return;
@@ -86,9 +84,7 @@ export default {
         return;
       }
 
-      this.filteredStats = this.FilterCaseStatsGroupedByMonth(startDate, endDate);
-      console.log("🔍 Filtered stats:", this.filteredStats);
-  
+      this.filteredStats = this.FilterCaseStatsGroupedByMonth(startDate, endDate);  
     },
     CaseStatsGroupedByMonth(newStats) {
       if (newStats.length > 0) {
@@ -109,8 +105,6 @@ export default {
     await this.fetchAgents();
     await this.fetchAgentStats();
     await this.fetchCases();
-
-    console.log("✅ :", this.agentStats);
 
     this.updatePage('singleAgent');
 
@@ -155,7 +149,7 @@ export default {
       this.CaseStatsGroupedByMonth = Object.values(this.CaseStatsGroupedByCase).flatMap(caseEntries => {
         return Object.values(caseEntries.reduce((acc, singleCase) => {
           const caseDate = new Date(singleCase.calling_date.start); // Assuming calling_date is an object with start & end
-          const caseMonth = caseDate.getMonth() + 1; // 1-based month
+          const caseMonth = String(caseDate.getMonth() + 1).padStart(2, '0'); // Ensures two-digit month
           const caseYear = caseDate.getFullYear();
           const monthKey = `${caseYear}-${caseMonth}`;
 
@@ -188,7 +182,6 @@ export default {
           return acc;
         }, {}));
       });
-      console.log('Final CaseStatsGroupedByMonth:', this.CaseStatsGroupedByMonth);
     },
     FilterCaseStatsGroupedByMonth(startDate, endDate) {
       const now = new Date();
@@ -247,7 +240,6 @@ export default {
       this.selectedDateRange = newRange;
     },
     printDebug() {
-        console.log('selectedDateRange', this.selectedDateRange );
       }
   },
 };

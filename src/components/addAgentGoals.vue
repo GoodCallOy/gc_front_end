@@ -45,6 +45,13 @@
           label="Type"
           required
         />
+        <v-text-field
+          v-model="monthKey"
+          label="Month Key"
+          type="string"
+          
+          required
+        />       
         <div class="button-alert-container">
           <v-btn :disabled="!valid" @click="handleSubmit" color="primary" class="mr-3">Submit</v-btn>
            <!-- Success/Failure Message -->
@@ -59,6 +66,8 @@
   <script>
   import axios from 'axios';
   import { mapGetters, mapActions, mapState, mapMutations } from 'vuex';
+  import { getMonthKey } from '../js/dateUtils';
+
 
   export default {
     name: 'AddAgentGoals',
@@ -73,6 +82,7 @@
             goal: null,
             goal_date: [],
             type: '',
+            monthKey: null,
         },
         message: '',
         alertType: 'success', // For success or error alerts
@@ -90,6 +100,12 @@
       ...mapGetters(['enrichedAgents', 'agents', 'cases']), // Map Vuex getter to local computed property
       ...mapState(["currentPage"]), // Maps the `currentPage` state to a computed property
 
+      monthKey() {
+        console.log('this.agent', this.agent);
+        const monthKey =  this.agent.goal_date?.[0] ? getMonthKey(this.agent.goal_date[0]) : null;
+        console.log('monthKey', monthKey);
+        return monthKey;
+      },
       currentPage() {
         console.log('currentPage', this.$store.getters.currentPage)
         return this.$store.getters.currentPage;
@@ -144,11 +160,13 @@
             start: firstElement,
             end: lastElement,
           };
+
           console.log('agent:', this.agent);
           console.log('dateArray:', dateArray);
           const payload = {
             ...this.agent,
             goal_date: dateArray, // Transform array to object
+            monthKey: this.monthKey,
           };
 
           console.log('payload:', payload);
@@ -175,11 +193,12 @@
 
       clearForm() {
         this.agent = {
-            name: null,
+            agent: null,
             case: null,
             goal_date: null,
             goal: null,
             type: null,
+            monthKey: null,
         };
       },
     },
