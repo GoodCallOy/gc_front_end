@@ -7,6 +7,7 @@
       </MonthButtons>
     </div>
 
+
     <!-- List of Cases -->
     <p>{{ $t('dashboard.cases') }}.</p>
     <div class="grid-container">

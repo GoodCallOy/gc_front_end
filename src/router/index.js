@@ -10,8 +10,10 @@ import SingleAgent from '@/components/singleAgent.vue';
 import AgentInCase from '@/components/agentInCase.vue';
 import AddAgentGoals from '@/components/addAgentGoals.vue';
 import EditAgent from '@/components/editAgent.vue';
+import Login from '@/components/LoginPage.vue';
 
 const routes = [
+  { path: '/login', name: 'login', component: Login },
   { path: '/', name: 'home', component: DashBoard },
   { path: '/agents', name: 'agents', component: Agents },
   { path: '/add-agent', name: 'addAgent', component: AddAgent },
