@@ -16,7 +16,12 @@ function navigateTo(value) {
   router.push({ name: value });
 }
 const logout = () => {
-    window.location.href = "http://localhost:8080/login"; // Update for production
+  const BASE_URL =
+    window.location.hostname === "localhost"
+      ? "http://localhost:3030/login"
+      : "https://goodcall-front-end.onrender.com/login";
+
+  window.open(BASE_URL, "_self"); // Redirects to backend authentication
   };
 </script>
 
