@@ -12,7 +12,8 @@
       "addCase": "lisää tapaus",
       "addAgent": "Lisää agentti",
       "addAgentStats": "Lisää agenttitilastot",
-      "language": "Suomi"
+      "language": "Suomi",
+      "logout": "Kirjaudu ulos"
 
     }
   }

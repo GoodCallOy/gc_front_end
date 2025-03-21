@@ -78,7 +78,6 @@
           );
           const agent = response.data;
   
-            console.log("Agent data retrieved: ", agent);
           // Populate the form with the retrieved agent data
           this.agent.name = agent.name || "";
           this.agent.position = agent.position || "";
@@ -92,16 +91,12 @@
       },
       async submitForm() {
         const me = this;
-        console.log("Agent object before updating: ", me.agent);
-  
         // Convert casesInput (comma-separated string) into an array
         const payload = {
           name: me.agent.name,
           cases: me.agent.casesInput.split(",").map((caseName) => caseName.trim()),
           position: me.agent.position,
         };
-  
-        console.log("Payload sent to backend: ", payload);
   
         try {
           const response = await axios.post(

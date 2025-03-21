@@ -26,7 +26,8 @@
       "addAgent": "Add agent",
       "addAgentStats": "Add agent stats",
       "addAgentGoals": "Add agent Goals",
-      "language": "English"
+      "language": "English",
+      "logout": "Logout"
     }
   }
   

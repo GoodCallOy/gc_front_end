@@ -1,65 +1,91 @@
-<template>
-  <v-app>
-    <!-- Menu for navigation items -->
-    <v-navigation-drawer app>
-      <v-list>
-        <v-list-item v-for="(item, index) in items" :key="index">
-          <v-list-item-icon>
-            <v-icon>{{ item.icon }}</v-icon>
-          </v-list-item-icon>
-          <v-list-item-content>
-            <v-list-item-title>{{ item.text }}</v-list-item-title>
-          </v-list-item-content>
-        </v-list-item>
-      </v-list>
-    </v-navigation-drawer>
+<script setup>
+import { ref } from 'vue';
+import { useI18n } from 'vue-i18n';
+import { useRouter, useRoute } from 'vue-router';
 
-    <!-- Main content area -->
-    <v-main>
-      <!-- Language switcher buttons -->
-      <div class="d-flex justify-center mt-4">
-        <v-btn @click="switchLanguage('en')" class="mx-3">English</v-btn>
-        <v-btn @click="switchLanguage('fi')" class="mx-3">Finnish</v-btn>
-      </div>
+const isDrawerOpen = ref(true);
+const { t, locale } = useI18n();
+const router = useRouter();
+const route = useRoute();
 
-      <!-- Rest of your content (dashboard, etc.) -->
-      <div class="d-flex flex-column align-center" style="height: 100vh;">
-        <h1>{{ $t('dashboard.title') }}</h1>
+function toggleLanguage() {
+  locale.value = locale.value === 'en' ? 'fi' : 'en';
+}
 
-        <div class="d-flex flex-row align-center ma-5">
-          <!-- Example of your other menu buttons here -->
-          <v-btn class="mx-3" @click="handleClick">{{ $t('buttons.close') }}</v-btn>
-        </div>
-
-        <!-- Additional content -->
-        <p>{{ $t('dashboard.cases') }}</p>
-      </div>
-    </v-main>
-  </v-app>
-</template>
-
-<script>
-export default {
-  name: 'App',
-  data() {
-    return {
-      items: [
-        { text: this.$t('dashboard.title'), icon: 'mdi-folder' },
-        { text: this.$t('dashboard.cases'), icon: 'mdi-account-multiple' },
-        { text: this.$t('dashboard.agents'), icon: 'mdi-star' },
-        { text: this.$t('dashboard.language'), icon: 'mdi-star' },
-        { text: 'Add Agent', icon: 'mdi-account-plus' },
-        { text: 'About', icon: 'mdi-history' },
-      ],
-    };
-  },
-  methods: {
-    handleClick() {
-      alert('Button clicked!');
-    },
-    switchLanguage(language) {
-      this.$i18n.locale = language;
-    },
-  },
-};
+function navigateTo(value) {
+  router.push({ name: value });
+}
+const logout = () => {
+    window.location.href = "http://localhost:3030/user/logout"; // Update for production
+  };
 </script>
+
+<template>
+  <v-navigation-drawer
+    app
+    rail
+    width="256"
+    rail-width="72"
+    expand-on-hover
+    v-model="isDrawerOpen"
+  >
+    <v-list v-if="isDrawerOpen">
+      <v-list-item
+        prepend-avatar="https://randomuser.me/api/portraits/women/85.jpg"
+        subtitle="sandra_a88@gmail.com"
+        title="Sandra Adams"
+      ></v-list-item>
+      <v-divider></v-divider>
+    </v-list>
+
+    <v-list density="compact" nav>
+      <v-list-item
+        prepend-icon="mdi-laptop"
+        :title="t('buttons.dashboard')"  
+        :active="route.name === 'home'"
+        @click="navigateTo('home')"
+      ></v-list-item>
+      <v-list-item
+        prepend-icon="mdi-account-multiple"
+        :title="t('buttons.agents')"  
+        :active="route.name === 'agents'"
+        @click="navigateTo('agents')"
+      ></v-list-item>
+      <v-list-item
+        prepend-icon="mdi-folder-plus"
+        :title="t('buttons.addCase')"  
+        :active="route.name === 'addCase'"
+        @click="navigateTo('addCase')"
+      ></v-list-item>
+      <v-list-item
+        prepend-icon="mdi-account-plus"
+        :title="t('buttons.addAgent')"  
+        :active="route.name === 'addAgent'"
+        @click="navigateTo('addAgent')"
+      ></v-list-item>
+      <v-list-item
+        prepend-icon="mdi-account-plus"
+        :title="t('buttons.addAgentStats')"  
+        :active="route.name === 'addAgentStats'"
+        @click="navigateTo('addAgentStats')"
+      ></v-list-item>
+      <v-list-item
+        prepend-icon="mdi-account-plus"
+        :title="t('buttons.addAgentGoals')"  
+        :active="route.name === 'addAgentGoals'"
+        @click="navigateTo('addAgentGoals')"
+      ></v-list-item>
+      <v-divider></v-divider>
+      <v-list-item
+        prepend-icon="mdi-earth"
+        :title="t('buttons.language')"
+        @click="toggleLanguage"
+      ></v-list-item>
+      <v-list-item
+        prepend-icon="mdi-logout"
+        :title="t('buttons.logout')"  
+        @click="logout"
+      ></v-list-item>
+    </v-list>
+  </v-navigation-drawer>
+</template>

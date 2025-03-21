@@ -1,9 +1,6 @@
 <template>
-    <v-card
-      class="mx-auto"
-      max-width="184"
-    >
-      <v-card-item>
+    <v-card  class="mx-2 my-2 mb-5" elevation="16" style="width: 225px">
+      <v-card-item class="center">
         <template v-slot:title>
             {{ selectedCase.caseId }}
         </template>
@@ -43,11 +40,11 @@
           <v-list-item-subtitle class="mt-1">Response Rate: {{ selectedCase.response_rate }}%</v-list-item-subtitle>
           <v-list-item-subtitle class="mt-5">Date: {{ selectedCase.monthKey }}</v-list-item-subtitle>
           <v-card-text>
-            <v-btn color="primary" class="mb-5" @click="viewAgent">
-              View Agent
+            <v-btn color="primary" class="mb-5 mr-3" @click="viewAgent">
+              View
             </v-btn>
             <v-btn color="primary" class="mb-5" @click="editAgent">
-              Edit Agent
+              Edit
             </v-btn>
       </v-card-text>
         </v-list-item>
