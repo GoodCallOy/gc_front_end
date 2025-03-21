@@ -7,10 +7,14 @@
   </v-btn>
 </template>
 
-
 <script setup>
 const loginWithGoogle = () => {
-  window.open("https://goodcall.fi/auth/google", "_self"); // Redirects to backend
+  const BASE_URL =
+    window.location.hostname === "localhost"
+      ? "http://localhost:3030/auth/google"
+      : "https://goodcall.fi/auth/google";
+
+  window.open(BASE_URL, "_self"); // Redirects to backend authentication
 };
 </script>
 
@@ -32,5 +36,3 @@ const loginWithGoogle = () => {
   margin-right: 10px;
 }
 </style>
-
-  
