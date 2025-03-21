@@ -2,6 +2,7 @@
 import { ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter, useRoute } from 'vue-router';
+import logOutButton from './components/logOutButton.vue';
 
 // Reactive state for the drawer's open/close status
 const isDrawerOpen = ref(true); // Tracks whether the drawer is expanded
@@ -89,6 +90,9 @@ function navigateTo(value) {
           :active="route.name === 'addAgentGoals'"
           @click="navigateTo('addAgentGoals')"
         ></v-list-item>
+        <v-list-item>
+          <logOutButton />
+        </v-list-item>
         <v-divider></v-divider>
         <!-- Language Toggle Button -->
         <v-list-item

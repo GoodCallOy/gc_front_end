@@ -4,7 +4,7 @@
   
   <script setup>
   const logout = () => {
-    window.location.href = "http://localhost:8080/auth/logout"; // Update for production
+    window.location.href = "http://localhost:3030/user/logout"; // Update for production
   };
   </script>
   
