@@ -1,12 +1,14 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter, useRoute } from 'vue-router';
+import axios from 'axios';
 
 const isDrawerOpen = ref(true);
 const { t, locale } = useI18n();
 const router = useRouter();
 const route = useRoute();
+const user = ref(null); // Stores user data
 
 function toggleLanguage() {
   locale.value = locale.value === 'en' ? 'fi' : 'en';
@@ -15,14 +17,45 @@ function toggleLanguage() {
 function navigateTo(value) {
   router.push({ name: value });
 }
+
 const logout = () => {
   const BASE_URL =
     window.location.hostname === "localhost"
-      ? "http://localhost:3030/login"
+      ? "http://localhost:8080/login"
       : "https://goodcall-front-end.onrender.com/login";
 
-  window.open(BASE_URL, "_self"); // Redirects to backend authentication
-  };
+  window.open(BASE_URL, "_self"); // Redirects to login page
+};
+
+// Fetch user data on component mount if authenticated
+const fetchUserData = async () => {
+  try {
+    const response = await axios.get("https://goodcall.fi/api/v1/auth/user", { withCredentials: true });
+    user.value = response.data;
+  } catch (error) {
+    console.error("Failed to fetch user data:", error);
+  }
+};
+
+// After Google login is successful, call this to fetch user data
+// const handleGoogleLogin = async () => {
+//   try {
+//     await fetchUserData(); // Fetch user data after login
+//   } catch (error) {
+//     console.error("Error fetching user data after Google login:", error);
+//   }
+// };
+
+// Ensure the user data is fetched when the component mounts if logged in
+onMounted(() => {
+  // Check if user is logged in (can be done using a session or token check)
+  const isLoggedIn = localStorage.getItem("user"); // or use cookies/session
+  console.log('isLoggedIn', isLoggedIn);
+  if (isLoggedIn) {
+    fetchUserData();
+  }
+});
+
 </script>
 
 <template>
@@ -36,9 +69,10 @@ const logout = () => {
   >
     <v-list v-if="isDrawerOpen">
       <v-list-item
-        prepend-avatar="https://randomuser.me/api/portraits/women/85.jpg"
-        subtitle="sandra_a88@gmail.com"
-        title="Sandra Adams"
+        v-if="user"
+        :prepend-avatar="user.avatar || 'https://randomuser.me/api/portraits/women/85.jpg'"
+        :subtitle="user.email"
+        :title="user.name"
       ></v-list-item>
       <v-divider></v-divider>
     </v-list>
