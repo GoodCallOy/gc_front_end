@@ -16,7 +16,7 @@ function navigateTo(value) {
   router.push({ name: value });
 }
 const logout = () => {
-    window.location.href = "http://localhost:3030/user/logout"; // Update for production
+    window.location.href = "http://localhost:8080/"; // Update for production
   };
 </script>
 

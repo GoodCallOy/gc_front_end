@@ -10,7 +10,7 @@
 
 <script setup>
 const loginWithGoogle = () => {
-  window.open("http://localhost:3030/auth/google", "_self"); // Redirects to backend
+  window.open("https://goodcall.fi/auth/google", "_self"); // Redirects to backend
 };
 </script>
 
