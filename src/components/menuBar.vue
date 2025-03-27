@@ -20,7 +20,7 @@ function navigateTo(value) {
 
 const logout = async () => {
   try {
-    await axios.get("http://localhost:3030/auth/logout", { withCredentials: true });
+    await axios.get("https://goodcall.fi/auth/logout", { withCredentials: true });
 
     // Clear local user data
     localStorage.removeItem("user");
