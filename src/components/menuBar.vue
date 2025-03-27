@@ -24,7 +24,7 @@ const logout = () => {
       ? "http://localhost:8080/login"
       : "https://goodcall-front-end.onrender.com/login";
 
-  window.open(BASE_URL, "_self"); // Redirects to login page
+      window.location.href = `${BASE_URL}`;
 };
 
 // Fetch user data on component mount if authenticated
