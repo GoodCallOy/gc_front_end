@@ -18,14 +18,25 @@ function navigateTo(value) {
   router.push({ name: value });
 }
 
-const logout = () => {
-  const BASE_URL =
-    window.location.hostname === "localhost"
-      ? "http://localhost:8080/login"
-      : "https://goodcall-front-end.onrender.com/login";
+const logout = async () => {
+  try {
+    await axios.get("http://localhost:3030/auth/logout", { withCredentials: true });
 
-      window.location.href = `${BASE_URL}`;
+    // Clear local user data
+    localStorage.removeItem("user");
+
+    // Redirect manually after logout
+    const BASE_URL =
+      window.location.hostname === "localhost"
+        ? "http://localhost:8080/#/login"
+        : "https://goodcall-front-end.onrender.com/#/login";
+
+    window.location.href = BASE_URL;
+  } catch (error) {
+    console.error("Logout failed:", error);
+  }
 };
+
 
 // Fetch user data on component mount if authenticated
 const fetchUserData = async () => {

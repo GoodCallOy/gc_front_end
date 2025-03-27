@@ -13,8 +13,9 @@ import EditAgent from '@/components/editAgent.vue';
 import Login from '@/components/LoginPage.vue';
 
 const routes = [
+  { path: '/', redirect: '/login' }, // Redirect root path to login
   { path: '/login', name: 'login', component: Login },
-  { path: '/', name: 'home', component: DashBoard },
+  { path: '/dashboard', name: 'home', component: DashBoard },
   { path: '/agents', name: 'agents', component: Agents },
   { path: '/add-agent', name: 'addAgent', component: AddAgent },
   { path: '/add-agent-stats', name: 'addAgentStats', component: AddAgentStats },
@@ -25,15 +26,13 @@ const routes = [
     path: '/singleCase', 
     name: 'singleCase', 
     component: SingleCase,
-    props: route => ({ activeCase: route.query.case }), // Pass active case as a prop
+    props: route => ({ activeCase: route.query.case }),
   },
   { 
     path: '/singleAgent', 
     name: 'singleAgent', 
     component: SingleAgent,
-    props: route => ({ 
-      activeAgent: route.query.agent
-     }), // Pass active agent as a prop
+    props: route => ({ activeAgent: route.query.agent }),
   },
   { 
     path: '/agentInCase', 
@@ -48,7 +47,7 @@ const routes = [
     path: '/editAgent',
     name: 'editAgent',
     component: EditAgent,
-    props: route => ({ activeAgent: route.query.activeAgent || "" }) // Pass activeAgent from query
+    props: route => ({ activeAgent: route.query.activeAgent || "" })
   }
 ];
 
