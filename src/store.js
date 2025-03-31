@@ -76,9 +76,13 @@ const store = createStore({
       commit('setDateRange', selectedDateRange);
       return selectedDateRange; // Optional, for immediate usage after dispatch
     },
+    
     async fetchUser({ commit }) {
+      axios.defaults.withCredentials = true; // Enable credentials for cross-origin requests
       try {
-        const response = await axios.get('https://goodcall.fi/api/v1/auth/me');
+        const response = await axios.get('https://goodcall.fi/api/v1/auth/me', {
+          withCredentials: true // Ensure cookies are sent
+        });
         console.log('🟢 Fetched user data in store:', response.data); // Log the response
         if (response.data) {
           commit('SET_USER', response.data);
