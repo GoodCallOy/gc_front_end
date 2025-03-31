@@ -78,7 +78,7 @@ const store = createStore({
     },
     async fetchUser({ commit }) {
       try {
-        const response = await axios.get('http://localhost:3030/api/v1/auth/me');
+        const response = await axios.get('https://goodcall.fi/api/v1/auth/me');
         console.log('🟢 Fetched user data in store:', response.data); // Log the response
         if (response.data) {
           commit('SET_USER', response.data);
