@@ -20,7 +20,7 @@ function navigateTo(value) {
 
 const logout = async () => {
   try {
-    await axios.get("https://goodcall.fi/auth/logout", { withCredentials: true });
+    await axios.get("https://goodcall.fi/api/v1/auth/logout", { withCredentials: true });
 
     // Clear local user data
     localStorage.removeItem("user");
@@ -28,8 +28,8 @@ const logout = async () => {
     // Redirect manually after logout
     const BASE_URL =
       window.location.hostname === "localhost"
-        ? "http://localhost:8080/#/login"
-        : "https://goodcall-front-end.onrender.com/#/login";
+        ? "http://localhost:8080/login"
+        : "https://goodcall-front-end.onrender.com/login";
 
     window.location.href = BASE_URL;
   } catch (error) {
