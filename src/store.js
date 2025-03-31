@@ -1,13 +1,16 @@
 import { createStore } from 'vuex';
 import axios from 'axios';
+
 const store = createStore({
   state: {
+    user: null,
     agents: [],
     agentStats: [],
     cases: [],
     currentPage: "",
     dateRange: [],
   },
+  
   getters: {
     enrichedAgents(state) {
       return state.agents.map(agent => {
@@ -15,6 +18,8 @@ const store = createStore({
         return { ...agent, ...stats };
       });
     },
+
+    user: state => state.user,
 
     cases(state){
       return state.cases
@@ -71,7 +76,25 @@ const store = createStore({
       commit('setDateRange', selectedDateRange);
       return selectedDateRange; // Optional, for immediate usage after dispatch
     },
+    async fetchUser({ commit }) {
+      try {
+        const response = await axios.get('http://localhost:3030/api/v1/auth/me');
+        console.log('🟢 Fetched user data in store:', response.data); // Log the response
+        if (response.data) {
+          commit('SET_USER', response.data);
+        }
+      } catch (error) {
+        console.error('Error fetching user:', error);
+      }
+    },
+    loadUserFromStorage({ commit }) {
+      const user = localStorage.getItem('user');
+      if (user) {
+        commit('SET_USER', JSON.parse(user));
+      }
+    }
   },
+
   mutations: {
     setAgents(state, agents) {
       state.agents = agents;
@@ -88,6 +111,15 @@ const store = createStore({
     setDateRange(state, range) {
       state.dateRange = range;
     },
+    SET_USER(state, user) {
+      state.user = user; // Store entire user object
+      localStorage.setItem('user', JSON.stringify(user)); // Persist in storage
+    },
+    LOGOUT(state) {
+      state.user = null;
+      localStorage.removeItem('user');
+    }
+  
   },
 });
 

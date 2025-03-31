@@ -1,5 +1,6 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
+import { useStore } from 'vuex'
 import { useI18n } from 'vue-i18n';
 import { useRouter, useRoute } from 'vue-router';
 import axios from 'axios';
@@ -8,7 +9,10 @@ const isDrawerOpen = ref(true);
 const { t, locale } = useI18n();
 const router = useRouter();
 const route = useRoute();
-const user = ref(null); // Stores user data
+
+
+const store = useStore() // Access Vuex store
+const user = computed(() => store.state.user)
 
 function toggleLanguage() {
   locale.value = locale.value === 'en' ? 'fi' : 'en';
@@ -20,50 +24,34 @@ function navigateTo(value) {
 
 const logout = async () => {
   try {
-    await axios.get("https://goodcall.fi/api/v1/auth/logout", { withCredentials: true });
+    await axios.get('https://goodcall.fi/api/v1/auth/logout', { withCredentials: true })
 
-    // Clear local user data
-    localStorage.removeItem("user");
+    store.commit('LOGOUT') // Clear user from Vuex
 
     // Redirect manually after logout
     const BASE_URL =
-      window.location.hostname === "localhost"
-        ? "http://localhost:8080/login"
-        : "https://goodcall-front-end.onrender.com/login";
+      window.location.hostname === 'localhost'
+        ? 'http://localhost:8080/login'
+        : 'https://goodcall-front-end.onrender.com/login'
 
-    window.location.href = BASE_URL;
+    window.location.href = BASE_URL
   } catch (error) {
-    console.error("Logout failed:", error);
+    console.error('Logout failed:', error)
   }
-};
+}
 
-
-// Fetch user data on component mount if authenticated
+// Fetch user data from Vuex
 const fetchUserData = async () => {
-  try {
-    const response = await axios.get("https://goodcall.fi/api/v1/auth/user", { withCredentials: true });
-    user.value = response.data;
-  } catch (error) {
-    console.error("Failed to fetch user data:", error);
-  }
-};
+  await store.dispatch('fetchUser') // Call the Vuex action
+}
 
-// After Google login is successful, call this to fetch user data
-// const handleGoogleLogin = async () => {
-//   try {
-//     await fetchUserData(); // Fetch user data after login
-//   } catch (error) {
-//     console.error("Error fetching user data after Google login:", error);
-//   }
-// };
 
 // Ensure the user data is fetched when the component mounts if logged in
 onMounted(() => {
-  // Check if user is logged in (can be done using a session or token check)
-  const isLoggedIn = localStorage.getItem("user"); // or use cookies/session
-  console.log('isLoggedIn', isLoggedIn);
-  if (isLoggedIn) {
-    fetchUserData();
+  console.log('🟠 onMounted: Checking user in Vuex:', store.state.user);
+  if (!store.state.user) {
+    store.dispatch('loadUserFromStorage') // Load user from storage first
+    fetchUserData() // Fetch latest user data from API
   }
 });
 
@@ -81,7 +69,7 @@ onMounted(() => {
     <v-list v-if="isDrawerOpen">
       <v-list-item
         v-if="user"
-        :prepend-avatar="user.avatar || 'https://randomuser.me/api/portraits/women/85.jpg'"
+        :prepend-avatar="user.avatar"
         :subtitle="user.email"
         :title="user.name"
       ></v-list-item>
