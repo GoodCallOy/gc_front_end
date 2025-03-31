@@ -78,7 +78,6 @@ const store = createStore({
     },
     
     async fetchUser({ commit }) {
-      axios.defaults.withCredentials = true; // Enable credentials for cross-origin requests
       try {
         const response = await axios.get('https://goodcall.fi/api/v1/auth/me', {
           withCredentials: true // Ensure cookies are sent
