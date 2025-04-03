@@ -40,19 +40,11 @@ const logout = async () => {
   }
 }
 
-// Fetch user data from Vuex
-const fetchUserData = async () => {
-  await store.dispatch('fetchUser') // Call the Vuex action
-}
 
 
 // Ensure the user data is fetched when the component mounts if logged in
 onMounted(() => {
-  console.log('🟠 onMounted: Checking user in Vuex:', store.state.user);
-  if (!store.state.user) {
-    store.dispatch('loadUserFromStorage') // Load user from storage first
-    fetchUserData() // Fetch latest user data from API
-  }
+  
 });
 
 </script>
