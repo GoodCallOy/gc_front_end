@@ -9,6 +9,7 @@ import SingleCase from '@/components/singleCase.vue';
 import SingleAgent from '@/components/singleAgent.vue';
 import AgentInCase from '@/components/agentInCase.vue';
 import AddAgentGoals from '@/components/addAgentGoals.vue';
+import addAgentCaseInfo from '@/components/addAgentCaseInfo.vue';
 import EditAgent from '@/components/editAgent.vue';
 import Login from '@/components/LoginPage.vue';
 
@@ -22,6 +23,7 @@ const routes = [
   { path: '/add-case', name: 'addCase', component: AddCase },
   { path: '/cases', name: 'cases', component: Cases },
   { path: '/add-agent-goals', name: 'addAgentGoals', component: AddAgentGoals },
+  { path: '/add-agent-case-info', name: 'addAgentCaseInfo', component: addAgentCaseInfo },
   { 
     path: '/singleCase', 
     name: 'singleCase', 

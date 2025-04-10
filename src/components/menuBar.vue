@@ -10,6 +10,12 @@ const { t, locale } = useI18n();
 const router = useRouter();
 const route = useRoute();
 
+const BASE_URL =
+      window.location.hostname === 'localhost'
+        ? 'http://localhost:8080/login'
+        : 'https://goodcall-front-end.onrender.com/login'
+
+
 
 const store = useStore() // Access Vuex store
 const user = computed(() => store.state.user)
@@ -24,16 +30,12 @@ function navigateTo(value) {
 
 const logout = async () => {
   try {
-    await axios.get('https://goodcall.fi/api/v1/auth/logout', { withCredentials: true })
+    await axios.get(`${BASE_URL}/auth/logout`, { withCredentials: true })
 
     store.commit('LOGOUT') // Clear user from Vuex
 
     // Redirect manually after logout
-    const BASE_URL =
-      window.location.hostname === 'localhost'
-        ? 'http://localhost:8080/login'
-        : 'https://goodcall-front-end.onrender.com/login'
-
+    
     window.location.href = BASE_URL
   } catch (error) {
     console.error('Logout failed:', error)
@@ -104,6 +106,12 @@ onMounted(() => {
         :title="t('buttons.addAgentGoals')"  
         :active="route.name === 'addAgentGoals'"
         @click="navigateTo('addAgentGoals')"
+      ></v-list-item>
+      <v-list-item
+        prepend-icon="mdi-account-plus"
+        :title="t('buttons.addAgentCaseInfo')"  
+        :active="route.name === 'addAgentCaseInfo'"
+        @click="navigateTo('addAgentCaseInfo')"
       ></v-list-item>
       <v-divider></v-divider>
       <v-list-item
