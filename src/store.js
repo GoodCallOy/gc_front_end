@@ -104,6 +104,11 @@ const store = createStore({
     },
     
     async fetchUser({ state, commit }) {
+      const BASE_URL =
+        window.location.hostname === "localhost"
+          ? "http://localhost:3030/api/v1/auth/me"
+          : "https://goodcall.fi/api/v1/auth/me";
+
       if (state.user) {
         console.log('✅ Using cached user data from state')
         return
@@ -111,11 +116,13 @@ const store = createStore({
     
       try {
         console.log('🌍 Fetching user from API')
-        const response = await axios.get('https://goodcall.fi/api/v1/auth/me', {
+        const response = await axios.get(BASE_URL, {
           withCredentials: true
         })
-        
+
+        console.log('✅ User data fetched successfully', response.data)
         if (response.data) {
+          
           commit('SET_USER', response.data)
         }
       } catch (error) {

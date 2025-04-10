@@ -11,7 +11,7 @@
 const loginWithGoogle = () => {
   const BASE_URL =
     window.location.hostname === "localhost"
-      ? "https://goodcall.fi/api/v1/auth/google"
+      ? "http://localhost:3030/api/v1/auth/google"
       : "https://goodcall.fi/api/v1/auth/google";
 
   window.open(BASE_URL, "_self"); // Redirects to backend authentication
