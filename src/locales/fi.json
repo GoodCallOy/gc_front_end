@@ -7,6 +7,7 @@
     "buttons": {
       "close": "Sulje",
       "dashboard": "Kojelauta",
+      "dashboard2": "Kojelauta2",
       "agents": "Agentit",
       "cases": "Tapaus",
       "addCase": "lisää tapaus",

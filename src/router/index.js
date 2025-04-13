@@ -1,5 +1,6 @@
 import { createRouter, createWebHashHistory  } from 'vue-router';
 import DashBoard from '@/components/dashBoard.vue';
+import DashBoard2 from '@/components/dashboard2.vue';
 import Agents from '@/components/agentsPage.vue';
 import AddAgent from '@/components/addAgent.vue';
 import AddAgentStats from '@/components/addAgentStats.vue';
@@ -17,6 +18,7 @@ const routes = [
   { path: '/', redirect: '/login' }, // Redirect root path to login
   { path: '/login', name: 'login', component: Login },
   { path: '/dashboard', name: 'home', component: DashBoard },
+  { path: '/dashboard2', name: 'dash2', component: DashBoard2 },
   { path: '/agents', name: 'agents', component: Agents },
   { path: '/add-agent', name: 'addAgent', component: AddAgent },
   { path: '/add-agent-stats', name: 'addAgentStats', component: AddAgentStats },

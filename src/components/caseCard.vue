@@ -5,7 +5,7 @@
     :elevation="currentPage === 'singleCase' ? 0 : 16"
   >
     <!-- Centered Case Information -->
-    <div v-if="currentPage === 'dashBoard' || currentPage === 'casePage'" class="text-center">
+    <div v-if="currentPage === 'DashBoard' || currentPage === 'casePage'" class="text-center">
       <v-card-title class="text-h5">{{ companyCase.name }}</v-card-title>
       
       <!-- Statistics -->
@@ -23,7 +23,7 @@
       </div>
     </div>
 
-    <div v-if="currentPage === 'dashBoard' || currentPage === 'casePage'" class="d-flex justify-center">
+    <div v-if="currentPage === 'DashBoard' || currentPage === 'casePage'" class="d-flex justify-center">
       <v-btn color="primary" class="mb-5" @click="showCase">
         Show Case
       </v-btn>
@@ -49,7 +49,7 @@
       />
     </div>
 
-    <div v-if="currentPage !== 'dashBoard' && currentPage !== 'casePage'" class="d-flex flex-wrap justify-center">
+    <div v-if="currentPage !== 'DashBoard' && currentPage !== 'casePage'" class="d-flex flex-wrap justify-center">
       <AgentCard
         v-for="(agent, index) in agentsWithStats"
         :key="index"
@@ -135,6 +135,9 @@ export default {
     this.fetchCases();
     this.updateStats();
     this.fetchCurrentDateRange();
+    console.log('companyCase:', this.companyCase);
+    console.log('dateRange:', this.dateRange);
+    console.log('currertPage  :', this.currentPage);
   },
   methods: {
     ...mapActions(['fetchAgents', 'fetchAgentStats', 'fetchCases','fetchCurrentDateRange']),

@@ -20,6 +20,7 @@
     "buttons": {
       "close": "Close",
       "dashboard": "Dashboard",
+      "dashboard2": "Dashboard2",
       "agents": "Agents",
       "cases": "Cases",
       "addCase": "Add case",

@@ -78,6 +78,12 @@ onMounted(() => {
         @click="navigateTo('home')"
       ></v-list-item>
       <v-list-item
+        prepend-icon="mdi-laptop"
+        :title="t('buttons.dashboard2')"  
+        :active="route.name === 'dash2'"
+        @click="navigateTo('dash2')"
+      ></v-list-item>
+      <v-list-item
         prepend-icon="mdi-account-multiple"
         :title="t('buttons.agents')"  
         :active="route.name === 'agents'"

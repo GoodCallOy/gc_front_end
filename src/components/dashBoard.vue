@@ -19,7 +19,7 @@
       />
     </div>
 
-    <!-- List of Agents -->
+    <!-- List of Agents
     <p class="mt-5">{{ $t('dashboard.agents') }}</p>
     <div class="d-flex flex-wrap justify-center">
       <AgentCard
@@ -27,12 +27,12 @@
         :key="index"
         :agent="agent"
       />
-    </div>
+    </div> -->
   </div>
 </template>
 
 <script>
-import AgentCard from './agentCard.vue';
+// import AgentCard from './agentCard.vue';
 import CaseCard from './caseCard.vue';
 import MonthButtons from './monthButtons.vue';    
 import { mapGetters, mapActions, mapState, mapMutations } from 'vuex';
@@ -40,7 +40,7 @@ import { mapGetters, mapActions, mapState, mapMutations } from 'vuex';
 export default {
   name: 'DashBoard',
   components: {
-    AgentCard, 
+    // AgentCard, 
     CaseCard,  
     MonthButtons,
   },
