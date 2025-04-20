@@ -1,35 +1,33 @@
 <template>
     <div class="d-flex flex-column align-center" style="height: 100vh;">
       <h1 class="mb-3 mt-5">{{ $t('dashboard.title') }}</h1>
-      <DashboardCard01 />
       <!-- List of Cases -->
       <p>{{ $t('dashboard.cases') }}.</p>
-      <div class="grid-container">
-        <CaseCard
-          v-for="(singleCase, index) in cases"
-          :key="index"
-          :companyCase="singleCase"
-          :agents="agents"
-          :currentPage="'dashboard'"
-          :dateRange="selectedDateRange"
-        />
-      </div>
-  
+     
+        <div class="grid-container">
+            <DashboardCard01
+            v-for="(singleCase, index) in cases"
+            :key="index"
+            :companyCase="singleCase"
+            :agents="agents"
+            :currentPage="'dashboard'"
+            :dateRange="selectedDateRange"
+            />
+        </div>
     </div>
   </template>
   
   <script>
-  // import AgentCard from './agentCard.vue';
-  import CaseCard from './caseCard.vue';
-  import { mapGetters, mapActions, mapState, mapMutations } from 'vuex';
-  import DashboardCard01 from '../partials/dashboard/caseCard.vue'
+
+    import { mapGetters, mapActions, mapState, mapMutations } from 'vuex';
+    import DashboardCard01 from '../partials/dashboard/caseCard.vue'
   
-  export default {
-    name: 'DashBoard',
-    components: {
-      // AgentCard, 
-      CaseCard,  
-      DashboardCard01
+     export default {
+        name: 'DashBoard',
+        components: {
+        // AgentCard, 
+        //   CaseCard,  
+        DashboardCard01
     },
   
     data() {
@@ -119,11 +117,29 @@
     padding: 4px 8px;
     min-width: 85px;
   }
+
+  .grid-scroll-wrapper {
+    overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
+  }
   
   .grid-container {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 16px;
+    display: flex;
+    gap: 16px; /* space between items */
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 1rem; /* optional padding */
+    scroll-behavior: smooth; /* optional smooth scroll */
+    width: 80vw; /* adjust as needed */
+
+    /* Hide scrollbar for Webkit browsers (Chrome, Safari) */
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none;  /* IE and Edge */
+  }
+
+  .grid-container::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, and Opera */
   }
   </style>
   

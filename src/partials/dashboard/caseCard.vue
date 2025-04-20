@@ -3,19 +3,18 @@
       <div class="menu">
         <EditMenu align="right" class="relative inline-flex">
             <li>
-              <a class="font-medium text-sm text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-200 flex py-1 px-3" href="#0">Option 1</a>
+                <a
+                    @click="showCase"
+                    class="font-medium text-sm text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-200 flex py-1 px-3"                            
+                >
+                    Show case
+                </a>
             </li>
-            <li>
-              <a class="font-medium text-sm text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-200 flex py-1 px-3" href="#0">Option 2</a>
-            </li>
-            <li>
-              <a class="font-medium text-sm text-red-500 hover:text-red-600 flex py-1 px-3" href="#0">Remove</a>
-            </li>
-          </EditMenu>
+        </EditMenu>
       </div>
       <div class="pt-5">
         <header class="flex justify-between items-start mb-2">
-          <h2>Acme Plus</h2>
+          <h2>{{ companyCase.name }}</h2>
           
         </header>
         <div class="label">Sales</div>
@@ -46,6 +45,19 @@
     components: {
       LineChart,
       EditMenu,
+    },
+    props: {
+        companyCase: {
+        type: Object,
+        required: true,
+        default: () => ({}),
+        },
+        dateRange:
+        {
+        type: Object,
+        required: true,
+        default: () => ({}),
+        },
     },
     setup() {
       const chartData = ref({
@@ -114,8 +126,17 @@
       return {
         chartData,
       } 
-    }
-  }
+    },
+
+    methods: {
+        showCase() {
+            this.$router.push({
+                name: 'singleCase',
+                query: { case: this.companyCase.name },
+            });
+        }
+    },
+}
 </script>
 <style scoped>
   .case-card {

@@ -6,7 +6,7 @@ const CACHE_TIMEOUT = 10 * 60 * 1000 // 10 minutes
 const BASE_URL =
   window.location.hostname === 'localhost'
     ? 'http://localhost:3030/api/v1'
-    : 'https://goodcall.fi/api/v1'
+    : 'https://goodcall-front-end.onrender.com/api/v1'
 
 
 const store = createStore({

@@ -6,14 +6,15 @@
         :class="dropdownOpen ? 'bg-gray-100 dark:bg-gray-700/60 text-gray-500 dark:text-gray-400' : 'text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400'"      
         aria-haspopup="true"
         @click.prevent="dropdownOpen = !dropdownOpen"
+        @click="$emit('show-case')"
         :aria-expanded="dropdownOpen"
       >
-        <span class="sr-only">Menu</span>
-        <svg class="w-8 h-8 fill-current" viewBox="0 0 32 32">
+        <span class="sr-only">...</span>
+        <!-- <svg class="w-8 h-8 fill-current" viewBox="0 0 32 32">
           <circle cx="16" cy="16" r="2" />
           <circle cx="10" cy="16" r="2" />
           <circle cx="22" cy="16" r="2" />
-        </svg>
+        </svg> -->
       </button>
       <transition
         enter-active-class="transition ease-out duration-200 transform"
