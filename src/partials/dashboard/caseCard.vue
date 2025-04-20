@@ -1,4 +1,4 @@
-<template>
+  <template>
     <div class="case-card">
       <div class="menu">
         <EditMenu align="right" class="relative inline-flex">
@@ -22,6 +22,7 @@
           $24,780
           <span class="percentage">+49%</span>
         </div>
+        
       </div>
       <div class="chart">
         <!-- Chart built with Chart.js 3 -->
