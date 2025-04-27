@@ -30,11 +30,12 @@ function navigateTo(value) {
 
 const logout = async () => {
   try {
-    await axios.get(`${BASE_URL}/auth/logout`, { withCredentials: true })
+    console.log('Logging out...')
+    await axios.get(`http://localhost:3030/api/v1/auth/logout`, { withCredentials: true })
 
     store.commit('LOGOUT') // Clear user from Vuex
 
-    // Redirect manually after logout
+    console.log('User logged out successfully')
     
     window.location.href = BASE_URL
   } catch (error) {

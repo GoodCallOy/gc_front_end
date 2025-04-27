@@ -9,6 +9,7 @@
 
 <script setup>
 const loginWithGoogle = () => {
+  console.log("Logging in with Google...")
   const BASE_URL =
     window.location.hostname === "localhost"
       ? "http://localhost:3030/api/v1/auth/google"
