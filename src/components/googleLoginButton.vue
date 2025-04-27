@@ -8,14 +8,15 @@
 </template>
 
 <script setup>
+// import urls from "@/js/config.js";
 const loginWithGoogle = () => {
   console.log("Logging in with Google...")
-  const BASE_URL =
-    window.location.hostname === "localhost"
-      ? "http://localhost:3030/api/v1/auth/google"
-      : "https://goodcall-front-end.onrender.com/api/v1/auth/google";
+  // const BASE_URL =
+  //   window.location.hostname === "localhost"
+  //     ? "http://localhost:3030/api/v1/auth/google"
+  //     : "https://goodcall-front-end.onrender.com/api/v1/auth/google";
 
-  window.open(BASE_URL, "_self"); // Redirects to backend authentication
+  window.open(`https://goodcall-back-end.onrender.com/api/v1/auth/google`, "_self"); // Redirects to backend authentication
 };
 </script>
 
