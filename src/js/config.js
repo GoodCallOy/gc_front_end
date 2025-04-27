@@ -7,7 +7,7 @@ const config = {
   },
   production: {
     frontEndURL: "https://goodcall-front-end.onrender.com",
-    backEndURL: " ",
+    backEndURL: "https://goodcall-back-end.onrender.com",
     goodCallBackEndURL: "https://goodcall.fi/api/v1",
   }
 };
