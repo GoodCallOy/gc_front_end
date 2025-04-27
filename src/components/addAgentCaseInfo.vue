@@ -65,6 +65,8 @@
   
   <script>
   import axios from 'axios';
+  import urls from './config.js';
+  
   import { mapGetters, mapActions, mapState, mapMutations } from 'vuex';
   import { getMonthKey } from '../js/dateUtils';
 
@@ -147,10 +149,6 @@
         this.submitForm();
       },
       async submitForm() {
-        const BASE_URL =
-        window.location.hostname === 'localhost'
-            ? 'http://localhost:3030/api/v1'
-            : 'https://goodcall.fi/api/v1'
         try {
           const firstElement = this.agent.amount_date?.[0] 
             ? new Date(this.agent.amount_date[0]).toISOString() 
@@ -176,7 +174,7 @@
           console.log('payload:', payload);
 
           const response = await axios.post(
-            `${BASE_URL}/agentCaseInfo`,
+            `${urls.backEndURL}/agentCaseInfo`,
             payload
           );
 

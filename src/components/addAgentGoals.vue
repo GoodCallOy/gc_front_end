@@ -67,6 +67,8 @@
   import axios from 'axios';
   import { mapGetters, mapActions, mapState, mapMutations } from 'vuex';
   import { getMonthKey } from '../js/dateUtils';
+  import urls from './config.js';
+  
 
 
   export default {
@@ -172,7 +174,7 @@
           console.log('payload:', payload);
 
           const response = await axios.post(
-            'https://goodcall.fi/api/v1/agentGoals/',
+            `${urls.backEndURL}/agentGoals/`,
             payload
           );
 

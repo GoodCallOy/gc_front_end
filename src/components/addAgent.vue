@@ -39,6 +39,8 @@
   
   <script>
   import axios from "axios";
+  import urls from './config.js';
+
   
   export default {
     name: "AddAgent",
@@ -74,7 +76,7 @@
   
         try {
           const response = await axios.post(
-            "https://goodcall.fi/api/v1/agent/",
+            `${urls.backEndURL}/agent/`,
             payload
           );
           console.log("Agent added: ", response);

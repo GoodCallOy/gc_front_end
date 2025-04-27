@@ -48,6 +48,8 @@
   
 <script>
   import axios from 'axios';
+  import urls from './config.js';
+
   
   export default {
     name: 'AddCase',
@@ -80,7 +82,7 @@
         console.log('Case object: ', me.caseInfo);
         try {
           const response = await axios.post(
-            'https://goodcall.fi/api/v1/cases/',
+            `${urls.backEndURL}/cases/`,
             me.caseInfo
           );
           console.log('Case added: ', response);

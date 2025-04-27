@@ -40,6 +40,8 @@
   
   <script>
   import axios from "axios";
+  import urls from './config.js';
+  
   
   export default {
     name: "editAgent",
@@ -74,7 +76,7 @@
         try {
           // Make API request to fetch agent by name
           const response = await axios.get(
-            `https://goodcall.fi/api/v1/agent/getagent/${this.activeAgent}`
+            `${urls.backEndURL}/agent/getagent/${this.activeAgent}`
           );
           const agent = response.data;
   
@@ -100,7 +102,7 @@
   
         try {
           const response = await axios.post(
-            `https://goodcall.fi/api/v1/agent/${me.agent._id}`, // Use the agent's ID for update
+            `${urls.backEndURL}/agent/${me.agent._id}`, // Use the agent's ID for update
             payload
           );
           console.log("Agent updated: ", response);
