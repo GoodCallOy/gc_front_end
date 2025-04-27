@@ -67,9 +67,7 @@
   import axios from 'axios';
   import { mapGetters, mapActions, mapState, mapMutations } from 'vuex';
   import { getMonthKey } from '../js/dateUtils';
-  import urls from './config.js';
-  
-
+  import urls from '../js/config.js';
 
   export default {
     name: 'AddAgentGoals',

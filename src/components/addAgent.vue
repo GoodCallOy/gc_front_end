@@ -39,8 +39,7 @@
   
   <script>
   import axios from "axios";
-  import urls from './config.js';
-
+  import urls from '../js/config.js';
   
   export default {
     name: "AddAgent",

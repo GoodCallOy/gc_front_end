@@ -65,7 +65,7 @@
   
   <script>
   import axios from 'axios';
-  import urls from './config.js';
+  import urls from '../js/config.js';
   
   import { mapGetters, mapActions, mapState, mapMutations } from 'vuex';
   import { getMonthKey } from '../js/dateUtils';
