@@ -11,7 +11,7 @@
 import urls from "@/js/config.js";
 const loginWithGoogle = () => {
   console.log("Logging in with Google...")
-  window.open(`${urls.backEndURL}/auth/google`, "_self"); // Redirects to backend authentication
+  window.open(`${urls.backEndURL}/api/v1/auth/google`, "_self"); // Redirects to backend authentication
 };
 </script>
 
