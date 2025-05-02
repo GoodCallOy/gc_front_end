@@ -52,7 +52,7 @@ const store = createStore({
       }
       try {
         console.log('🌍 Fetching agents from API')
-        const response = await axios.get(`${urls.backEndURL}/api/v1/agent?t=${Date.now()}`)
+        const response = await axios.get(`${urls.backEndURL}/agent?t=${Date.now()}`)
         commit('setAgents', response.data)
         commit('setLastFetch', { key: 'agents', time: Date.now() })
       } catch (error) {
@@ -67,7 +67,7 @@ const store = createStore({
       }
       try {
         console.log('🌍 Fetching agent stats from API')
-        const response = await axios.get(`${urls.backEndURL}/api/v1/agentStats?t=${Date.now()}`)
+        const response = await axios.get(`${urls.backEndURL}/agentStats?t=${Date.now()}`)
         commit('setAgentStats', response.data)
         commit('setLastFetch', { key: 'agentStats', time: Date.now() })
       } catch (error) {
@@ -82,7 +82,7 @@ const store = createStore({
       }
       try {
         console.log('🌍 Fetching cases from API')
-        const response = await axios.get(`${urls.backEndURL}/api/v1/cases?t=${Date.now()}`)
+        const response = await axios.get(`${urls.backEndURL}/cases?t=${Date.now()}`)
         commit('setCases', response.data)
         commit('setLastFetch', { key: 'cases', time: Date.now() })
       } catch (error) {
@@ -113,7 +113,7 @@ const store = createStore({
     
       try {
         console.log('🌍 Fetching user from API')
-        const response = await axios.get(`${urls.backEndURL}/api/v1/auth/me`, {
+        const response = await axios.get(`${urls.backEndURL}/auth/me`, {
           withCredentials: true
         })
 
