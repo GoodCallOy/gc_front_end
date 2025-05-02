@@ -1,87 +1,74 @@
 <template>
-    <v-card class="mx-2 my-2 mb-5" elevation="16" style="width: 175px; height: 300px;">
-      <v-card-title>{{ agent.name }}</v-card-title>
-      <v-card-text>
-        <p>Meetings: {{ agent.meetings }}</p>
-        <p>Call Time: {{ agent.call_time }} hours</p>
-        <p>Calls Made: {{ agent.calls_made }}</p>
-        <p>Outgoing Calls: {{ agent.outgoing_calls }}</p>
-        <p>Answered Calls: {{ agent.answered_calls }}</p>
-        <p>Response Rate: {{ agent.response_rate }}%</p>
-        <p>Case: {{ agent.case }}</p>
-      </v-card-text>
+  <v-card class="mx-2 my-2 mb-5" elevation="16" style="width: 175px; height: 300px;">
+    <v-card-title>{{ agent.name }}</v-card-title>
+    <v-card-text>
+      <p>Meetings: {{ agent.meetings }}</p>
+      <p>Call Time: {{ agent.call_time }} hours</p>
+      <p>Calls Made: {{ agent.calls_made }}</p>
+      <p>Outgoing Calls: {{ agent.outgoing_calls }}</p>
+      <p>Answered Calls: {{ agent.answered_calls }}</p>
+      <p>Response Rate: {{ agent.response_rate }}%</p>
+      <p>Case: {{ agent.case }}</p>
+    </v-card-text>
 
-      <v-card-text>
-        <div v-if="currentPage !== 'singleAgent'" class="d-flex justify-center">
-          <v-btn color="primary" class="mb-5 mr-2" @click="viewAgent">
-            View
-          </v-btn>
-          <v-btn color="primary" class="mb-5" @click="editAgent">
-            Edit
-          </v-btn>
-        </div>  
-      </v-card-text>
-    </v-card>
+    <v-card-text>
+      <div class="d-flex justify-center">
+        <v-btn color="primary" class="mb-5 mr-2" @click="viewAgent">
+          View
+        </v-btn>
+        <v-btn color="primary" class="mb-5" @click="editAgent">
+          Edit
+        </v-btn>
+      </div>
+    </v-card-text>
+  </v-card>
 </template>
-  
+
 <script>
-    import { mapGetters, mapState, mapActions } from 'vuex';
+import { mapState } from 'vuex';
 
-    export default {
-      name: 'AgentCard',
-      props: {
+export default {
+  name: 'AgentCard',
+  props: {
+    agent: {
+      type: Object,
+      required: true, // Pass the case ID as a prop
+    },
+  },
 
-        agent: {
-          type: Object,
-          required: true, // The agent data must be passed as a prop
-        },
-      },
+  computed: {
+    ...mapState(['cases', 'currentPage']), // Access cases and currentPage from the store
 
-      computed: {
-        ...mapGetters(['enrichedAgents', 'agents', 'cases', 'agentStats', 'currentPage']),
-        ...mapState(['currentPage']),
-    
-        selectedAgent() {
-          const agentName = this.$route.query.agent;
-          return this.agents.find(singleAgent => singleAgent.name === agentName);
-        },
-        
-      },
+    caseData() {
+      // Find the case data by ID from the store
+      return this.cases.find(singleCase => singleCase.id === this.caseId) || {};
+    },
 
-      mounted() {
-        this.fetchAgents();
-        this.fetchAgentStats();
-        this.fetchCases();
-      },
+    caseStats() {
+      // Example: Calculate stats based on the case data
+      return {
+        totalMeetings: this.caseData.meetings || 0,
+        totalOutgoingCalls: this.caseData.outgoing_calls || 0,
+        totalCallTime: this.caseData.call_time || 0,
+      };
+    },
+  },
 
-      methods: {
-        ...mapActions(['fetchAgents', 'fetchAgentStats', 'fetchCases']),
 
-        viewAgent() {
-          this.$router.push({
-            name: 'singleAgent',
-            query: { agent: this.agent.name },
-          });
-        },
-        editAgent() {
-          console.log('Edit agent');
-          console.log('this.agent.name', this.agent.name);
-          this.$router.push({
-          name: 'editAgent',
-          query: { activeAgent: this.agent.name },
-          });
-        },
-      },
-    };
+  methods: {
+    viewAgent() {
+      this.$router.push({
+        name: 'singleAgent',
+        query: { agent: this.agent.name },
+      });
+    },
+
+    editAgent() {
+      this.$router.push({
+        name: 'editAgent',
+        query: { activeAgent: this.agent.name },
+      });
+    },
+  },
+};
 </script>
-  
-<style scoped>
-  /* Optional scoped styles for the card */
-  .v-card {
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    align-items: center;
-  }
-</style>
-  

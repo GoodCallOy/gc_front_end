@@ -14,7 +14,7 @@
   </template>
   
   <script>
-import { mapGetters, mapActions, mapState, mapMutations } from 'vuex';
+import { mapGetters, mapMutations } from 'vuex';
 import AgentCard from './agentCard.vue';
   
   export default {
@@ -23,27 +23,23 @@ import AgentCard from './agentCard.vue';
     components: { AgentCard }, // Register the component
     
     computed: {
-      ...mapGetters(['enrichedAgents', 'agents', 'cases', 'agentStats', 'currentPage']), // Map Vuex getter to local computed property
-      ...mapState(["currentPage"]),
+      ...mapGetters(['enrichedAgents', 'currentPage']),
   },
 
     mounted() {
-      this.fetchAgents(); // Fetch agents when the component is mounted
-      this.fetchAgentStats(); // Fetch agent stats when the component is mounted
-      this.fetchCases();
       this.updatePage('agentPage');
+      console.log('🔍 enrichedAgents on mount:', this.enrichedAgents);
       // this.printDebug();
     },
 
     methods: {
-      ...mapActions(['fetchAgents', 'fetchAgentStats', 'fetchCases','fetchCurrentDateRange']),
       ...mapMutations(['setCurrentPage']),
 
       updatePage(newPage) {
         this.setCurrentPage(newPage); // Update `currentPage` in the store
       },
       printDebug() {
-       
+       console.log('Debugging info:', this.enrichedAgents);
       } 
     },
   };

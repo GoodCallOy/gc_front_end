@@ -83,22 +83,43 @@ export default {
   },
 
   async mounted() {
-    this.fetchAgents();
-    this.fetchCases();
+    await this.fetchAllData(); // Fetch all required data when the component is mounted
     this.updatePage('DashBoard');
     this.printDebug();
-    await this.fetchAgentStats();
-    console.log('🟠 onMounted: Checking user in Vuex:', this.$store.state.user);
-    if (!this.$store.state.user) {
-      this.$store.dispatch('loadUserFromStorage');
-      await this.fetchUserData();
-    }
   },
 
   methods: {
     ...mapActions(['fetchAgents', 'fetchAgentStats', 'fetchCases']),
     ...mapMutations(['setCurrentPage']),
     
+    async fetchAllData() {
+      // Check if data is already cached and valid
+      const now = Date.now();
+      const CACHE_TIMEOUT = 5 * 60 * 1000; // 5 minutes
+
+      if (!this.$store.state.lastFetch.agents || now - this.$store.state.lastFetch.agents > CACHE_TIMEOUT) {
+        console.log('🌍 Fetching agents from API');
+        await this.fetchAgents();
+      } else {
+        console.log('✅ Using cached agents');
+      }
+
+      if (!this.$store.state.lastFetch.cases || now - this.$store.state.lastFetch.cases > CACHE_TIMEOUT) {
+        console.log('🌍 Fetching cases from API');
+        await this.fetchCases();
+      } else {
+        console.log('✅ Using cached cases');
+      }
+
+      if (!this.$store.state.lastFetch.agentStats || now - this.$store.state.lastFetch.agentStats > CACHE_TIMEOUT) {
+        console.log('🌍 Fetching agent stats from API');
+        await this.fetchAgentStats();
+      } else {
+        console.log('✅ Using cached agent stats');
+      }
+
+    },
+
     updatePage(newPage) {
       this.setCurrentPage(newPage);
     },

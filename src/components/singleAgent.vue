@@ -30,12 +30,15 @@
 import singleStatCard from './singleStatCard.vue';
 import MonthButtons from './monthButtons.vue';
 import { populateCasesSortedByAgent } from '../js/statsUtils';
-import { mapGetters, mapActions, mapState, mapMutations } from 'vuex';
+import { mapState, mapMutations } from 'vuex';
 
 export default {
   name: 'SingleAgent',
 
-  components: { singleStatCard, MonthButtons },
+  components: { 
+    singleStatCard, 
+    MonthButtons 
+  },
 
   data() {
     const now = new Date();
@@ -54,9 +57,9 @@ export default {
   },
 
   computed: {
-    ...mapGetters(['enrichedAgents', 'agents', 'cases', 'agentStats', 'currentPage']),    ...mapState(['currentPage']),
-
-    selectedAgent() {
+    ...mapState(['agents', 'cases', 'agentStats', 'currentPage']), // Maps the `currentPage` state to a computed property
+    
+     selectedAgent() {
       return this.$route.query.agent;
     },
 
@@ -102,9 +105,6 @@ export default {
 
 
   const initialize = async () => {
-    await this.fetchAgents();
-    await this.fetchAgentStats();
-    await this.fetchCases();
 
     this.updatePage('singleAgent');
 
@@ -120,8 +120,7 @@ export default {
   initialize();
 },
   methods: {
-    ...mapActions(['fetchAgents', 'fetchAgentStats', 'fetchCases', 'fetchCurrentDateRange']),
-    ...mapMutations(['setCurrentPage']),
+    ...mapMutations(['setCurrentPage']), 
 
     loadCases() {
       this.casesSortedByAgent = populateCasesSortedByAgent(this.agentStats, this.selectedAgent);

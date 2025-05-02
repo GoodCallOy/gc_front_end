@@ -107,7 +107,7 @@
   </template>
   
   <script>
-  import axios from 'axios';
+  
   import AgentCard from './agentCard.vue';
   import CaseCard from './caseCard.vue';
   import { mapState, mapMutations } from 'vuex';
@@ -117,8 +117,8 @@
     name: 'casePage',
   
     components: {
-      AgentCard, // Register the component
-      CaseCard,  // Register the component
+      AgentCard, 
+      CaseCard,  
     },
   
     data() {
@@ -127,8 +127,6 @@
       sevenDaysAgo.setDate(currentDate.getDate() - 7);
 
       return {
-        agents: [],          // Array to store agents data
-        cases: [],           // Array to store cases data
         menu1: false,        // Controls the first menu (Date)
         menu2: false,        // Controls the second menu (Month)
         menu3: false,        // Controls the third menu (Week)
@@ -149,7 +147,7 @@
     },
   
     computed: {
-      ...mapState(["currentPage"]), // Maps the `currentPage` state to a computed property
+      ...mapState(['agents', 'cases', 'currentPage']), // Maps the `currentPage` state to a computed property
 
       displayDate() {
         const options = { year: 'numeric', month: 'short', day: 'numeric' };
@@ -168,34 +166,16 @@
     },
   
     mounted() {
-      // Fetch the list of agents when the component is mounted
-      this.getAgents();
-      this.getCases();
-      this.updatePage('casePage');
+      this.updatePage('casePage'); // Set the current page in the store
     },
-  
+   
     methods: {
       ...mapMutations(["setCurrentPage"]), // Maps mutation to update `currentPage`
+      
       updatePage(newPage) {
         this.setCurrentPage(newPage); // Update `currentPage` in the store
       },
-      async getAgents() {
-        try {
-          const response = await axios.get('https://goodcall-back-end.onrender.com/api/v1/agent/');
-          this.agents = response.data; // Store the fetched data in the agents array
-        } catch (error) {
-          console.error('Error fetching agents:', error);
-        }
-      },
-  
-      async getCases() {
-        try {
-          const response = await axios.get('https://goodcall-back-end.onrender.com/api/v1/cases/');
-          this.cases = response.data; // Store the fetched data in the cases array
-        } catch (error) {
-          console.error('Error fetching cases:', error);
-        }
-      },
+      
   
       getWeekNumber(date) {
         const firstDayOfYear = new Date(date.getFullYear(), 0, 1);

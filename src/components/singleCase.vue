@@ -26,12 +26,15 @@
 <script>
 import CaseStatsCard from './caseStatsCard.vue';
 import MonthButtons from './monthButtons.vue';
-import { mapGetters, mapActions, mapState, mapMutations } from 'vuex';
+import { mapState, mapMutations } from 'vuex';
 
 export default {
   name: 'SingleCase',
 
-  components: { CaseStatsCard, MonthButtons},
+  components: { 
+    CaseStatsCard, 
+    MonthButtons
+  },
 
   data() {
   const currentDate = new Date();
@@ -45,9 +48,7 @@ export default {
 
 
   computed: {
-    ...mapGetters(['enrichedAgents', 'agents', 'cases', 'agentStats', 'currentPage']),
-    ...mapState(["currentPage"]), 
-
+    ...mapState(['cases', 'agents', 'currentPage']),
 
     selectedCase() {
       const caseName = this.$route.query.case;
@@ -69,14 +70,10 @@ export default {
 },
 
   mounted() {
-    this.fetchAgents();
-    this.fetchAgentStats();
-    this.fetchCases();
     this.updatePage('singleCase');
   },
 
   methods: {
-    ...mapActions(['fetchAgents', 'fetchAgentStats', 'fetchCases','fetchCurrentDateRange']),
     ...mapMutations(['setCurrentPage']),
 
     updatePage(newPage) {

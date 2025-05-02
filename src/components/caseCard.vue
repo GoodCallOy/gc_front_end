@@ -10,14 +10,12 @@
       
       <!-- Statistics -->
       <div class="d-flex stats-container">
-        <!-- First card -->
         <div class="stats-card">
-          <v-card-subtitle></v-card-subtitle>
           <v-card-text class="text-center">
             <p><strong>Total Billing:</strong> {{ companyCase.billing }}</p>
-            <p><strong>Total Meetings (Tapaamiset):</strong> {{ caseStats.totalMeetings }}</p>
-            <p><strong>Dials / Meeting (Uloslähtenyttä):</strong> {{ caseStats.totalOutgoingCalls }}</p>
-            <p><strong>Hour/Meeting (Tunti):</strong> {{ caseStats.totalCallTime }}</p>
+            <p><strong>Total Meetings:</strong> {{ caseStats.totalMeetings }}</p>
+            <p><strong>Dials / Meeting:</strong> {{ caseStats.totalOutgoingCalls }}</p>
+            <p><strong>Hour/Meeting:</strong> {{ caseStats.totalCallTime }}</p>
           </v-card-text>
         </div>
       </div>
@@ -30,15 +28,13 @@
     </div>   
 
     <div class="d-flex flex-column ml-5">
-      <!-- Filtered Agent Cards -->
       <v-card-subtitle>
         <strong>Assigned Manager:</strong>
       </v-card-subtitle>
       <v-card-subtitle>
-        <strong>Assigned Agents: {{ getAgentNameInCase(companyCase.name) }}</strong>
+        <strong>Assigned Agents: {{ assignedAgents }}</strong>
       </v-card-subtitle>
     </div>
-    
 
     <div class="d-flex flex-wrap justify-center mt-5">
       <AgentCard
@@ -48,21 +44,12 @@
         class="m-2"
       />
     </div>
-
-    <div v-if="currentPage !== 'DashBoard' && currentPage !== 'casePage'" class="d-flex flex-wrap justify-center">
-      <AgentCard
-        v-for="(agent, index) in agentsWithStats"
-        :key="index"
-        :agent="agent"
-      />
-    </div>
   </v-card>
 </template>
 
 <script>
 import AgentCard from './agentCard.vue';
-import { mapGetters, mapActions, mapState } from 'vuex';
-import { toRaw } from 'vue';
+import { mapGetters, mapState } from 'vuex';
 
 export default {
   name: 'CaseCard',
@@ -70,34 +57,27 @@ export default {
     companyCase: {
       type: Object,
       required: true,
-      default: () => ({}),
     },
-    dateRange:
-    {
-      type: Object,
+    dateRange: {
+      type: Array,
       required: true,
-      default: () => ({}),
     },
   },
   components: {
     AgentCard,
   },
-  data() {
-    return {
-      agentsWithStats: [],
-      caseStats: null,
-    };
-  },
   computed: {
     ...mapState(['currentPage']),
-    ...mapGetters(['enrichedAgents', 'agents', 'cases', 'agentStats','currentDateRange']),
+    ...mapGetters(['agents', 'agentStats', 'cases']),
+
     cardStyles() {
       return this.currentPage === 'singleCase'
         ? { width: '100%', margin: '0' }
         : { width: 'auto', maxWidth: '400px', padding: '20px' };
     },
+
     filteredAgents() {
-      const [startDate, endDate] = this.dateRange || this.currentDateRange;
+      const [startDate, endDate] = this.dateRange;
 
       if (!startDate || !endDate) {
         console.error('Invalid date range for filtering agents:', this.dateRange);
@@ -112,152 +92,49 @@ export default {
           activityDate <= new Date(endDate).getTime()
         );
       });
-    }
-  },
-  watch: {
-    agentStats: {
-      handler() {
-        this.updateStats();
-      },
-      immediate: true,
     },
-    dateRange: {
-      handler() {
-        this.updateStats();
-      },
-      deep: true,
-      immediate: true,
-    },
-  },
-  mounted() {
-    this.fetchAgents();
-    this.fetchAgentStats();
-    this.fetchCases();
-    this.updateStats();
-    this.fetchCurrentDateRange();
-    console.log('companyCase:', this.companyCase);
-    console.log('dateRange:', this.dateRange);
-    console.log('currertPage  :', this.currentPage);
-  },
-  methods: {
-    ...mapActions(['fetchAgents', 'fetchAgentStats', 'fetchCases','fetchCurrentDateRange']),
-    getAgentNameInCase() {
+
+    assignedAgents() {
       const agentsInCase = this.agents.filter(agent =>
         agent.cases.includes(this.companyCase.name)
       );
       return agentsInCase.map(agent => agent.name).join(', ');
     },
-    updateStats() {
-      const rawDateRange = toRaw(this.dateRange);
-      if (!Array.isArray(rawDateRange)) {
-        console.error('Invalid date range:', rawDateRange);
-        return;
-      }
 
-      this.agentsWithStats = this.mergeStatsData(this.companyCase.name);
-      this.caseStats = this.aggregateStats();
-    },
-    mergeStatsData(caseName) {
-
-      const rawDateRange = toRaw(this.dateRange || this.currentDateRange);
-      const [startDate, endDate] = Array.isArray(rawDateRange)
-        ? rawDateRange
-        : [rawDateRange.startDate, rawDateRange.endDate];
-
-
-      // if (!startDate || !endDate) {
-      //   console.error('Invalid date range:', this.dateRange);
-      //   return [];
-      // }
-
+    caseStats() {
       const agentsInCase = this.agents.filter(agent =>
         agent.cases.includes(this.companyCase.name)
       );
 
-      return agentsInCase.map(agent => {
-        const stats = this.agentStats.find(stat => {
-          if (stat.name !== agent.name || stat.case !== caseName) return false;
-
-          const statStart = new Date(stat.calling_date.start).getTime();
-          const statEnd = new Date(stat.calling_date.end).getTime();
-
-          // Correct the assignment of CStartdate and CEnddate
-          const CStartdate = new Date(startDate).getTime(); // Use startDate as CStartdate
-          const CEnddate = new Date(endDate).getTime(); // Use endDate as CEnddate
-
-
-          // Check if the stat falls within the date range
-          return (
-            statStart <= CEnddate && // stat starts before or when the range ends
-            statEnd >= CStartdate    // stat ends after or when the range starts
-          );
-        });
-
-        // If no stats found, initialize with zero values
-        return {
-          ...agent,
-          meetings: stats?.meetings || 0,
-          call_time: stats?.call_time || 0,
-          calls_made: stats?.calls_made || 0,
-          outgoing_calls: stats?.outgoing_calls || 0,
-          answered_calls: stats?.answered_calls || 0,
-          response_rate: stats?.response_rate || 0,
-        };
-      });
-    },
-    aggregateStats() {
-      return this.agentsWithStats.reduce(
+      return agentsInCase.reduce(
         (totals, agent) => {
-          totals.totalMeetings += agent.meetings || 0;
-          totals.totalCallTime += agent.call_time || 0;
-          totals.totalCallsMade += agent.calls_made || 0;
-          totals.totalOutgoingCalls += agent.outgoing_calls || 0;
-          totals.totalAnsweredCalls += agent.answered_calls || 0;
-          totals.totalResponseRate = ((totals.totalAnsweredCalls || 0) / totals.totalOutgoingCalls * 100 || 0).toFixed(1) || 0;
+          const stats = this.agentStats.find(stat => stat.name === agent.name && stat.case === this.companyCase.name);
+
+          totals.totalMeetings += stats?.meetings || 0;
+          totals.totalCallTime += stats?.call_time || 0;
+          totals.totalOutgoingCalls += stats?.outgoing_calls || 0;
+          totals.totalAnsweredCalls += stats?.answered_calls || 0;
+          totals.totalResponseRate = totals.totalOutgoingCalls > 0
+            ? ((totals.totalAnsweredCalls / totals.totalOutgoingCalls) * 100).toFixed(1)
+            : 0;
+
           return totals;
         },
         {
           totalMeetings: 0,
           totalCallTime: 0,
-          totalCallsMade: 0,
           totalOutgoingCalls: 0,
           totalAnsweredCalls: 0,
           totalResponseRate: 0,
         }
       );
     },
+  },
+  methods: {
     showCase() {
       this.$router.push({
         name: 'singleCase',
         query: { case: this.companyCase.name },
-      });
-    },
-    filteredAgentsByDate(agentArray) {
-      if (!this.selectedDateRange || this.selectedDateRange.length !== 2) {
-        return [];
-      }
-
-      const [startDate, endDate] = this.selectedDateRange.map(date => {
-        const parsedDate = new Date(date);
-        return isNaN(parsedDate.getTime()) ? null : parsedDate.getTime();
-      });
-
-      // Check if startDate or endDate is invalid
-      if (startDate === null || endDate === null) {
-        console.error('Invalid date range:', this.selectedDateRange);
-        return [];
-      }
-
-      return agentArray.filter(agent => {
-        if (!agent.calling_date || !agent.calling_date.start || !agent.calling_date.end) {
-          console.warn(`Incomplete calling_date for agent:`, agent);
-          return false;
-        }
-
-        const start = new Date(agent.calling_date.start).getTime();
-        const end = new Date(agent.calling_date.end).getTime();
-
-        return start <= endDate && end >= startDate;
       });
     },
   },
@@ -282,13 +159,7 @@ export default {
   justify-content: space-between;
 }
 
-.stats-container2 {
-  display: flex;
-  flex-wrap: wrap;
-}
-
-.stats-card,
-.stats-card2 {
+.stats-card {
   flex: 1;
   min-width: 250px;
   max-width: 400px;
@@ -300,10 +171,5 @@ export default {
   width: 100%;
   margin: 0;
   padding: 20px;
-}
-
-/* Remove any borders or box shadows */
-.custom-banner {
-  border: none !important;
 }
 </style>
