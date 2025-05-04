@@ -33,7 +33,7 @@
 
 <script>
 // import AgentCard from './agentCard.vue';
-import CaseCard from './caseCard.vue';
+import CaseCard from './cases/caseCard.vue';
 import MonthButtons from './monthButtons.vue';    
 import { mapGetters, mapActions, mapState, mapMutations } from 'vuex';
 

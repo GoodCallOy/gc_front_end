@@ -48,7 +48,7 @@
 </template>
 
 <script>
-import AgentCard from './agentCard.vue';
+import AgentCard from '../agentCard.vue';
 import { mapGetters, mapState } from 'vuex';
 
 export default {

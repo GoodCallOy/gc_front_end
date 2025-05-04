@@ -108,7 +108,7 @@
   
   <script>
   
-  import AgentCard from './agentCard.vue';
+  import AgentCard from '../agentCard.vue';
   import CaseCard from './caseCard.vue';
   import { mapState, mapMutations } from 'vuex';
 
