@@ -125,6 +125,12 @@
         this.$store.dispatch('loadUserFromStorage');
         await this.fetchUserData();
       }
+
+      const gridContainer = this.$el.querySelector('.grid-container');
+      gridContainer.addEventListener('wheel', (event) => {
+        event.preventDefault();
+        gridContainer.scrollLeft += event.deltaY; // Scroll horizontally
+      });
     },
   
     methods: {
@@ -183,6 +189,11 @@
 
   .grid-container::-webkit-scrollbar {
     display: none; /* Chrome, Safari, and Opera */
+  }
+
+  /* Enable scrolling when hovering */
+  .grid-container:hover {
+    overflow-x: auto; /* Ensure scrolling works on hover */
   }
 </style>
   

@@ -29,7 +29,7 @@
     data () {
       return {
         chartData: {
-          labels: ['M', 'T', 'W', 'T', 'F', 'S', 'S'],
+          labels: ['M', 'T', 'W', 'T', 'F'],
           datasets: [
             {
               label: 'Sales',
