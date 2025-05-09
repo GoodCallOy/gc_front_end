@@ -2,9 +2,9 @@
     <v-card  class="mx-2 my-2 mb-5" elevation="16" style="width: 225px">
       <v-card-item class="center">
         <template v-slot:title>
-            {{ selectedCase.caseId }}
-        </template>
-        <!-- <template v-slot:subtitle>
+            {{ agent.name }}
+        </template>    
+        <template v-slot:subtitle>
           <v-icon
             class="me-1 pb-1"
             color="error"
@@ -12,11 +12,11 @@
             size="18"
           ></v-icon>
   
-          Extreme Weather Alert
-        </template> -->
+            Goal not met
+        </template>
       </v-card-item>
   
-      <v-card-text class="py-0">
+      <v-card-text class="py-0 mb-5">
         <v-row align="center" no-gutters>
           <v-col
             class="text-h4"
@@ -29,16 +29,16 @@
 
         </v-row>
       </v-card-text>
-  
+
       <div class="d-flex py-3 justify-space-between">
         <v-list-item>
-          <v-list-item-subtitle class="mt-1">Meetings: {{ selectedCase.meetings }}</v-list-item-subtitle>
-          <v-list-item-subtitle class="mt-1">Call Time: {{ selectedCase.call_time }} hours</v-list-item-subtitle>
-          <v-list-item-subtitle class="mt-1">Calls Made: {{ selectedCase.calls_made }}</v-list-item-subtitle>
-          <v-list-item-subtitle class="mt-1">Outgoing Calls: {{ selectedCase.outgoing_calls }}</v-list-item-subtitle>
-          <v-list-item-subtitle class="mt-1">Answered Calls: {{ selectedCase.answered_calls }}</v-list-item-subtitle>
-          <v-list-item-subtitle class="mt-1">Response Rate: {{ selectedCase.response_rate }}%</v-list-item-subtitle>
-          <v-list-item-subtitle class="mt-5">Date: {{ selectedCase.monthKey }}</v-list-item-subtitle>
+          <v-list-item-subtitle class="mt-1">Meetings: {{ agent.meetings }}</v-list-item-subtitle>
+          <v-list-item-subtitle class="mt-1">Call Time: {{ agent.call_time }} hours</v-list-item-subtitle>
+          <v-list-item-subtitle class="mt-1">Calls Made: {{ agent.calls_made }}</v-list-item-subtitle>
+          <v-list-item-subtitle class="mt-1">Outgoing Calls: {{ agent.outgoing_calls }}</v-list-item-subtitle>
+          <v-list-item-subtitle class="mt-1">Answered Calls: {{ agent.answered_calls }}</v-list-item-subtitle>
+          <v-list-item-subtitle class="mt-1">Response Rate: {{ agent.response_rate }}%</v-list-item-subtitle>
+          <v-list-item-subtitle class="mt-5">Date: {{ agent.monthKey }}</v-list-item-subtitle>
           <v-card-text>
             <v-btn color="primary" class="mb-5 mr-3" @click="viewAgent">
               View
@@ -84,23 +84,19 @@
   </template>
 
 <script>
-import { fetchAgentgoalsByAgentAndMonth } from '../js/statsUtils';
-import { getMonthKey } from '../js/dateUtils';
+import { fetchAgentgoalsByAgentAndMonth } from '../../js/statsUtils';
+import { getMonthKey } from '../../js/dateUtils';
 
   export default {
     props: {
         agent: {
-        type: String,
-        required: true, 
-        },
-        selectedCase: {
         type: Object,
         required: true, 
         },
-        YTDStats: {
-        type: Object,
-        required: true, 
-        },
+        // YTDStats: {
+        // type: Object,
+        // required: true, 
+        // },
     },
     data: () => ({
       expand: false,
@@ -111,9 +107,9 @@ import { getMonthKey } from '../js/dateUtils';
         return this.agentGoals.length > 0 ? getMonthKey(this.agentGoals[0].goal_date.start) : "";
       },
       filteredStats() {
-          // Find the stat object that matches the selectedCase.caseId
-          console.log('selectedCase.caseId', this.selectedCase.caseId);
-          return this.YTDStats.find(stat => stat.caseId === this.selectedCase.caseId);
+          // Find the stat object that matches the agent.case
+          console.log('agent.case', this.agent.case);
+          return this.YTDStats.find(stat => stat.case === this.agent.case);
         }
     },
 
@@ -124,10 +120,10 @@ import { getMonthKey } from '../js/dateUtils';
     },
     methods: {
       async fetchAgentgoals() {
-        console.log('this.selectedCase.monthKey', this.selectedCase.monthKey);
-        console.log('this.agent', this.agent);
+        // console.log('this.agent.monthKey', this.agent.monthKey);
+        // console.log('this.agent', this.agent);
         try {
-        this.agentGoals = await fetchAgentgoalsByAgentAndMonth(this.agent, this.selectedCase.monthKey);
+        this.agentGoals = await fetchAgentgoalsByAgentAndMonth(this.agent.name, this.agent.monthKey);
       } catch (error) {
         console.error("Error fetching agent goals:", error);
       }
@@ -136,8 +132,8 @@ import { getMonthKey } from '../js/dateUtils';
       this.$router.push({
         name: 'agentInCase',
         query: { 
-          agent: this.agent,
-          selectedCase: this.selectedCase.caseId
+          agent: this.agent.name,
+          selectedCase: this.agent.case
         },
       });
     },
@@ -149,8 +145,8 @@ import { getMonthKey } from '../js/dateUtils';
     },
     getAgentGoal() {
     if (!this.agentGoals.length) return 0;
-    const matchingGoal = this.agentGoals.find(
-      goal => goal.case === this.selectedCase.caseId && goal.monthKey === this.selectedCase.monthKey
+        const matchingGoal = this.agentGoals.find(
+        goal => goal.case === this.agent.case && goal.monthKey === this.agent.monthKey
     );
 
     return matchingGoal ? matchingGoal.goal : 0;

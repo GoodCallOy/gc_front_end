@@ -85,6 +85,7 @@
   <script>
   import axios from 'axios';
   import { mapGetters, mapActions, mapState, mapMutations } from 'vuex';
+  import urls from '../js/config.js';
 
   export default {
     name: 'AddAgent',
@@ -176,6 +177,7 @@
           this.agent.response_rate = 0;
         }
       },
+      
       async submitForm() {
         try {
           const firstElement = this.agent.calling_date?.[0] 
@@ -197,7 +199,7 @@
           };
 
           const response = await axios.post(
-            'https://goodcall.fi/api/v1/agentStats/',
+            `${urls.backEndURL}/agentStats/`,
             payload
           );
           console.log('Agent added: ', response);

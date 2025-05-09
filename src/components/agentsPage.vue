@@ -11,9 +11,9 @@
       />
       </div>
     </div>
-  </template>
+</template>
   
-  <script>
+<script>
 import { mapGetters, mapMutations } from 'vuex';
 import AgentCard from './agentCard.vue';
   
