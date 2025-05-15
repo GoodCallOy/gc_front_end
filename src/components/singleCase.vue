@@ -12,6 +12,7 @@
         :agents="agents"
         :dateRange="selectedDateRange"
         :aggregatedStats="aggregatedStats"
+        @selectedDateRange="handleUpdatedDateRange"
       />
     </div>
 

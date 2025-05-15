@@ -11,12 +11,15 @@ const store = createStore({
     agentStats: [],
     cases: [],
     currentPage: '',
-    dateRange: [],
     lastFetch: {
       agents: null,
       agentStats: null,
       cases: null
-    }
+    },
+    dateRange: [
+      new Date(new Date().setDate(new Date().getDate() - 7)).toISOString().split('T')[0],
+      new Date().toISOString().split('T')[0],
+    ],
   },
   
   getters: {

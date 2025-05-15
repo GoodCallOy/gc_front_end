@@ -8,24 +8,42 @@
           Total <strong>48.5% Growth</strong> 😎 this month
         </div>
       </div>
+      <v-card elevation="1">
+        <div class="d-flex align-center">
+        <!-- Previous Button -->
+        <v-btn icon flat class="pa-0 ma-0" @click="goToPreviousMonth">
+          <v-icon>mdi-chevron-left</v-icon>
+        </v-btn>
+
+        <!-- Current Month Label -->
+        <div class="text-h6 font-weight-medium mx-3"> {{ this.formattedDateRange }}</div>
+
+        <!-- Next Button -->
+        <v-btn icon flat @click="goToNextMonth" v-if="!isCurrentMonth">
+          <v-icon>mdi-chevron-right</v-icon>
+        </v-btn>
+      </div>
+      </v-card>
+      <!-- Navigation Arrows and Month -->
+      
     </div>
 
-   <!-- Stats Cards -->
-<v-row class="px-6 py-4" dense style="row-gap: 24px;" no-gutters>
-  <v-col
-    v-for="(stat, index) in stats"
-    :key="index"
-    class="d-flex"
-    style="flex: 1 1 20%; max-width: 20%; padding: 12px;"
-  >
-    <singleCaseStatCard
-      :icon="stat.icon"
-      :color="stat.color"
-      :title="stat.title"
-      :value="String(stat.value)"
-    />
-  </v-col>
-</v-row>
+    <!-- Stats Cards -->
+    <v-row class="px-6 py-4" dense style="row-gap: 24px;" no-gutters>
+      <v-col
+        v-for="(stat, index) in stats"
+        :key="index"
+        class="d-flex"
+        style="flex: 1 1 20%; max-width: 20%; padding: 12px;"
+      >
+        <singleCaseStatCard
+          :icon="stat.icon"
+          :color="stat.color"
+          :title="stat.title"
+          :value="String(stat.value)"
+        />
+      </v-col>
+    </v-row>
 
     <!-- Assigned Agents -->
     <div class="d-flex flex-column ml-5 mt-5">
@@ -48,7 +66,6 @@
     </div>
   </v-card>
 </template>
-
 <script>
 import AgentCard from './agentCard.vue';
 import singleCaseStatCard from './cases/singleCaseStatCard.vue';
@@ -122,6 +139,34 @@ export default {
         );
       });
     },
+    formattedDateRange() {
+      if (!this.currentDateRange || this.currentDateRange.length < 2) {
+        return '';
+      }
+
+      const [startDate] = this.currentDateRange;
+      const date = new Date(startDate);
+
+      // Format to MM-YYYY
+      const month = String(date.getMonth() + 1).padStart(2, '0'); // Add leading zero
+      const year = date.getFullYear();
+
+      return `${month}-${year}`;
+      },
+      isCurrentMonth() {
+      if (!this.currentDateRange || this.currentDateRange.length < 2) {
+        return false;
+      }
+
+      const [startDate] = this.currentDateRange;
+      const currentDate = new Date();
+
+      // Check if the current month and year match the startDate
+      return (
+        currentDate.getMonth() === new Date(startDate).getMonth() &&
+        currentDate.getFullYear() === new Date(startDate).getFullYear()
+      );
+    },
   },
   watch: {
     agentStats: {
@@ -139,6 +184,12 @@ export default {
     },
   },
   mounted() {
+    if (!this.currentDateRange || this.currentDateRange.length < 2) {
+      const startDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1); // First day of the current month
+      const endDate = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0); // Last day of the current month
+
+      this.updateDateRange([startDate, endDate]); // Set the default date range
+    }
     this.updateStats();
     this.hourMeeting = +this.aggregatedStats.call_time / +this.aggregatedStats.meetings || 0;
     this.dialsMeeting = +this.aggregatedStats.outgoing_calls / +this.aggregatedStats.meetings || 0;
@@ -149,7 +200,9 @@ export default {
     getAgentsInCase(caseName) {
       console.log('Fetching agents in case:', caseName);
       console.log('All agents:', this.agents);
-      return this.agents.filter(agent => agent.cases.includes(caseName));
+      const agentsInCase = this.agents.filter(agent => agent.cases.includes(caseName));
+      console.log('Agents in case:', agentsInCase);
+      return agentsInCase;
     },
     getAgentNameInCase() {
      this.agentsInCase = this.getAgentsInCase(this.companyCase.name);
@@ -157,8 +210,39 @@ export default {
       if (this.agentsInCase.length === 0) return 'No agents assigned';
       return this.agentsInCase.map(agent => agent.name).join(', ');
     },
+    goToPreviousMonth() {
+      const [startDate] = this.currentDateRange;
+      const newStartDate = new Date(startDate);
+
+      // Move to the previous month
+      newStartDate.setMonth(newStartDate.getMonth() - 1);
+
+      // Calculate the new end date (last day of the previous month)
+      const newEndDate = new Date(newStartDate.getFullYear(), newStartDate.getMonth() + 1, 0);
+
+      // Update the currentDateRange
+      this.updateDateRange([newStartDate, newEndDate]);
+    },
+    goToNextMonth() {
+      const [startDate] = this.currentDateRange;
+      const newStartDate = new Date(startDate);
+
+      // Move to the next month
+      newStartDate.setMonth(newStartDate.getMonth() + 1);
+
+      // Calculate the new end date (last day of the next month)
+      const newEndDate = new Date(newStartDate.getFullYear(), newStartDate.getMonth() + 1, 0);
+
+      // Update the currentDateRange
+      this.updateDateRange([newStartDate, newEndDate]);
+    },
+    updateDateRange(newRange) {
+      this.$emit('selectedDateRange', newRange); // Emit the new date range to the parent
+      this.$store.commit('setDateRange', newRange); // Use the correct mutation name
+      this.updateStats(); // Recalculate stats based on the new date range
+    },
     updateStats() {
-      const rawDateRange = toRaw(this.dateRange);
+      const rawDateRange = toRaw(this.currentDateRange);
       if (!Array.isArray(rawDateRange)) {
         console.error('Invalid date range:', rawDateRange);
         return;
