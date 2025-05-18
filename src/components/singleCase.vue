@@ -10,6 +10,7 @@
       <CaseStatsCard
         :companyCase="selectedCase"
         :agents="agents"
+        :agentsStatsByMonth="agentsStatsByMonth"
         :dateRange="selectedDateRange"
         :aggregatedStats="aggregatedStats"
         @selectedDateRange="handleUpdatedDateRange"
@@ -63,7 +64,7 @@
     </v-container>
     <div fluid class="d-flex flex-wrap justify-center mt-5" style="width: 80vw;" >
       <singleCaseAgentCard
-      v-for="(agent, index) in agentsStatsByMonth['2025-04']"
+      v-for="(agent, index) in filteredAgentsStats"
         :key="index"
         :agent="agent"
         
@@ -154,22 +155,22 @@ export default {
   },
 
     filteredAgentsStats() {
+      console.log('Recalculating filteredAgentsStats...');
       if (!this.agentsStatsByMonth || Object.keys(this.agentsStatsByMonth).length === 0) {
       return [];
     }
 
-      const [startDate, endDate] = this.selectedDateRange.map(date => new Date(date));
+      const [startDate] = this.selectedDateRange.map(date => new Date(date));
 
-      return Object.entries(this.agentsStatsByMonth)
-        .filter(([monthKey]) => {
-          const [year, month] = monthKey.split('-');
-          const monthDate = new Date(year, month - 1); // Convert YYYY-MM to a Date object
-          return monthDate >= startDate && monthDate <= endDate;
-        })
-        .map(([monthKey, agents]) => ({
-          monthKey,
-          agents,
-        }));
+      const monthKey = `${new Date(startDate).getFullYear()}-${String(new Date(startDate).getMonth() + 1).padStart(2, '0')}`;
+      console.log('monthKey in singleCase:', monthKey);
+      console.log('selectedDateRange:', this.selectedDateRange);
+      console.log('agentsStatsByMonth:', this.agentsStatsByMonth);
+      const agentsForMonth = this.agentsStatsByMonth[monthKey] || [];
+      console.log('agentsForMonth:', agentsForMonth);
+     // Return the array from agentsStatsByMonth that matches the monthKey
+     return this.agentsStatsByMonth[monthKey] || [];
+     
     },
 
     FilterCaseStatsGroupedByMonth(startDate, endDate) {

@@ -55,19 +55,10 @@
       </v-card-subtitle>
     </div>
 
-    <!-- Agent Cards -->
-    <div class="d-flex flex-wrap justify-center mt-5">
-      <AgentCard
-        v-for="(agent, index) in filteredAgents"
-        :key="index"
-        :agent="agent"
-        class="m-2"
-      />
-    </div>
+    
   </v-card>
 </template>
 <script>
-import AgentCard from './agentCard.vue';
 import singleCaseStatCard from './cases/singleCaseStatCard.vue';
 import { mapGetters, mapActions, mapState } from 'vuex';
 import { toRaw } from 'vue';
@@ -92,7 +83,7 @@ export default {
     },
   },
   components: {
-    AgentCard,
+    
     singleCaseStatCard,
   },
   data() {
@@ -111,7 +102,7 @@ export default {
     stats() {
       return [
         { icon: 'mdi-chart-pie', color: 'purple', title: 'Total Billing:', value: this.companyCase.billing || 0 },
-        { icon: 'mdi-account-group', color: 'green', title: 'Active Call Time:', value: this.aggregatedStats.call_time || 0 },
+        { icon: 'mdi-account-group', color: 'green', title: 'Call Time:', value: this.aggregatedStats.call_time || 0 },
         { icon: 'mdi-laptop', color: 'amber', title: 'Total Meetings: ', value: this.aggregatedStats.meetings  || 0 },
         { icon: 'mdi-currency-usd', color: 'light-blue', title: 'Completed Calls:', value: this.aggregatedStats.calls_made  || 0 },
         { icon: 'mdi-currency-usd', color: 'purple', title: 'Dials / Meeting:', value: this.dialsMeeting  || 0 },
@@ -119,26 +110,10 @@ export default {
         { icon: 'mdi-currency-usd', color: 'amber', title: 'Hour / Meeting:', value: this.hourMeeting },
         { icon: 'mdi-currency-usd', color: 'light-blue', title: 'Answered Calls:', value: this.aggregatedStats.answered_calls   || 0 },
         { icon: 'mdi-currency-usd', color: 'purple', title: 'Calls / Meetings :', value: `${this.callsMeetings}%`  || 0 },    
-        { icon: 'mdi-currency-usd', color: 'purple', title: 'Response Rate :', value: this.aggregatedStats.response_rate  || 0 },    
+        { icon: 'mdi-currency-usd', color: 'purple', title: 'Response Rate :', value: `${this.aggregatedStats.response_rate}%`  || 0 },    
       ];
     },
-    filteredAgents() {
-      const [startDate, endDate] = this.dateRange || this.currentDateRange;
-
-      if (!startDate || !endDate) {
-        console.error('Invalid date range for filtering agents:', this.dateRange);
-        return [];
-      }
-
-      return this.agents.filter(agent => {
-        const activityDate = new Date(agent.lastActivityDate).getTime();
-        return (
-          agent.case === this.companyCase.name &&
-          activityDate >= new Date(startDate).getTime() &&
-          activityDate <= new Date(endDate).getTime()
-        );
-      });
-    },
+      
     formattedDateRange() {
       if (!this.currentDateRange || this.currentDateRange.length < 2) {
         return '';
@@ -184,17 +159,20 @@ export default {
     },
   },
   mounted() {
+    console.log('ageentsStatsByMonth: in mounted', this.agentsStatsByMonth); 
     if (!this.currentDateRange || this.currentDateRange.length < 2) {
       const startDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1); // First day of the current month
       const endDate = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0); // Last day of the current month
 
       this.updateDateRange([startDate, endDate]); // Set the default date range
     }
-    this.updateStats();
-    this.hourMeeting = +this.aggregatedStats.call_time / +this.aggregatedStats.meetings || 0;
+    
+    this.hourMeeting = Number(((+this.aggregatedStats.call_time / +this.aggregatedStats.meetings) * 100).toFixed(2)) || 0;
     this.dialsMeeting = +this.aggregatedStats.outgoing_calls / +this.aggregatedStats.meetings || 0;
-    this.callsMeetings = ((+this.aggregatedStats.meetings / +this.aggregatedStats.calls_made) * 100).toFixed(1) || 0;
+    this.callsMeetings = ((+this.aggregatedStats.meetings / +this.aggregatedStats.calls_made) * 100) || 0;
+    this.updateStats();
   },
+
   methods: {
     ...mapActions(['fetchAgents', 'fetchAgentStats', 'fetchCases', 'fetchCurrentDateRange']),
     getAgentsInCase(caseName) {
