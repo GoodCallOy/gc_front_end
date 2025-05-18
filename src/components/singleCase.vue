@@ -10,7 +10,6 @@
       <CaseStatsCard
         :companyCase="selectedCase"
         :agents="agents"
-        :agentsStatsByMonth="agentsStatsByMonth"
         :dateRange="selectedDateRange"
         :aggregatedStats="aggregatedStats"
         @selectedDateRange="handleUpdatedDateRange"
@@ -26,7 +25,7 @@
                 <div>
                   <v-chip color="primary" outlined>● Total Revenue</v-chip>
                   <v-chip color="primary lighten-4" outlined class="ml-2">○ Total Sales</v-chip>
-                  <div class="text-caption mt-1">12.04.2022 - 12.05.2022</div>
+                  <div class="text-caption mt-1">{{ formatDate(monthStart) }} - {{ formatDate(monthEnd) }}</div>
                 </div>
                 <v-btn-toggle dense mandatory>
                   <v-btn>Day</v-btn>
@@ -64,10 +63,9 @@
     </v-container>
     <div fluid class="d-flex flex-wrap justify-center mt-5" style="width: 80vw;" >
       <singleCaseAgentCard
-      v-for="(agent, index) in filteredAgentsStats"
+      v-for="(agent, index) in AgentsStatsByMonth"
         :key="index"
-        :agent="agent"
-        
+        :agent="agent"     
       />
     </div>
   </div>
@@ -102,12 +100,15 @@ export default {
   const currentDate = new Date();
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(currentDate.getDate() - 7);
-  
+  const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+  const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
 
   return {
     selectedDateRange: [sevenDaysAgo, currentDate],
     agentsInCase: [],
     agentsStatsByMonth: [],
+    monthStart: startOfMonth, // Start of the current month
+    monthEnd: endOfMonth,  
   };
 },
 
@@ -154,7 +155,7 @@ export default {
     return totals;
   },
 
-    filteredAgentsStats() {
+    AgentsStatsByMonth() {
       console.log('Recalculating filteredAgentsStats...');
       if (!this.agentsStatsByMonth || Object.keys(this.agentsStatsByMonth).length === 0) {
       return [];
@@ -220,6 +221,13 @@ export default {
       this.selectedDateRange = newRange;
       console.log('Updated selectedDateRange:', this.selectedDateRange);
     },
+    formatDate(date) {
+    if (!date) return '';
+    const day = String(date.getDate()).padStart(2, '0'); // Add leading zero to day
+    const month = String(date.getMonth() + 1).padStart(2, '0'); // Add leading zero to month
+    const year = date.getFullYear();
+    return `${day}-${month}-${year}`;
+  },
   },
 }
 </script>
