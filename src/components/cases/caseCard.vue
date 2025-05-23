@@ -17,6 +17,7 @@
             <p><strong>Dials / Meeting:</strong> {{ dialsMeeting }}</p>
             <p><strong>Hour/Meeting:</strong> {{ hourMeeting }}</p>
             <p><strong>Answered/Meeting:</strong> {{ callsMeetings }}</p>
+            <p><strong>Revenue:</strong> {{ revenue }}</p>
           </v-card-text>
         </div>
       </div>
@@ -33,7 +34,7 @@
         <strong>Assigned Manager:</strong>
       </v-card-subtitle>
       <v-card-subtitle>
-        <strong>Assigned Agents: {{ AgentsStatsByMonth }}</strong>
+        <strong>Assigned Agents: {{ agentsNameInCase }}</strong>
       </v-card-subtitle>
     </div>
 
@@ -86,8 +87,11 @@ export default {
     ...mapState(['cases', 'agents', 'agentStats', 'currentPage']),
 
     agentsInCase() {
-      console.log('this.companyCase.name:', this.companyCase.name);
       return getAgentsInCase(this.companyCase.name, this.agentStats);
+    },
+
+    agentsNameInCase() {
+      return this.AgentsStatsByMonth.map(agent => agent.name).join(', ');
     },
 
     agentsStatsByMonth() {
@@ -95,7 +99,7 @@ export default {
     },
 
      AgentsStatsByMonth() {
-      console.log('Recalculating filteredAgentsStats...');
+  
       if (!this.agentsStatsByMonth || Object.keys(this.agentsStatsByMonth).length === 0) {
       return [];
     }
@@ -128,6 +132,11 @@ export default {
       const answeredCalls = +this.aggregatedStats.answered_calls || 0;
       return answeredCalls > 0 ? Number(((meetings /answeredCalls ) * 100).toFixed(2)) : 0;
     },
+    revenue() {
+      const meetings = +this.aggregatedStats.meetings || 0;
+      const revenue = +this.companyCase.billing || 0;
+      return revenue > 0 ? Number(((meetings * revenue )).toFixed(2)) : 0;
+    },
 
     cardStyles() {
       return this.currentPage === 'singleCase'
@@ -152,41 +161,6 @@ export default {
         );
       });
       return filterAgent
-    },
-
-    assignedAgents() {
-      const agentsInCase = this.agents.filter(agent =>
-        agent.cases.includes(this.companyCase.name)
-      );
-      return agentsInCase.map(agent => agent.name).join(', ');
-    },
-
-    caseStats() {
-      console.log('Calculating case stats for:', this.companyCase.name);
-      console.log('Agents in case:', this.AgentsStatsByMonth);
-      console.log('Stats:', this.aggregatedStats);
-      return this.agentsInCase.reduce(
-        (totals, agent) => {
-          const stats = this.agentStats.find(stat => stat.name === agent.name && stat.case === this.companyCase.name);
-
-          totals.totalMeetings += stats?.meetings || 0;
-          totals.totalCallTime += stats?.call_time || 0;
-          totals.totalOutgoingCalls += stats?.outgoing_calls || 0;
-          totals.totalAnsweredCalls += stats?.answered_calls || 0;
-          totals.totalResponseRate = totals.totalOutgoingCalls > 0
-            ? ((totals.totalAnsweredCalls / totals.totalOutgoingCalls) * 100).toFixed(1)
-            : 0;
-
-          return totals;
-        },
-        {
-          totalMeetings: 0,
-          totalCallTime: 0,
-          totalOutgoingCalls: 0,
-          totalAnsweredCalls: 0,
-          totalResponseRate: 0,
-        }
-      );
     },
   },
 
