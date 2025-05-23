@@ -2,8 +2,10 @@ import axios from 'axios';
 import urls from './config.js';
 
 export function getAgentsInCase(caseName, agents) {
-  const agentList =agents.filter(agent => agent.case.includes(caseName));
-  console.log('agentList', agentList)
+  console.log('caseName', caseName)
+ 
+  const agentList = agents.filter(agent => agent.case.includes(caseName));
+  
   return agentList
 }
 
@@ -57,6 +59,34 @@ export function groupAgentsStatsByMonth(agents) {
 
   return groupedByMonth;
 }
+
+export function getAggregatedStats(selectedDateRange, agentsStatsByMonth) {
+    
+    // Aggregate the stats for the agents
+    const totals = {
+      meetings: 0,
+      calls_made: 0,
+      call_time: 0,
+      outgoing_calls: 0,
+      answered_calls: 0,
+      response_rate: 0,
+    };
+
+    agentsStatsByMonth.forEach(agent => {
+      totals.meetings += agent.meetings || 0;
+      totals.calls_made += agent.calls_made || 0;
+      totals.call_time += agent.call_time || 0;
+      totals.outgoing_calls += agent.outgoing_calls || 0;
+      totals.answered_calls += agent.answered_calls || 0;
+    });
+
+    // Calculate the overall response rate
+    totals.response_rate = totals.outgoing_calls > 0
+      ? parseFloat(((totals.answered_calls / totals.outgoing_calls) * 100).toFixed(2))
+      : 0;
+      console.log('aggregatedStats:', totals);
+    return totals;
+  }
 
 export function populateCasesSortedByAgent(agentStats, selectedAgent) {
     return agentStats.filter(singleCase => singleCase.name.includes(selectedAgent));

@@ -48,7 +48,7 @@
         />
         <v-text-field
           v-model="agent.calls_made"
-          label="Calls Made"
+          label="Calls Completed"
           type="number"
           :rules="numberRules"
           required

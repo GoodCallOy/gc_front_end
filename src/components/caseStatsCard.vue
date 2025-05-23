@@ -91,9 +91,6 @@ export default {
       agentsWithStats: [],  
       caseStats: null,
       agentsInCase: [],
-      hourMeeting: 0,
-      dialsMeeting: 0,
-      callsMeetings: 0,
     };
   },
   computed: {
@@ -105,11 +102,11 @@ export default {
         { icon: 'mdi-account-group', color: 'green', title: 'Call Time:', value: this.aggregatedStats.call_time || 0 },
         { icon: 'mdi-laptop', color: 'amber', title: 'Total Meetings: ', value: this.aggregatedStats.meetings  || 0 },
         { icon: 'mdi-currency-usd', color: 'light-blue', title: 'Completed Calls:', value: this.aggregatedStats.calls_made  || 0 },
-        { icon: 'mdi-currency-usd', color: 'purple', title: 'Dials / Meeting:', value: this.dialsMeeting  || 0 },
+        { icon: 'mdi-currency-usd', color: 'purple', title: 'Outgoing / Meeting:', value: this.dialsMeeting  || 0 },
         { icon: 'mdi-currency-usd', color: 'green', title: 'Outgoing Calls :', value: this.aggregatedStats.outgoing_calls  || 0 },
         { icon: 'mdi-currency-usd', color: 'amber', title: 'Hour / Meeting:', value: this.hourMeeting },
         { icon: 'mdi-currency-usd', color: 'light-blue', title: 'Answered Calls:', value: this.aggregatedStats.answered_calls   || 0 },
-        { icon: 'mdi-currency-usd', color: 'purple', title: 'Calls / Meetings :', value: `${this.callsMeetings}%`  || 0 },    
+        { icon: 'mdi-currency-usd', color: 'purple', title: 'Answered / Meetings :', value: `${this.callsMeetings}`  || 0 },    
         { icon: 'mdi-currency-usd', color: 'purple', title: 'Response Rate :', value: `${this.aggregatedStats.response_rate}%`  || 0 },    
       ];
     },
@@ -142,6 +139,21 @@ export default {
         currentDate.getFullYear() === new Date(startDate).getFullYear()
       );
     },
+    hourMeeting() {
+      const meetings = +this.aggregatedStats.meetings || 0;    
+      const callTime = +this.aggregatedStats.call_time || 0;  
+      return meetings > 0 ? Number(((callTime/ meetings)).toFixed(2)) : 0;
+    },
+    dialsMeeting() {
+      const outgoing = +this.aggregatedStats.outgoing_calls || 0;
+      const meetings = +this.aggregatedStats.meetings || 0;
+      return meetings > 0 ? Number((outgoing / meetings).toFixed(2)) : 0;
+    },
+    callsMeetings() {
+      const meetings = +this.aggregatedStats.meetings || 0;
+      const answeredCalls = +this.aggregatedStats.answered_calls || 0;
+      return answeredCalls > 0 ? Number(((meetings /answeredCalls ) * 100).toFixed(2)) : 0;
+    },
   },
   watch: {
     agentStats: {
@@ -167,24 +179,18 @@ export default {
       this.updateDateRange([startDate, endDate]); // Set the default date range
     }
     
-    this.hourMeeting = Number(((+this.aggregatedStats.call_time / +this.aggregatedStats.meetings) * 100).toFixed(2)) || 0;
-    this.dialsMeeting = +this.aggregatedStats.outgoing_calls / +this.aggregatedStats.meetings || 0;
-    this.callsMeetings = ((+this.aggregatedStats.meetings / +this.aggregatedStats.calls_made) * 100) || 0;
     this.updateStats();
   },
 
   methods: {
     ...mapActions(['fetchAgents', 'fetchAgentStats', 'fetchCases', 'fetchCurrentDateRange']),
+    
     getAgentsInCase(caseName) {
-      console.log('Fetching agents in case:', caseName);
-      console.log('All agents:', this.agents);
       const agentsInCase = this.agents.filter(agent => agent.cases.includes(caseName));
-      console.log('Agents in case:', agentsInCase);
       return agentsInCase;
     },
     getAgentNameInCase() {
      this.agentsInCase = this.getAgentsInCase(this.companyCase.name);
-      console.log('Agents in case:', this.agentsInCase);
       if (this.agentsInCase.length === 0) return 'No agents assigned';
       return this.agentsInCase.map(agent => agent.name).join(', ');
     },

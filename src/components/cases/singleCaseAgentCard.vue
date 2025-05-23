@@ -34,7 +34,7 @@
         <v-list-item>
           <v-list-item-subtitle class="mt-1">Meetings: {{ agent.meetings }}</v-list-item-subtitle>
           <v-list-item-subtitle class="mt-1">Call Time: {{ agent.call_time }} hours</v-list-item-subtitle>
-          <v-list-item-subtitle class="mt-1">Calls Made: {{ agent.calls_made }}</v-list-item-subtitle>
+          <v-list-item-subtitle class="mt-1">Calls Completed: {{ agent.calls_made }}</v-list-item-subtitle>
           <v-list-item-subtitle class="mt-1">Outgoing Calls: {{ agent.outgoing_calls }}</v-list-item-subtitle>
           <v-list-item-subtitle class="mt-1">Answered Calls: {{ agent.answered_calls }}</v-list-item-subtitle>
           <v-list-item-subtitle class="mt-1">Response Rate: {{ agent.response_rate }}%</v-list-item-subtitle>
@@ -63,7 +63,7 @@
             <v-list-item v-if="filteredStats">
               <v-list-item-subtitle>Meetings: {{ filteredStats.meetings }}</v-list-item-subtitle>
               <v-list-item-subtitle>Call Time: {{ filteredStats.call_time }} mins</v-list-item-subtitle>
-              <v-list-item-subtitle>Calls Made: {{ filteredStats.calls_made }}</v-list-item-subtitle>
+              <v-list-item-subtitle>Calls Completed: {{ filteredStats.calls_made }}</v-list-item-subtitle>
               <v-list-item-subtitle>Outgoing Calls: {{ filteredStats.outgoing_calls }}</v-list-item-subtitle>
               <v-list-item-subtitle>Answered Calls: {{ filteredStats.answered_calls }}</v-list-item-subtitle>
               <v-list-item-subtitle>Response Rate: {{ filteredStats.response_rate }}%</v-list-item-subtitle>

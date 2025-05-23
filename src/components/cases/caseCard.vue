@@ -13,9 +13,10 @@
         <div class="stats-card">
           <v-card-text class="text-center">
             <p><strong>Total Billing:</strong> {{ companyCase.billing }}</p>
-            <p><strong>Total Meetings:</strong> {{ caseStats.totalMeetings }}</p>
-            <p><strong>Dials / Meeting:</strong> {{ caseStats.totalOutgoingCalls }}</p>
-            <p><strong>Hour/Meeting:</strong> {{ caseStats.totalCallTime }}</p>
+            <p><strong>Total Meetings:</strong> {{ aggregatedStats.meetings }}</p>
+            <p><strong>Dials / Meeting:</strong> {{ dialsMeeting }}</p>
+            <p><strong>Hour/Meeting:</strong> {{ hourMeeting }}</p>
+            <p><strong>Answered/Meeting:</strong> {{ callsMeetings }}</p>
           </v-card-text>
         </div>
       </div>
@@ -32,7 +33,7 @@
         <strong>Assigned Manager:</strong>
       </v-card-subtitle>
       <v-card-subtitle>
-        <strong>Assigned Agents: {{ assignedAgents }}</strong>
+        <strong>Assigned Agents: {{ AgentsStatsByMonth }}</strong>
       </v-card-subtitle>
     </div>
 
@@ -49,7 +50,9 @@
 
 <script>
 import AgentCard from '../agentCard.vue';
-import { mapGetters, mapState } from 'vuex';
+import { getAgentsInCase, groupAgentsStatsByMonth, getAggregatedStats } from '../../js/statsUtils';
+
+import { mapState } from 'vuex';
 
 export default {
   name: 'CaseCard',
@@ -66,9 +69,65 @@ export default {
   components: {
     AgentCard,
   },
+   data() {
+      const currentDate = new Date();
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(currentDate.getDate() - 7);
+      const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+      const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+
+      return {
+        selectedDateRange: [sevenDaysAgo, currentDate],
+        monthStart: startOfMonth, // Start of the current month
+        monthEnd: endOfMonth,  
+      };
+    },
   computed: {
-    ...mapState(['currentPage']),
-    ...mapGetters(['agents', 'agentStats', 'cases']),
+    ...mapState(['cases', 'agents', 'agentStats', 'currentPage']),
+
+    agentsInCase() {
+      console.log('this.companyCase.name:', this.companyCase.name);
+      return getAgentsInCase(this.companyCase.name, this.agentStats);
+    },
+
+    agentsStatsByMonth() {
+      return groupAgentsStatsByMonth(this.agentsInCase);
+    },
+
+     AgentsStatsByMonth() {
+      console.log('Recalculating filteredAgentsStats...');
+      if (!this.agentsStatsByMonth || Object.keys(this.agentsStatsByMonth).length === 0) {
+      return [];
+    }
+
+      const [startDate] = this.selectedDateRange.map(date => new Date(date));
+      const monthKey = `${new Date(startDate).getFullYear()}-${String(new Date(startDate).getMonth() + 1).padStart(2, '0')}`;    
+      console.log('this.agentsStatsByMonth:', this.agentsStatsByMonth[monthKey]);
+      return this.agentsStatsByMonth[monthKey] || [];
+     
+    },
+
+    aggregatedStats() {
+      const aggStats = getAggregatedStats(this.selectedDateRange, this.AgentsStatsByMonth);
+      console.log('Aggregated Stats:', aggStats);
+      return aggStats;
+    },
+
+    hourMeeting() {
+      const meetings = +this.aggregatedStats.meetings || 0;    
+      const callTime = +this.aggregatedStats.call_time || 0;  
+      return meetings > 0 ? Number(((callTime/ meetings)).toFixed(2)) : 0;
+    },
+    dialsMeeting() {
+      const outgoing = +this.aggregatedStats.outgoing_calls || 0;
+      const meetings = +this.aggregatedStats.meetings || 0;
+      return meetings > 0 ? Number((outgoing / meetings).toFixed(2)) : 0;
+    },
+    callsMeetings() {
+      const meetings = +this.aggregatedStats.meetings || 0;
+      const answeredCalls = +this.aggregatedStats.answered_calls || 0;
+      return answeredCalls > 0 ? Number(((meetings /answeredCalls ) * 100).toFixed(2)) : 0;
+    },
 
     cardStyles() {
       return this.currentPage === 'singleCase'
@@ -84,7 +143,7 @@ export default {
         return [];
       }
 
-      return this.agents.filter(agent => {
+      const filterAgent = this.agents.filter(agent => {
         const activityDate = new Date(agent.lastActivityDate).getTime();
         return (
           agent.case === this.companyCase.name &&
@@ -92,6 +151,7 @@ export default {
           activityDate <= new Date(endDate).getTime()
         );
       });
+      return filterAgent
     },
 
     assignedAgents() {
@@ -102,11 +162,10 @@ export default {
     },
 
     caseStats() {
-      const agentsInCase = this.agents.filter(agent =>
-        agent.cases.includes(this.companyCase.name)
-      );
-
-      return agentsInCase.reduce(
+      console.log('Calculating case stats for:', this.companyCase.name);
+      console.log('Agents in case:', this.AgentsStatsByMonth);
+      console.log('Stats:', this.aggregatedStats);
+      return this.agentsInCase.reduce(
         (totals, agent) => {
           const stats = this.agentStats.find(stat => stat.name === agent.name && stat.case === this.companyCase.name);
 
@@ -130,6 +189,7 @@ export default {
       );
     },
   },
+
   methods: {
     showCase() {
       this.$router.push({

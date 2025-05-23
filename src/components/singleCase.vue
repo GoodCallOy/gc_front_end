@@ -80,7 +80,7 @@ import BarChart from '../partials/dashboard/bar-chart.vue'
 import { mapState, mapMutations } from 'vuex';
 import MonthButtons from './monthButtons.vue';
 import singleCaseAgentCard from './cases/singleCaseAgentCard.vue';
-import { getAgentsInCase, groupAgentsStatsByMonth } from '../js/statsUtils';
+import { getAgentsInCase, groupAgentsStatsByMonth, getAggregatedStats } from '../js/statsUtils';
 
 
 
@@ -121,40 +121,11 @@ export default {
       return this.cases.find(singleCase => singleCase.name === caseName);
     },
 
-    aggregatedStats() {
-    // Get the current month key (default to the first month in the selected range)
-    const [startDate] = this.selectedDateRange.map(date => new Date(date));
-    const monthKey = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}`;
-      console.log('monthKey in aggregatedStats:', monthKey);
-    // Get the agents for the selected month
-    const agentsForMonth = this.agentsStatsByMonth[monthKey] || [];
+    aggregatedStats() {  
+      return getAggregatedStats(this.selectedDateRange, this.AgentsStatsByMonth);
+    },
 
-    // Aggregate the stats for the agents
-    const totals = {
-      meetings: 0,
-      calls_made: 0,
-      call_time: 0,
-      outgoing_calls: 0,
-      answered_calls: 0,
-      response_rate: 0,
-    };
-
-    agentsForMonth.forEach(agent => {
-      totals.meetings += agent.meetings || 0;
-      totals.calls_made += agent.calls_made || 0;
-      totals.call_time += agent.call_time || 0;
-      totals.outgoing_calls += agent.outgoing_calls || 0;
-      totals.answered_calls += agent.answered_calls || 0;
-    });
-
-    // Calculate the overall response rate
-    totals.response_rate = totals.outgoing_calls > 0
-      ? parseFloat(((totals.answered_calls / totals.outgoing_calls) * 100).toFixed(2))
-      : 0;
-      console.log('aggregatedStats:', totals);
-    return totals;
-  },
-
+  
     AgentsStatsByMonth() {
       console.log('Recalculating filteredAgentsStats...');
       if (!this.agentsStatsByMonth || Object.keys(this.agentsStatsByMonth).length === 0) {
@@ -162,16 +133,8 @@ export default {
     }
 
       const [startDate] = this.selectedDateRange.map(date => new Date(date));
-
-      const monthKey = `${new Date(startDate).getFullYear()}-${String(new Date(startDate).getMonth() + 1).padStart(2, '0')}`;
-      console.log('monthKey in singleCase:', monthKey);
-      console.log('selectedDateRange:', this.selectedDateRange);
-      console.log('agentsStatsByMonth:', this.agentsStatsByMonth);
-      const agentsForMonth = this.agentsStatsByMonth[monthKey] || [];
-      console.log('agentsForMonth:', agentsForMonth);
-     // Return the array from agentsStatsByMonth that matches the monthKey
-     return this.agentsStatsByMonth[monthKey] || [];
-     
+      const monthKey = `${new Date(startDate).getFullYear()}-${String(new Date(startDate).getMonth() + 1).padStart(2, '0')}`; 
+     return this.agentsStatsByMonth[monthKey] || []; 
     },
 
     FilterCaseStatsGroupedByMonth(startDate, endDate) {
@@ -202,12 +165,7 @@ export default {
     this.updatePage('singleCase');
     this.agentsInCase = getAgentsInCase(this.selectedCase.name, this.agentStats);
     this.agentsStatsByMonth = groupAgentsStatsByMonth(this.agentsInCase);
-    console.log('agentsStatsByMonth:', this.agentsStatsByMonth);
-    console.log('agentsStatsByMonth[2]:', this.agentsStatsByMonth['2025-04']);
-    console.log('agentsStatsByMonth[2]:', this.agentsStatsByMonth['2025-04']);
-    console.log('Filtered Agents Stats (initial):', this.filteredAgentsStats);
-    console.log('Selected Date Range:', this.selectedDateRange);
-    console.log('aggregatedStats:', this.aggregatedStats);
+
     // console.log('FilterCaseStatsGroupedByMonth:', this.FilterCaseStatsGroupedByMonth(...this.selectedDateRange));
   },
 
