@@ -3,9 +3,12 @@ import DashBoard from '@/components/dashBoard.vue';
 import DashBoard2 from '@/components/dashboard2.vue';
 import Agents from '@/components/agentsPage.vue';
 import AddAgent from '@/components/addAgent.vue';
+import AddGcAgent from '@/components/agents/addAgentForm.vue';
 import AddAgentStats from '@/components/addAgentStats.vue';
-import AddCase from '@/components/cases/addCase.vue';
 import Cases from '@/components/cases/casesPage.vue';
+import AddCase from '@/components/cases/addCase.vue';
+import AddCaseform from '@/components/cases/addCaseForm.vue';
+import addOrderForm from '@/components/orders/addOrderForm.vue';
 import SingleCase from '@/components/singleCase.vue';
 import SingleAgent from '@/components/singleAgent.vue';
 import AgentInCase from '@/components/agentInCase.vue';
@@ -21,8 +24,11 @@ const routes = [
   { path: '/dashboard2', name: 'dash2', component: DashBoard2 },
   { path: '/agents', name: 'agents', component: Agents },
   { path: '/add-agent', name: 'addAgent', component: AddAgent },
+  { path: '/add-gc-agent', name: 'addGcAgent', component: AddGcAgent },
   { path: '/add-agent-stats', name: 'addAgentStats', component: AddAgentStats },
   { path: '/add-case', name: 'addCase', component: AddCase },
+  { path: '/add-case', name: 'addCaseForm', component: AddCaseform },
+  { path: '/add-order', name: 'addOrderForm', component: addOrderForm },
   { path: '/cases', name: 'cases', component: Cases },
   { path: '/add-agent-goals', name: 'addAgentGoals', component: AddAgentGoals },
   { path: '/add-agent-case-info', name: 'addAgentCaseInfo', component: addAgentCaseInfo },

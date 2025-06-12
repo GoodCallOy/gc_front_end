@@ -97,10 +97,28 @@ onMounted(() => {
         @click="navigateTo('addCase')"
       ></v-list-item>
       <v-list-item
+        prepend-icon="mdi-folder-plus"
+        :title="t('buttons.addCase')"  
+        :active="route.name === 'addCaseForm'"
+        @click="navigateTo('addCaseForm')"
+      ></v-list-item>
+      <v-list-item
+        prepend-icon="mdi-folder-plus"
+        :title="t('buttons.addCase')"  
+        :active="route.name === 'addOrderForm'"
+        @click="navigateTo('addOrderForm')"
+      ></v-list-item>
+      <v-list-item
         prepend-icon="mdi-account-plus"
         :title="t('buttons.addAgent')"  
         :active="route.name === 'addAgent'"
         @click="navigateTo('addAgent')"
+      ></v-list-item>
+      <v-list-item
+        prepend-icon="mdi-account-plus"
+        :title="t('buttons.addAgent')"  
+        :active="route.name === 'addGcAgent'"
+        @click="navigateTo('addGcAgent')"
       ></v-list-item>
       <v-list-item
         prepend-icon="mdi-account-plus"
