@@ -104,16 +104,14 @@ export default {
       return [];
     }
 
-      const [startDate] = this.selectedDateRange.map(date => new Date(date));
+      const [startDate] = this.dateRange.map(date => new Date(date));
       const monthKey = `${new Date(startDate).getFullYear()}-${String(new Date(startDate).getMonth() + 1).padStart(2, '0')}`;    
-      console.log('this.agentsStatsByMonth:', this.agentsStatsByMonth[monthKey]);
       return this.agentsStatsByMonth[monthKey] || [];
      
     },
 
     aggregatedStats() {
-      const aggStats = getAggregatedStats(this.selectedDateRange, this.AgentsStatsByMonth);
-      console.log('Aggregated Stats:', aggStats);
+      const aggStats = getAggregatedStats(this.dateRange, this.AgentsStatsByMonth);
       return aggStats;
     },
 
@@ -163,6 +161,13 @@ export default {
       return filterAgent
     },
   },
+  mounted() {
+    console.log('CaseCard mounted with companyCase:', this.companyCase);
+},
+  watch: {
+   
+    
+  },
 
   methods: {
     showCase() {
@@ -172,7 +177,8 @@ export default {
       });
     },
   },
-};
+}
+
 </script>
 
 <style scoped>

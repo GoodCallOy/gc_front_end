@@ -11,15 +11,15 @@
       <v-card elevation="1">
         <div class="d-flex align-center">
         <!-- Previous Button -->
-        <v-btn icon flat class="pa-0 ma-0" @click="goToPreviousMonth">
+        <v-btn icon flat class="pa-0 ma-0" @click="getPreviousMonth">
           <v-icon>mdi-chevron-left</v-icon>
         </v-btn>
 
         <!-- Current Month Label -->
-        <div class="text-h6 font-weight-medium mx-3"> {{ this.formattedDateRange }}</div>
+        <div class="text-h6 font-weight-medium mx-3"> {{ this.getFormattedDateRange }}</div>
 
         <!-- Next Button -->
-        <v-btn icon flat @click="goToNextMonth" v-if="!isCurrentMonth">
+        <v-btn icon flat @click="getNextMonth" v-if="!getIsCurrentMonth">
           <v-icon>mdi-chevron-right</v-icon>
         </v-btn>
       </div>
@@ -62,6 +62,7 @@
 import singleCaseStatCard from './cases/singleCaseStatCard.vue';
 import { mapGetters, mapActions, mapState } from 'vuex';
 import { toRaw } from 'vue';
+import { goToNextMonth, goToPreviousMonth, formattedDateRange, isCurrentMonth } from '@/js/dateUtils';
 
 export default {
   name: 'CaseStatsCard',
@@ -111,33 +112,11 @@ export default {
       ];
     },
       
-    formattedDateRange() {
-      if (!this.currentDateRange || this.currentDateRange.length < 2) {
-        return '';
-      }
-
-      const [startDate] = this.currentDateRange;
-      const date = new Date(startDate);
-
-      // Format to MM-YYYY
-      const month = String(date.getMonth() + 1).padStart(2, '0'); // Add leading zero
-      const year = date.getFullYear();
-
-      return `${month}-${year}`;
+    getFormattedDateRange() {
+      return formattedDateRange(this.currentDateRange);
       },
-      isCurrentMonth() {
-      if (!this.currentDateRange || this.currentDateRange.length < 2) {
-        return false;
-      }
-
-      const [startDate] = this.currentDateRange;
-      const currentDate = new Date();
-
-      // Check if the current month and year match the startDate
-      return (
-        currentDate.getMonth() === new Date(startDate).getMonth() &&
-        currentDate.getFullYear() === new Date(startDate).getFullYear()
-      );
+      getIsCurrentMonth() {
+      return isCurrentMonth(this.currentDateRange)
     },
     hourMeeting() {
       const meetings = +this.aggregatedStats.meetings || 0;    
@@ -194,31 +173,13 @@ export default {
       if (this.agentsInCase.length === 0) return 'No agents assigned';
       return this.agentsInCase.map(agent => agent.name).join(', ');
     },
-    goToPreviousMonth() {
-      const [startDate] = this.currentDateRange;
-      const newStartDate = new Date(startDate);
-
-      // Move to the previous month
-      newStartDate.setMonth(newStartDate.getMonth() - 1);
-
-      // Calculate the new end date (last day of the previous month)
-      const newEndDate = new Date(newStartDate.getFullYear(), newStartDate.getMonth() + 1, 0);
-
-      // Update the currentDateRange
-      this.updateDateRange([newStartDate, newEndDate]);
+    getPreviousMonth() {
+      const prevMonth = goToPreviousMonth(this.currentDateRange);
+      this.updateDateRange(prevMonth);
     },
-    goToNextMonth() {
-      const [startDate] = this.currentDateRange;
-      const newStartDate = new Date(startDate);
-
-      // Move to the next month
-      newStartDate.setMonth(newStartDate.getMonth() + 1);
-
-      // Calculate the new end date (last day of the next month)
-      const newEndDate = new Date(newStartDate.getFullYear(), newStartDate.getMonth() + 1, 0);
-
-      // Update the currentDateRange
-      this.updateDateRange([newStartDate, newEndDate]);
+    getNextMonth() {
+      const nextMonth = goToNextMonth(this.currentDateRange);
+      this.updateDateRange(nextMonth);
     },
     updateDateRange(newRange) {
       this.$emit('selectedDateRange', newRange); // Emit the new date range to the parent
