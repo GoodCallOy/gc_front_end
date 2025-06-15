@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useStore } from 'vuex'
 import { useI18n } from 'vue-i18n';
 import { useRouter, useRoute } from 'vue-router';
@@ -19,6 +19,10 @@ const BASE_URL =
 
 const store = useStore() // Access Vuex store
 const user = computed(() => store.state.user)
+
+watch(user, (newVal) => {
+  console.log('🟢 user changed in menuBar:', newVal);
+}, { immediate: true });
 
 function toggleLanguage() {
   locale.value = locale.value === 'en' ? 'fi' : 'en';
@@ -43,13 +47,6 @@ const logout = async () => {
   }
 }
 
-
-
-// Ensure the user data is fetched when the component mounts if logged in
-onMounted(() => {
-  
-});
-
 </script>
 
 <template>
@@ -64,9 +61,9 @@ onMounted(() => {
     <v-list v-if="isDrawerOpen">
       <v-list-item
         v-if="user"
-        :prepend-avatar="user.avatar"
-        :subtitle="user.email"
-        :title="user.name"
+        :prepend-avatar="user.user.avatar"
+        :subtitle="user.user.email"
+        :title="user.user.name"
       ></v-list-item>
       <v-divider></v-divider>
     </v-list>

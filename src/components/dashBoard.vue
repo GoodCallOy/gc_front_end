@@ -99,7 +99,6 @@ export default {
 
   async mounted() {
     await this.fetchAllData(); // Fetch all required data when the component is mounted
-    await this.fetchUserData();
     this.updatePage('DashBoard');
 
      // Set the date range to the current month
@@ -166,10 +165,6 @@ export default {
     
     updatePage(newPage) {
       this.setCurrentPage(newPage);
-    },
-    
-    async fetchUserData() {
-      await this.$store.dispatch('fetchUser');
     },
     
     handleUpdatedDateRange(newRange) {

@@ -1,4 +1,6 @@
 import { createRouter, createWebHashHistory  } from 'vue-router';
+import MainLayout from '@/layouts/mainLayout.vue';
+
 import DashBoard from '@/components/dashBoard.vue';
 import DashBoard2 from '@/components/dashboard2.vue';
 import Agents from '@/components/agentsPage.vue';
@@ -20,45 +22,54 @@ import Login from '@/components/LoginPage.vue';
 const routes = [
   { path: '/', redirect: '/login' }, // Redirect root path to login
   { path: '/login', name: 'login', component: Login },
-  { path: '/dashboard', name: 'home', component: DashBoard },
-  { path: '/dashboard2', name: 'dash2', component: DashBoard2 },
-  { path: '/agents', name: 'agents', component: Agents },
-  { path: '/add-agent', name: 'addAgent', component: AddAgent },
-  { path: '/add-gc-agent', name: 'addGcAgent', component: AddGcAgent },
-  { path: '/add-agent-stats', name: 'addAgentStats', component: AddAgentStats },
-  { path: '/add-case', name: 'addCase', component: AddCase },
-  { path: '/add-case', name: 'addCaseForm', component: AddCaseform },
-  { path: '/add-order', name: 'addOrderForm', component: addOrderForm },
-  { path: '/cases', name: 'cases', component: Cases },
-  { path: '/add-agent-goals', name: 'addAgentGoals', component: AddAgentGoals },
-  { path: '/add-agent-case-info', name: 'addAgentCaseInfo', component: addAgentCaseInfo },
-  { 
-    path: '/singleCase', 
-    name: 'singleCase', 
-    component: SingleCase,
-    props: route => ({ activeCase: route.query.case }),
-  },
-  { 
-    path: '/singleAgent', 
-    name: 'singleAgent', 
-    component: SingleAgent,
-    props: route => ({ activeAgent: route.query.agent }),
-  },
-  { 
-    path: '/agentInCase', 
-    name: 'agentInCase', 
-    component: AgentInCase,
-    props: route => ({
-      activeAgent: route.query.agent, 
-      activeCase: route.query.case,
-    }),
-  },
+  
+  
   {
-    path: '/editAgent',
-    name: 'editAgent',
-    component: EditAgent,
-    props: route => ({ activeAgent: route.query.activeAgent || "" })
-  }
+    path: '/',
+    component: MainLayout,
+    children: [
+      
+      { path: '/dashboard', name: 'home', component: DashBoard },
+      { path: '/dashboard2', name: 'dash2', component: DashBoard2 },
+      { path: '/agents', name: 'agents', component: Agents },
+      { path: '/add-agent', name: 'addAgent', component: AddAgent },
+      { path: '/add-gc-agent', name: 'addGcAgent', component: AddGcAgent },
+      { path: '/add-agent-stats', name: 'addAgentStats', component: AddAgentStats },
+      { path: '/add-case', name: 'addCase', component: AddCase },
+      { path: '/add-case-form', name: 'addCaseForm', component: AddCaseform },
+      { path: '/add-order', name: 'addOrderForm', component: addOrderForm },
+      { path: '/cases', name: 'cases', component: Cases },
+      { path: '/add-agent-goals', name: 'addAgentGoals', component: AddAgentGoals },
+      { path: '/add-agent-case-info', name: 'addAgentCaseInfo', component: addAgentCaseInfo },
+      { 
+        path: '/singleCase', 
+        name: 'singleCase', 
+        component: SingleCase,
+        props: route => ({ activeCase: route.query.case }),
+      },
+      { 
+        path: '/singleAgent', 
+        name: 'singleAgent', 
+        component: SingleAgent,
+        props: route => ({ activeAgent: route.query.agent }),
+      },
+      { 
+        path: '/agentInCase', 
+        name: 'agentInCase', 
+        component: AgentInCase,
+        props: route => ({
+          activeAgent: route.query.agent, 
+          activeCase: route.query.case,
+        }),
+      },
+      {
+        path: '/editAgent',
+        name: 'editAgent',
+        component: EditAgent,
+        props: route => ({ activeAgent: route.query.activeAgent || "" })
+      },
+    ],
+  },
 ];
 
 const router = createRouter({

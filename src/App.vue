@@ -1,7 +1,5 @@
 <script setup>
 import { useRoute } from 'vue-router';
-import Menu from './components/menuBar.vue';
-
 const route = useRoute();
 </script>
 
