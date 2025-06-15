@@ -2,8 +2,8 @@ const ENV = process.env.NODE_ENV;
 
 const config = {
   development: {
-    frontEndURL: "http://localhost:8080/api/v1",
-    backEndURL: "http://localhost:3030/api/v1",
+    frontEndURL: "https://localhost:8080/api/v1",
+    backEndURL: "https://localhost:3030/api/v1",
   },
   production: {
     frontEndURL: "https://goodcall-front-end.onrender.com/api/v1",

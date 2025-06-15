@@ -161,9 +161,7 @@ export default {
       return filterAgent
     },
   },
-  mounted() {
-    console.log('CaseCard mounted with companyCase:', this.companyCase);
-},
+  
   watch: {
    
     

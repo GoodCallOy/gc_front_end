@@ -2,10 +2,7 @@ import axios from 'axios';
 import urls from './config.js';
 
 export function getAgentsInCase(caseName, agents) {
-  console.log('caseName', caseName)
- 
   const agentList = agents.filter(agent => agent.case.includes(caseName));
-  
   return agentList
 }
 
@@ -84,7 +81,7 @@ export function getAggregatedStats(selectedDateRange, agentsStatsByMonth) {
     totals.response_rate = totals.outgoing_calls > 0
       ? parseFloat(((totals.answered_calls / totals.outgoing_calls) * 100).toFixed(2))
       : 0;
-      console.log('aggregatedStats:', totals);
+      
     return totals;
   }
 

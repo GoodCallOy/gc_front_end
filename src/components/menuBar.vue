@@ -12,7 +12,7 @@ const route = useRoute();
 
 const BASE_URL =
       window.location.hostname === 'localhost'
-        ? 'http://localhost:8080/login'
+        ? 'https://localhost:8080/login'
         : 'https://goodcall-front-end.onrender.com/login'
 
 
@@ -31,7 +31,7 @@ function navigateTo(value) {
 const logout = async () => {
   try {
     console.log('Logging out...')
-    await axios.get(`http://localhost:3030/api/v1/auth/logout`, { withCredentials: true })
+    await axios.get(`https://localhost:3030/api/v1/auth/logout`, { withCredentials: true })
 
     store.commit('LOGOUT') // Clear user from Vuex
 
