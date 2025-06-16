@@ -10,6 +10,8 @@ const store = createStore({
     agents: [],
     agentStats: [],
     cases: [],
+    orders: [],
+    gcAgents: [],
     currentPage: '',
     lastFetch: {
       agents: null,
@@ -33,8 +35,11 @@ const store = createStore({
     cases: state => state.cases,
     agents: state => state.agents,
     agentStats: state => state.agentStats,
+    orders: state => state.orders,
     currentPage: state => state.currentPage,
     currentDateRange: state => state.dateRange,
+    gcAgents: state => state.gcAgents || [],
+    lastFetch: state => state.lastFetch,
   },
 
   actions: {
@@ -135,6 +140,36 @@ const store = createStore({
       if (user) {
         commit('SET_USER', JSON.parse(user))
       }
+    },
+    async fetchOrders({ state, commit }) {
+      if (state.orders.length && (Date.now() - state.lastFetch.orders < CACHE_TIMEOUT)) {
+        console.log('✅ Using cached orders (data is fresh)')
+        return
+      }
+      try {
+        console.log('🌍 Fetching orders from API')
+        const response = await axios.get(`${urls.backEndURL}/orders?t=${Date.now()}`)
+        console.log('✅ Orders fetched successfully in store:', response.data)
+        commit('setOrders', response.data)
+        commit('setLastFetch', { key: 'orders', time: Date.now() })
+      } catch (error) {
+        console.error('❌ Error fetching orders:', error)
+      }
+    },
+    async fetchgcAgents({ state, commit }) {
+      if (state.gcAgents.length && (Date.now() - state.lastFetch.gcAgents < CACHE_TIMEOUT)) {
+        console.log('✅ Using cached gcAgents (data is fresh)')
+        return
+      }
+      try {
+        console.log('🌍 Fetching gcAgents from API')
+        const response = await axios.get(`${urls.backEndURL}/gcAgents?t=${Date.now()}`)
+        console.log('✅ gcAgents fetched successfully in store:', response.data)
+        commit('setgcAgents', response.data)
+        commit('setLastFetch', { key: 'gcAgents', time: Date.now() })
+      } catch (error) {
+        console.error('❌ Error fetching gcAgents:', error)
+      }
     }
   },
 
@@ -156,6 +191,12 @@ const store = createStore({
     },
     setDateRange(state, range) {
       state.dateRange = range
+    },
+    setOrders(state, orders) {
+      state.orders = orders
+    },
+    setgcAgents(state, gcAgents) {
+      state.gcAgents = gcAgents
     },
     SET_USER(state, user) {
       state.user = user

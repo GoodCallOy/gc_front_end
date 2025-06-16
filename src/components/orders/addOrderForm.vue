@@ -97,22 +97,28 @@ const orderStatuses = ['pending', 'in-progress', 'completed', 'cancelled', 'on-h
 
 const submitForm = async () => {
   try {
-    // Send a plain object (not a Proxy) to the backend
-    console.log('Order created:', { ...form })
-    await axios.post(`${urls.backEndURL}/orders/`, { ...form })
+    // Find the selected case object
+    const selectedCase = cases.value.find(c => c._id === form.caseId);
+    // Add caseName to the payload
+    const payload = {
+      ...form,
+      caseName: selectedCase ? selectedCase.name : ''
+    };
+    console.log('Order created:', payload);
+    await axios.post(`${urls.backEndURL}/orders/`, payload);
 
     // Reset form fields
-    form.caseId = ''
-    form.goalType = ''
-    form.totalQuantity = ''
-    form.deadline = ''
-    form.orderStatus = ''
-    form.estimatedRevenue = ''
-    form.assignedCallers = []
+    form.caseId = '';
+    form.goalType = '';
+    form.totalQuantity = '';
+    form.deadline = '';
+    form.orderStatus = '';
+    form.estimatedRevenue = '';
+    form.assignedCallers = [];
   } catch (err) {
-    console.error('Failed to create order:', err.response?.data || err.message)
+    console.error('Failed to create order:', err.response?.data || err.message);
   }
-}
+};
 
 onMounted(async () => {
   try {

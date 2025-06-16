@@ -17,6 +17,7 @@ import AgentInCase from '@/components/agentInCase.vue';
 import AddAgentGoals from '@/components/addAgentGoals.vue';
 import addAgentCaseInfo from '@/components/addAgentCaseInfo.vue';
 import EditAgent from '@/components/editAgent.vue';
+import addDailyLog from '@/components/DailyLogForm.vue';
 import Login from '@/components/LoginPage.vue';
 
 const routes = [
@@ -39,6 +40,7 @@ const routes = [
       { path: '/add-case-form', name: 'addCaseForm', component: AddCaseform },
       { path: '/add-order', name: 'addOrderForm', component: addOrderForm },
       { path: '/cases', name: 'cases', component: Cases },
+      { path: '/add-daily-log', name: 'addDailyLog', component: addDailyLog },
       { path: '/add-agent-goals', name: 'addAgentGoals', component: AddAgentGoals },
       { path: '/add-agent-case-info', name: 'addAgentCaseInfo', component: addAgentCaseInfo },
       { 

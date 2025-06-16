@@ -118,6 +118,12 @@ const logout = async () => {
         @click="navigateTo('addGcAgent')"
       ></v-list-item>
       <v-list-item
+        prepend-icon="mdi-account-minus"
+        :title="t('buttons.addAgent')"  
+        :active="route.name === 'addDailyLog'"
+        @click="navigateTo('addDailyLog')"
+      ></v-list-item>
+      <v-list-item
         prepend-icon="mdi-account-plus"
         :title="t('buttons.addAgentStats')"  
         :active="route.name === 'addAgentStats'"
