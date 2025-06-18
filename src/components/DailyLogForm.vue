@@ -69,7 +69,7 @@ export default {
       agentId: this.logToEdit?.agentId || '',
       agentName: this.logToEdit?.agentName || '',
       orderId: this.logToEdit?.orderId || '',
-      orderName: this.logToEdit?.orderName || '',
+      caseName: this.logToEdit?.caseName || '',
       goalType: this.logToEdit?.goalType || '',
       call_time: this.logToEdit?.call_time || 0,
       completed_calls: this.logToEdit?.completed_calls || 0,
@@ -122,11 +122,12 @@ export default {
         try {
             const selectedAgent = this.gcAgents.find(agent => agent._id === this.form.agentId);
             const selectedOrder = this.orders.find(order => order._id === this.form.orderId);
-
+            console.log('Selected Agent:', selectedAgent);
+            console.log('Selected Order:', selectedOrder);
             const payload = {
             ...this.form,
             agentName: selectedAgent ? selectedAgent.name : '',
-            orderName: selectedOrder && selectedOrder.caseId ? selectedOrder.caseId.name : ''
+            caseName: selectedOrder && selectedOrder.caseId ? selectedOrder.caseName : ''
             };
 
             await axios.post(`${urls.backEndURL}/dailyLogs`, payload);
@@ -134,7 +135,7 @@ export default {
                 this.form.agentId = '';
                 this.form.agentName = '';
                 this.form.orderId = '';
-                this.form.orderName = '';
+                this.form.caseName = '';
                 this.form.goalType = '';
                 this.form.call_time = 0;
                 this.form.completed_calls = 0;
