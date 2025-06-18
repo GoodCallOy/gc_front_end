@@ -1,11 +1,22 @@
 import vue from 'eslint-plugin-vue'
+import vueParser from 'vue-eslint-parser'
+import babelParser from '@babel/eslint-parser'
+import vueRecommended from 'eslint-plugin-vue/lib/configs/vue3-recommended.js'
 
 export default [
   {
-    files: ['**/*.vue', '**/*.js'],
+    files: ['**/*.vue'],
     languageOptions: {
-      ecmaVersion: 'latest',
-      sourceType: 'module',
+      parser: vueParser,
+      parserOptions: {
+        parser: babelParser,
+        ecmaVersion: 2021,
+        sourceType: 'module',
+        ecmaFeatures: {
+          jsx: true
+        },
+        requireConfigFile: false
+      },
       globals: {
         defineProps: 'readonly',
         defineEmits: 'readonly',
@@ -16,10 +27,8 @@ export default [
     plugins: {
       vue
     },
-    processor: vue.processors['.vue'], // optional, helps handle .vue files
     rules: {
-      ...vue.configs.base.rules, // fallback if vue3-recommended doesn't exist
-      // or manually add Vue rules here
+      ...vueRecommended.rules
     }
   }
 ]
