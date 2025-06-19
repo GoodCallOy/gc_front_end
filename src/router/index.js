@@ -19,6 +19,9 @@ import addAgentCaseInfo from '@/components/addAgentCaseInfo.vue';
 import EditAgent from '@/components/editAgent.vue';
 import addDailyLog from '@/components/DailyLogForm.vue';
 import Login from '@/components/LoginPage.vue';
+import OrderProgressTable from '@/components/OrderProgressTable.vue';
+import orderDashboard from '@/components/ordersDashboard.vue';
+import orderDetails from '@/components/orderDetails.vue';
 
 const routes = [
   { path: '/', redirect: '/login' }, // Redirect root path to login
@@ -43,6 +46,9 @@ const routes = [
       { path: '/add-daily-log', name: 'addDailyLog', component: addDailyLog },
       { path: '/add-agent-goals', name: 'addAgentGoals', component: AddAgentGoals },
       { path: '/add-agent-case-info', name: 'addAgentCaseInfo', component: addAgentCaseInfo },
+      { path: '/order-progress-chart', name: 'OrderProgressTable', component: OrderProgressTable },
+      { path: '/order-dashboard', name: 'orderDashboard', component: orderDashboard },
+      { path: '/order-details', name: 'orderDetails', component: orderDetails },
       { 
         path: '/singleCase', 
         name: 'singleCase', 

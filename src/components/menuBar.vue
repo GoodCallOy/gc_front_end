@@ -95,13 +95,13 @@ const logout = async () => {
       ></v-list-item>
       <v-list-item
         prepend-icon="mdi-folder-plus"
-        :title="t('buttons.addCase')"  
+        :title="t('buttons.addCaseForm')"  
         :active="route.name === 'addCaseForm'"
         @click="navigateTo('addCaseForm')"
       ></v-list-item>
       <v-list-item
         prepend-icon="mdi-folder-plus"
-        :title="t('buttons.addCase')"  
+        :title="t('buttons.addOrderForm')"  
         :active="route.name === 'addOrderForm'"
         @click="navigateTo('addOrderForm')"
       ></v-list-item>
@@ -113,7 +113,7 @@ const logout = async () => {
       ></v-list-item>
       <v-list-item
         prepend-icon="mdi-account-plus"
-        :title="t('buttons.addAgent')"  
+        :title="t('buttons.addGcAgent')"  
         :active="route.name === 'addGcAgent'"
         @click="navigateTo('addGcAgent')"
       ></v-list-item>
@@ -134,6 +134,18 @@ const logout = async () => {
         :title="t('buttons.addAgentGoals')"  
         :active="route.name === 'addAgentGoals'"
         @click="navigateTo('addAgentGoals')"
+      ></v-list-item>
+      <v-list-item
+        prepend-icon="mdi-account-plus"
+        :title="t('buttons.orderProgress')"  
+        :active="route.name === 'orderProgress'"
+        @click="navigateTo('OrderProgressTable')"
+      ></v-list-item>
+      <v-list-item
+        prepend-icon="mdi-account-plus"
+        :title="t('buttons.orderDashboard')"  
+        :active="route.name === 'orderDashboard'"
+        @click="navigateTo('orderDashboard')"
       ></v-list-item>
       <v-list-item
         prepend-icon="mdi-account-plus"

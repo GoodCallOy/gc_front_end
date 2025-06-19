@@ -4,22 +4,32 @@
         <EditMenu align="right" class="relative inline-flex">
             <li>
                 <a
+                    class="font-medium text-sm text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-200 flex py-1 px-3"
                     @click="showCase"
-                    class="font-medium text-sm text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-200 flex py-1 px-3"                            
                 >
                     Show case
                 </a>
             </li>
         </EditMenu>
       </div>
+        <v-row align="center" class="mt-2">
+            <v-col cols="7">
+                <header>
+                    <h2 class="text-h6">{{ order.caseName }}</h2>
+                </header>
+            </v-col>
+            <v-col cols="5" class="d-flex text-align-left">
+                <v-card-subtitle class="text-caption">
+                    {{ order.orderStatus }}
+                </v-card-subtitle>
+            </v-col>
+        </v-row>
+    <v-card-subtitle class="text-caption">
+      Goal: €{{ order.estimatedRevenue }}
+    </v-card-subtitle>
       <div class="pt-5">
-        <header class="flex justify-between items-start mb-2">
-          <h2>{{ companyCase.caseName }}</h2>
-          
-        </header>
-        <div class="label">Sales</div>
         <div class="value">
-          $24,780
+         €{{ order.estimatedRevenue }}
           <span class="percentage">+49%</span>
         </div>
         
@@ -28,6 +38,14 @@
         <!-- Chart built with Chart.js 3 -->
         <LineChart :data="chartData" width="389" height="128" />
       </div>
+      <div>
+              <strong>Callers: </strong>
+              <span v-if="order.assignedCallers.length">
+                {{ getCallerNames(order, agents) }}
+              </span>
+              <span v-else>None</span>
+            </div>
+            <div><strong>Deadline:</strong> {{ formatDate(order.deadline) }}</div>
     </div>
   </template>
   
@@ -37,6 +55,10 @@
   import { chartAreaGradient } from '../../charts/ChartjsConfig'
   import LineChart from '../../charts/LineChart01.vue'
   import EditMenu from '../../components/DropdownEditMenu.vue'
+  import { useRouter, useRoute } from 'vue-router';
+
+  const router = useRouter();
+  const route = useRoute();
   
   // Import utilities
   import { adjustColorOpacity } from '../../utils/Utils'
@@ -48,16 +70,13 @@
       EditMenu,
     },
     props: {
-        companyCase: {
+        order: {
         type: Object,
         required: true,
-        default: () => ({}),
         },
-        dateRange:
-        {
+        agents: {
         type: Object,
         required: true,
-        default: () => ({}),
         },
     },
     setup() {
@@ -130,10 +149,23 @@
     },
 
     methods: {
+        getCallerNames(order, agents) {
+            return order.assignedCallers
+                .map(id => agents.find(agent => agent._id === id)?.name || 'Unknown')
+                .join(', ')
+        },
+        formatDate() {
+            
+            return new Date(this.order.deadline).toLocaleDateString();
+        },
+        navigateTo(value) {
+            router.push({ name: value });
+        },
         showCase() {
+            console.log('Navigating to order details for order:', this.order._id);
             this.$router.push({
-                name: 'singleCase',
-                query: { case: this.companyCase.name },
+                name: 'orderDetails',
+                query: { orderId: this.order._id },
             });
         }
     },

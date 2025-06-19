@@ -26,8 +26,13 @@
       "addCase": "Add case",
       "addAgent": "Add agent",
       "addAgentStats": "Add agent stats",
-      "addAgentGoals": "Add agent Goals",
+      "addAgentGoals": "Add agent goals",
       "addAgentCaseInfo": "Add agent case info",
+      "addCaseForm": "Add case form",
+      "addOrderForm": "Add Order form",
+      "addGcAgent": "Add GC agent",
+      "orderProgress": "Order progress",
+      "orderDashboard": "Order Dashboard",
       "language": "Finnish",
       "logout": "Logout"
     }

@@ -36,6 +36,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
+import urls from '@/js/config.js'
 
 const props = defineProps({
   orderId: {
@@ -55,7 +56,7 @@ const totalQuantity = ref(0)
 
 onMounted(async () => {
   try {
-    const res = await axios.get(`/orders/${props.orderId}/progress`)
+    const res = await axios.get(`${urls.backEndURL}/orders/${props.orderId}/progress`)
     progressData.value = res.data.assignedCallers
     totalQuantity.value = res.data.totalQuantity
   } catch (err) {

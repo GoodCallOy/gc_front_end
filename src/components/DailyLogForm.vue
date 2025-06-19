@@ -82,12 +82,6 @@ export default {
     formValid: true
     }
   },
-  watch: {
-    'form.orderId'(newOrderId) {
-        const selectedOrder = this.orders.find(order => order._id === newOrderId);
-        this.form.goalType = selectedOrder ? selectedOrder.goalType || '' : '';
-    },
-  },
   computed: {
   ...mapState(['gcAgents', 'orders']),
   isEditing() {
@@ -108,8 +102,18 @@ export default {
     return this.responseRateValue.toFixed(1) + ' %';
   }
 },
+ watch: {
+    'form.orderId'(newOrderId) {
+        const selectedOrder = this.orders.find(order => order._id === newOrderId);
+        this.form.goalType = selectedOrder ? selectedOrder.goalType || '' : '';
+    },
+  },
+async mounted() {
+   await this.fetchAllData();
+    console.log('Orders fetched:', this.orders);
+  },
   methods: {
-        ...mapActions(['fetchOrders', 'fetchgcAgents']),
+    ...mapActions(['fetchOrders', 'fetchgcAgents']),
 
     async fetchAllData() {
         await this.fetchOrders();
@@ -150,10 +154,7 @@ export default {
         }
     }
   },
-  async mounted() {
-   await this.fetchAllData();
-    console.log('Orders fetched:', this.orders);
-  }
+  
 }
 </script>
 
