@@ -69,9 +69,37 @@
         closable-chips
         clearable
       />
-
-      <v-btn type="submit" color="primary" class="mt-4">Create Order</v-btn>
+      <div v-if="form.assignedCallers.length" class="mt-4">
+  <div>
+    <strong>Assigned Goals: {{ assignedGoalsCount }} / {{ form.totalQuantity || 0 }}</strong>
+    </div>
+      <v-list>
+        <v-list-item
+          v-for="agentId in form.assignedCallers"
+          :key="agentId"
+        >
+          <v-list-item-content>
+            <v-list-item-title>
+              {{ agentName(agentId) }}
+            </v-list-item-title>
+          </v-list-item-content>
+          <v-list-item-action>
+            <v-text-field
+              v-model.number="agentGoals[agentId]"
+              label="Goal"
+              type="number"
+              min="0"
+              style="max-width: 100px"
+            />
+          </v-list-item-action>
+        </v-list-item>
+      </v-list>
+       <v-btn type="submit" color="primary" class="mt-4">Create Order</v-btn>
+    </div>
+     
     </v-form>
+    
+
   </div>  
 </template>
 
@@ -91,6 +119,8 @@ const form = reactive({
   assignedCallers: []
 })
 
+const agentGoals = reactive({});
+
 const cases = ref([])
 const agents = ref([])
 const formRef = ref(null)
@@ -108,6 +138,15 @@ const caseOptions = computed(() => cases.value.map(c => ({
 const caseUnits = ['hours', 'interviews', 'meetings']
 const orderStatuses = ['pending', 'in-progress', 'completed', 'cancelled', 'on-hold']
 
+const assignedGoalsCount = computed(() =>
+  form.assignedCallers.reduce((sum, id) => sum + (Number(agentGoals[id]) || 0), 0)
+);
+
+const agentName = id => {
+  const agent = agents.value.find(a => a._id === id);
+  return agent ? agent.name : id;
+};
+
 const submitForm = async () => {
   try {
     // Find the selected case object
@@ -115,7 +154,8 @@ const submitForm = async () => {
     // Add caseName to the payload
     const payload = {
       ...form,
-      caseName: selectedCase ? selectedCase.name : ''
+      caseName: selectedCase ? selectedCase.name : '',
+      agentGoals: { ...agentGoals }
     };
     console.log('Order created:', payload);
     await axios.post(`${urls.backEndURL}/orders/`, payload);

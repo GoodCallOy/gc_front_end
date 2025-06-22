@@ -25,7 +25,32 @@
           multiple
           chips
         />
-        <v-btn type="submit" color="primary" class="mt-4">Save</v-btn>
+        <div v-if="editedOrder.assignedCallers && editedOrder.agentGoals">
+          <strong>Edit Agent Goals:</strong>
+          <v-list>
+            <v-list-item
+              v-for="id in editedOrder.assignedCallers"
+              :key="id"
+            >
+              <v-list-item-content>
+                <v-list-item-title>
+                  {{ agentName(id) }}
+                </v-list-item-title>
+              </v-list-item-content>
+              <v-list-item-action>
+                <v-text-field
+                  v-model.number="editedOrder.agentGoals[id]"
+                  label="Goal"
+                  type="number"
+                  min="0"
+                  style="max-width: 100px"
+                />
+              </v-list-item-action>
+            </v-list-item>
+          </v-list>
+          <v-btn type="submit" color="primary" class="mt-4">Save</v-btn>
+        </div>
+        
       </v-form>
 
       <div v-else>
@@ -37,6 +62,14 @@
         <p><strong>Quantity:</strong> {{ order.totalQuantity }}</p>
         <p><strong>Estimated Revenue:</strong> €{{ order.estimatedRevenue }}</p>
         <p><strong>Callers:</strong> {{ getCallerNames(order, agents) }}</p>
+        <div v-if="order.agentGoals">
+          <strong>Agent Goals:</strong>
+          <ul>
+            <li v-for="id in order.assignedCallers" :key="id">
+              {{ agentName(id) }}: {{ order.agentGoals[id] || 0 }}
+            </li>
+          </ul>
+        </div>
       </div>
     </v-card>
   </v-container>
@@ -59,6 +92,7 @@ const editedOrder = ref({})
 
 const goalTypes = ['hours', 'interviews', 'meetings']
 const orderStatuses = ['pending', 'in-progress', 'completed', 'cancelled', 'on-hold']
+const agentName = id => agents.value.find(a => a._id === id)?.name || id;
 
 function getCallerNames(order, agents) {
     const agentNames = order.assignedCallers
@@ -74,7 +108,7 @@ onMounted(async () => {
   ])
   order.value = orderRes.data
   agents.value = agentRes.data
-  editedOrder.value = { ...orderRes.data }
+  editedOrder.value = { ...orderRes.data, agentGoals: orderRes.data.agentGoals || {} }
 })
 
 const saveChanges = async () => {
