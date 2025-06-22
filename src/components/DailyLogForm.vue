@@ -2,7 +2,7 @@
   <v-card class="pa-4" elevation="2">
     <v-form ref="formRef" v-model="formValid" @submit.prevent="submitForm">
       <v-select
-        v-model="form.agentId"
+        v-model="form.agent"
         :items="gcAgents"
         item-title="name"
         item-value="_id"
@@ -11,7 +11,7 @@
       />
 
       <v-select
-        v-model="form.orderId"
+        v-model="form.order"
         :items="orders"
         item-title="caseName"
         item-value="_id"
@@ -66,11 +66,11 @@ export default {
   data() {
     return {
        form: {
-      agentId: this.logToEdit?.agentId || '',
+      agent: this.logToEdit?.agent || '',
       agentName: this.logToEdit?.agentName || '',
-      orderId: this.logToEdit?.orderId || '',
+      order: this.logToEdit?.order || '',
       caseName: this.logToEdit?.caseName || '',
-      caseUnit: this.logToEdit?.goalType || '',
+      caseUnit: this.logToEdit?.caseUnit || '',
       call_time: this.logToEdit?.call_time || 0,
       completed_calls: this.logToEdit?.completed_calls || 0,
       outgoing_calls: this.logToEdit?.outgoing_calls || 0,
@@ -103,7 +103,7 @@ export default {
   }
 },
  watch: {
-    'form.orderId'(newOrderId) {
+    'form.order'(newOrderId) {
         const selectedOrder = this.orders.find(order => order._id === newOrderId);
         this.form.caseUnit = selectedOrder ? selectedOrder.caseUnit || '' : '';
     },
@@ -124,8 +124,8 @@ async mounted() {
         if (!this.formValid) return
 
         try {
-            const selectedAgent = this.gcAgents.find(agent => agent._id === this.form.agentId);
-            const selectedOrder = this.orders.find(order => order._id === this.form.orderId);
+            const selectedAgent = this.gcAgents.find(agent => agent._id === this.form.agent);
+            const selectedOrder = this.orders.find(order => order._id === this.form.order);
             console.log('Selected Agent:', selectedAgent);
             console.log('Selected Order:', selectedOrder);
             const payload = {
@@ -136,9 +136,9 @@ async mounted() {
 
             await axios.post(`${urls.backEndURL}/dailyLogs`, payload);
            // Clear form fields
-                this.form.agentId = '';
+                this.form.agent = '';
                 this.form.agentName = '';
-                this.form.orderId = '';
+                this.form.order = '';
                 this.form.caseName = '';
                 this.form.caseUnit = '';
                 this.form.call_time = 0;
