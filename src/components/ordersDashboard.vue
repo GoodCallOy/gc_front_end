@@ -40,26 +40,22 @@
   </v-container> -->
   <v-container>
     <h1 class="text-h4 mb-4">All Orders</h1>
-    <div class="grid-container " >
+    <div class="grid-container ">
       <DashboardCard01
       v-for="(order, index) in orders"
       :key="index"
       :order="order"
       :agents="gcAgents"
+      :dailyLogs="dailyLogs"
       />
     </div>
   </v-container>
- 
-  
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useStore } from 'vuex'
 import DashboardCard01 from '@/partials/dashboard/caseCard2.vue'
-
-
-import { computed } from 'vue'
 
 const store = useStore()
 
@@ -67,12 +63,15 @@ const store = useStore()
 async function fetchAllData() {
   await store.dispatch('fetchOrders')
   await store.dispatch('fetchgcAgents')
+  await store.dispatch('fetchDailyLogs')
 }
 
 const orders = computed(() => store.getters['orders'])
 console.log('dashOrders', orders.value)
 const gcAgents = computed(() => store.getters['gcAgents'])
 console.log('gcAgents', gcAgents.value)
+const dailyLogs = computed(() => store.getters['dailyLogs'])
+console.log('dailyLogs', dailyLogs.value)
 
 const formatDate = date => new Date(date).toLocaleDateString()
 

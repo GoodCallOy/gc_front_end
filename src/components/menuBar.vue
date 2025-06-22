@@ -119,7 +119,7 @@ const logout = async () => {
       ></v-list-item>
       <v-list-item
         prepend-icon="mdi-account-minus"
-        :title="t('buttons.addAgent')"  
+        :title="t('buttons.addDailyLog')"  
         :active="route.name === 'addDailyLog'"
         @click="navigateTo('addDailyLog')"
       ></v-list-item>

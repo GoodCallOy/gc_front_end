@@ -12,7 +12,7 @@
 
       <v-form v-if="isEditing" @submit.prevent="saveChanges">
         <v-text-field v-model="editedOrder.totalQuantity" label="Total Quantity" type="number" />
-        <v-select v-model="editedOrder.goalType" :items="goalTypes" label="Goal Type" />
+        <v-select v-model="editedOrder.caseUnit" :items="goalTypes" label="Case Unit" />
         <v-select v-model="editedOrder.orderStatus" :items="orderStatuses" label="Status" />
         <v-text-field v-model="editedOrder.estimatedRevenue" label="Estimated Revenue" type="number" />
         <v-text-field v-model="editedOrder.deadline" label="Deadline" type="date" />
@@ -30,12 +30,13 @@
 
       <div v-else>
         <p><strong>Case:</strong> {{ order.caseName }}</p>
-        <p><strong>Goal Type:</strong> {{ order.goalType }}</p>
+        <p><strong>case Unit:</strong> {{ order.caseUnit }}</p>
+        <p><strong>Price per Unit:</strong> {{ order.pricePerUnit }}</p>
         <p><strong>Status:</strong> {{ order.orderStatus }}</p>
         <p><strong>Deadline:</strong> {{ formatDate(order.deadline) }}</p>
         <p><strong>Quantity:</strong> {{ order.totalQuantity }}</p>
-        <p><strong>Revenue:</strong> €{{ order.estimatedRevenue }}</p>
-        <p><strong>Callers:</strong> {{ order.assignedCallers }}</p>
+        <p><strong>Estimated Revenue:</strong> €{{ order.estimatedRevenue }}</p>
+        <p><strong>Callers:</strong> {{ getCallerNames(order, agents) }}</p>
       </div>
     </v-card>
   </v-container>
@@ -59,6 +60,13 @@ const editedOrder = ref({})
 const goalTypes = ['hours', 'interviews', 'meetings']
 const orderStatuses = ['pending', 'in-progress', 'completed', 'cancelled', 'on-hold']
 
+function getCallerNames(order, agents) {
+    const agentNames = order.assignedCallers
+        .map(id => agents.find(agent => agent._id === id)?.name || 'Unknown')
+        .join(', ')
+    console.log('Agent Names:', agentNames);
+    return agentNames
+}
 onMounted(async () => {
   const [orderRes, agentRes] = await Promise.all([
     axios.get(`${urls.backEndURL}/orders/${orderId}`),

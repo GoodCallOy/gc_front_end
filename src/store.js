@@ -12,11 +12,15 @@ const store = createStore({
     cases: [],
     orders: [],
     gcAgents: [],
+    dailyLogs: [],
     currentPage: '',
     lastFetch: {
       agents: null,
       agentStats: null,
-      cases: null
+      cases: null,
+      orders: null,
+      gcAgents: null,
+      dailyLogs: null,
     },
     dateRange: [
       new Date(new Date().setDate(new Date().getDate() - 7)).toISOString().split('T')[0],
@@ -39,6 +43,7 @@ const store = createStore({
     currentPage: state => state.currentPage,
     currentDateRange: state => state.dateRange,
     gcAgents: state => state.gcAgents || [],
+    dailyLogs: state => state.dailyLogs || [],
     lastFetch: state => state.lastFetch,
   },
 
@@ -170,6 +175,21 @@ const store = createStore({
       } catch (error) {
         console.error('❌ Error fetching gcAgents:', error)
       }
+    },
+    async fetchDailyLogs({ state, commit }) {
+      if (state.dailyLogs.length && (Date.now() - state.lastFetch.dailyLogs < CACHE_TIMEOUT)) {
+        console.log('✅ Using cached DailyLogs (data is fresh)', state.dailyLogs)
+        return
+      }
+      try {
+        console.log('🌍 Fetching DailyLogs from API')
+        const response = await axios.get(`${urls.backEndURL}/dailyLogs?t=${Date.now()}`)
+        console.log('✅ DailyLogs fetched successfully in store:', response.data)
+        commit('setDailyLogs', response.data)
+        commit('setLastFetch', { key: 'dailyLogs', time: Date.now() })
+      } catch (error) {
+        console.error('❌ Error fetching dailyLogs:', error)
+      }
     }
   },
 
@@ -197,6 +217,9 @@ const store = createStore({
     },
     setgcAgents(state, gcAgents) {
       state.gcAgents = gcAgents
+    },
+    setDailyLogs(state, dailyLogs) {
+      state.dailyLogs = dailyLogs
     },
     SET_USER(state, user) {
       state.user = user

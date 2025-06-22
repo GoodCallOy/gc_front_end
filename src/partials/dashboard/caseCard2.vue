@@ -1,5 +1,5 @@
   <template>
-    <div class="case-card">
+    <div class="case-card" elevation="16">
       <div class="menu">
         <EditMenu align="right" class="relative inline-flex">
             <li>
@@ -12,11 +12,14 @@
             </li>
         </EditMenu>
       </div>
+        <header>
+            <h2 class="text-h6">{{ order.caseName }}</h2>
+        </header>
         <v-row align="center" class="mt-2">
             <v-col cols="7">
-                <header>
-                    <h2 class="text-h6">{{ order.caseName }}</h2>
-                </header>
+                <v-card-subtitle class="text-caption">
+                    Goal: €{{ order.estimatedRevenue }}
+                </v-card-subtitle>
             </v-col>
             <v-col cols="5" class="d-flex text-align-left">
                 <v-card-subtitle class="text-caption">
@@ -24,13 +27,11 @@
                 </v-card-subtitle>
             </v-col>
         </v-row>
-    <v-card-subtitle class="text-caption">
-      Goal: €{{ order.estimatedRevenue }}
-    </v-card-subtitle>
+    
       <div class="pt-5">
         <div class="value">
-         €{{ order.estimatedRevenue }}
-          <span class="percentage">+49%</span>
+         €{{ totalAgentUnitsValue}}
+         <span :class="['percentage', percentageClass]"> {{ percentage }}%</span>
         </div>
         
       </div>
@@ -51,7 +52,7 @@
   
   
   <script>
-  import { ref } from 'vue'
+  import { ref, computed } from 'vue'
   import { chartAreaGradient } from '../../charts/ChartjsConfig'
   import LineChart from '../../charts/LineChart01.vue'
   import EditMenu from '../../components/DropdownEditMenu.vue'
@@ -78,8 +79,12 @@
         type: Object,
         required: true,
         },
+        dailyLogs: {
+        type: Object,
+        required: true,
+        },
     },
-    setup() {
+    setup(props) {
       const chartData = ref({
         labels: [
           '12-01-2022', '01-01-2023', '02-01-2023',
@@ -142,17 +147,66 @@
           },
         ],
       })
+      const totalAgentUnitsValue = computed(() => {
+        if (
+          !props.order ||
+          !props.order.assignedCallers ||
+          !Array.isArray(props.dailyLogs)
+        )
+          return 0;
+
+        // Get all agent IDs assigned to this order
+        const assignedIds = props.order.assignedCallers;
+        console.log('Assigned Agent IDs:', assignedIds);
+
+        // Sum quantityCompleted for all dailyLogs where agent is assigned to this order
+        const totalUnits = props.dailyLogs
+          .filter(
+            log =>
+              assignedIds.includes(log.agent._id) &&
+              log.order._id === props.order._id &&
+              typeof log.quantityCompleted === 'number'
+          )
+          .reduce((sum, log) => sum + log.quantityCompleted, 0);
+          console.log('Total Units:', totalUnits);
+
+        return totalUnits * (props.order.pricePerUnit || 0);
+      });
+
+      const percentage = computed(() => {
+        const goal = props.order.estimatedRevenue || 0;
+        if (!goal) return 0;
+        if (totalAgentUnitsValue.value === 0) return 0;
+        const ret_percentage = (totalAgentUnitsValue.value / goal) * 100;
+        console.log('Percentage:', ret_percentage);
+        return Number(ret_percentage.toFixed(1))
+      });
+
+      const percentageClass = computed(() => {
+        const pct = percentage.value;
+        if (pct <= 25) return 'percentage-red';
+        if (pct > 25 && pct <= 50) return 'percentage-orange';
+        if (pct > 50 && pct <= 75) return 'percentage-yellow';
+        return 'percentage-green';
+      });
+
   
       return {
         chartData,
-      } 
+        totalAgentUnitsValue,
+        percentage,
+        percentageClass,
+      }
+      const agentNames = getCallerNames(order, agents); 
     },
 
     methods: {
         getCallerNames(order, agents) {
-            return order.assignedCallers
+            const agentNames = order.assignedCallers
                 .map(id => agents.find(agent => agent._id === id)?.name || 'Unknown')
                 .join(', ')
+            console.log('Agent Names:', agentNames);
+            return agentNames
         },
         formatDate() {
             
@@ -173,60 +227,71 @@
 </script>
 <style scoped>
   .case-card {
-  position: relative;
-  background-color: #f9fafb;
-  border-radius: 12px;
-  padding: 24px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-  font-family: 'Inter', sans-serif;
-  width: 320px; /* optional, for consistent sizing */
-}
+    position: relative;
+    background-color: #eeeff1;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    font-family: 'Inter', sans-serif;
+    width: 320px; /* optional, for consistent sizing */
+  }
 
-.case-card .menu {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  color: #9ca3af;
-  font-size: 20px;
-  cursor: pointer;
-}
+  .case-card .menu {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    color: #9ca3af;
+    font-size: 20px;
+    cursor: pointer;
+  }
 
-.case-card h2 {
-  font-size: 1.125rem;
-  font-weight: 600;
-  margin: 0 0 4px 0;
-  color: #111827;
-}
+  .case-card h2 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin: 0 0 4px 0;
+    color: #111827;
+  }
 
-.case-card .label {
-  text-transform: uppercase;
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: #9ca3af;
-  letter-spacing: 0.05em;
-  margin-bottom: 8px;
-}
+  .case-card .label {
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #9ca3af;
+    letter-spacing: 0.05em;
+    margin-bottom: 8px;
+  }
 
-.case-card .value {
-  font-size: 1.875rem;
-  font-weight: 700;
-  color: #111827;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
+  .case-card .value {
+    font-size: 1.875rem;
+    font-weight: 700;
+    color: #111827;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
 
-.case-card .percentage {
-  display: inline-block;
-  background-color: #d1fae5;
-  color: #10b981;
-  font-weight: 600;
-  font-size: 0.875rem;
-  padding: 2px 8px;
-  border-radius: 9999px;
-}
+  .case-card .percentage {
+    display: inline-block;
+    color: #151313;
+    font-weight: 600;
+    font-size: 0.875rem;
+    padding: 2px 8px;
+    border-radius: 9999px;
+  }
 
-.case-card .chart {
-  margin-top: 16px;
-}
+  .case-card .chart {
+    margin-top: 16px;
+  }
+
+  .percentage-red {
+    background-color: #f35555;
+  }
+  .percentage-orange {
+    background-color: #e8b731;
+  }
+  .percentage-yellow {
+    background-color: #eaea08;  }
+  .percentage-green {
+    background-color: #10b981;
+  }
 </style>

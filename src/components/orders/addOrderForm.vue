@@ -1,66 +1,78 @@
 <template>
-  <v-form @submit.prevent="submitForm" ref="formRef">
-    <v-select
-      v-model="form.caseId"
-      :items="caseOptions"
-      item-value="value"
-      item-title="title"
-      label="Select Case"
-      clearable
-    />
-    <v-select
-      v-model="form.goalType"
-      :items="goalTypes"
-      label="Goal Type"
-      :rules="[v => !!v || 'Goal type is required']"
-      required
-    />
+  <div class="d-flex flex-column align-center" style="height: 100vh; justify-content: center;">  
+    <h1 class="mb-3 mt-5">Add New Order</h1>
+    <v-form ref="formRef" @submit.prevent="submitForm">
+      <v-select
+        v-model="form.caseId"
+        :items="caseOptions"
+        item-value="value"
+        item-title="title"
+        label="Select Case"
+        clearable
+      />
 
-    <v-text-field
-      v-model.number="form.totalQuantity"
-      label="Total Quantity"
-      type="number"
-      :rules="[v => !!v || 'Quantity is required']"
-      required
-    />
+      <v-select
+        v-model="form.caseUnit"
+        :items="caseUnits"
+        label="caseUnit"
+        :rules="[v => !!v || 'Case Unit is required']"
+        required
+      />
 
-    <v-text-field
-      v-model="form.deadline"
-      label="Deadline"
-      type="date"
-      :rules="[v => !!v || 'Deadline is required']"
-      required
-    />
+      <v-text-field
+        v-model.number="form.pricePerUnit"
+        label="Price per Unit (€)"
+        type="number"
+        :rules="[v => !!v || 'Price per unit is required']"
+        required
+      />
+      <v-text-field
+        v-model.number="form.totalQuantity"
+        label="Total Quantity"
+        type="number"
+        :rules="[v => !!v || 'Quantity is required']"
+        required
+      />
 
-    <v-select
-      v-model="form.orderStatus"
-      :items="orderStatuses"
-      label="Order Status"
-      :rules="[v => !!v || 'Order status is required']"
-      required
-    />
+      <v-text-field
+        v-model="form.deadline"
+        label="Deadline"
+        type="date"
+        :rules="[v => !!v || 'Deadline is required']"
+        required
+      />
 
-    <v-text-field
-      v-model.number="form.estimatedRevenue"
-      label="Estimated Revenue (€)"
-      type="number"
-      :rules="[v => !!v || 'Estimated revenue is required']"
-      required
-    />
-    <v-select
-      v-model="form.assignedCallers"
-      :items="agentOptions"
-      item-value="value"
-      item-title="title"
-      label="Assign Callers"
-      multiple
-      chips
-      closable-chips
-      clearable
-    />
+      <v-select
+        v-model="form.orderStatus"
+        :items="orderStatuses"
+        label="Order Status"
+        :rules="[v => !!v || 'Order status is required']"
+        required
+      />
 
-    <v-btn type="submit" color="primary" class="mt-4">Create Order</v-btn>
-  </v-form>
+      <v-text-field
+        v-model.number="form.estimatedRevenue"
+        label="Estimated Revenue (€)"
+        type="number"
+        :rules="[v => !!v || 'Estimated revenue is required']"
+        required
+      />
+
+      <v-select
+        v-model="form.assignedCallers"
+        :items="agentOptions"
+        item-value="value"
+        item-title="title"
+        label="Assign Callers"
+        multiple
+        chips
+        closable-chips
+        clearable
+      />
+
+      <v-btn type="submit" color="primary" class="mt-4">Create Order</v-btn>
+    </v-form>
+  </div>  
 </template>
 
 <script setup>
@@ -70,7 +82,8 @@ import urls from '../../js/config.js'
 
 const form = reactive({
   caseId: '',
-  goalType: '',
+  caseUnit: '',
+  pricePerUnit: '',
   totalQuantity: '',
   deadline: '',
   orderStatus: '',
@@ -92,7 +105,7 @@ const caseOptions = computed(() => cases.value.map(c => ({
   title: c.name
 })))
 
-const goalTypes = ['hours', 'interviews', 'meetings']
+const caseUnits = ['hours', 'interviews', 'meetings']
 const orderStatuses = ['pending', 'in-progress', 'completed', 'cancelled', 'on-hold']
 
 const submitForm = async () => {
@@ -109,7 +122,7 @@ const submitForm = async () => {
 
     // Reset form fields
     form.caseId = '';
-    form.goalType = '';
+    form.caseUnit = '';
     form.totalQuantity = '';
     form.deadline = '';
     form.orderStatus = '';
@@ -133,3 +146,26 @@ onMounted(async () => {
   }
 })
 </script>
+
+<style scoped>
+  .v-form {
+  width: 400px;
+  max-width: 100%;
+  margin: 0 auto;
+}
+.v-btn {
+  margin-top: 20px;
+}
+.v-alert {
+  margin-top: 20px;
+  max-height: 4em;
+}
+.button-alert-container {
+  display: flex;
+  align-items: center; /* Align items vertically */
+  margin-top: 20px;    /* Add spacing from inputs */
+}
+.ml-3 {
+  margin-left: 12px; /* Space between button and alert */
+}
+</style>

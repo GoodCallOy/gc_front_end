@@ -3,7 +3,7 @@
       <h1 class="mb-3 mt-5">Add New Agent</h1>
   
       <!-- Agent Form -->
-      <v-form v-model="valid" @submit.prevent="submitForm" lazy-validation>
+      <v-form v-model="valid" lazy-validation @submit.prevent="submitForm">
         <v-text-field
           v-model="agent.name"
           label="Agent Name"

@@ -1,6 +1,6 @@
 <template>
   <v-card class="pa-4" elevation="2">
-    <v-form @submit.prevent="submitForm" ref="formRef" v-model="formValid">
+    <v-form ref="formRef" v-model="formValid" @submit.prevent="submitForm">
       <v-select
         v-model="form.agentId"
         :items="gcAgents"
@@ -19,7 +19,7 @@
         required
       />
 
-      <v-text-field v-model="form.goalType" label="Goal Type" required />
+      <v-text-field v-model="form.caseUnit" label="Case Unit" required />
       <v-text-field v-model.number="form.call_time" label="Call Time" type="number" required />
       <v-text-field v-model.number="form.completed_calls" label="Completed Calls" type="number" required />
       <v-text-field v-model.number="form.outgoing_calls" label="Outgoing Calls" type="number" required />
@@ -70,7 +70,7 @@ export default {
       agentName: this.logToEdit?.agentName || '',
       orderId: this.logToEdit?.orderId || '',
       caseName: this.logToEdit?.caseName || '',
-      goalType: this.logToEdit?.goalType || '',
+      caseUnit: this.logToEdit?.goalType || '',
       call_time: this.logToEdit?.call_time || 0,
       completed_calls: this.logToEdit?.completed_calls || 0,
       outgoing_calls: this.logToEdit?.outgoing_calls || 0,
@@ -105,7 +105,7 @@ export default {
  watch: {
     'form.orderId'(newOrderId) {
         const selectedOrder = this.orders.find(order => order._id === newOrderId);
-        this.form.goalType = selectedOrder ? selectedOrder.goalType || '' : '';
+        this.form.caseUnit = selectedOrder ? selectedOrder.caseUnit || '' : '';
     },
   },
 async mounted() {
@@ -140,7 +140,7 @@ async mounted() {
                 this.form.agentName = '';
                 this.form.orderId = '';
                 this.form.caseName = '';
-                this.form.goalType = '';
+                this.form.caseUnit = '';
                 this.form.call_time = 0;
                 this.form.completed_calls = 0;
                 this.form.outgoing_calls = 0;
@@ -157,4 +157,11 @@ async mounted() {
   
 }
 </script>
+<style scoped>  
+  .v-form {
+    width: 400px;
+    max-width: 100%;
+    margin: 0 auto;
+  }
+</style>
 
