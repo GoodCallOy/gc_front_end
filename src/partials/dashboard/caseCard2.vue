@@ -39,14 +39,21 @@
         <!-- Chart built with Chart.js 3 -->
         <LineChart :data="chartData" width="389" height="128" />
       </div>
-      <div>
-              <strong>Callers: </strong>
-              <span v-if="order.assignedCallers.length">
-                {{ getCallerNames(order, agents) }}
-              </span>
-              <span v-else>None</span>
-            </div>
-            <div><strong>Deadline:</strong> {{ formatDate(order.deadline) }}</div>
+        <div>
+          <strong>{{ order.caseUnit }}: </strong>
+          <span v-if="order.assignedCallers.length">
+           {{ totalUnits }} / {{ order.totalQuantity }}
+          </span>
+          <span v-else>None</span>
+        </div>
+        <div>
+          <strong>Callers: </strong>
+          <span v-if="order.assignedCallers.length">
+            {{ getCallerNames(order, agents) }}
+          </span>
+          <span v-else>None</span>
+        </div>
+        <div><strong>Deadline:</strong> {{ formatDate(order.deadline) }}</div>
     </div>
   </template>
   
@@ -190,12 +197,32 @@
         return 'percentage-green';
       });
 
+      const totalUnits = computed(() => {
+        if (
+          !props.order ||
+          !props.order.assignedCallers ||
+          !Array.isArray(props.dailyLogs)
+        )
+          return 0;
+
+        const assignedIds = props.order.assignedCallers;
+        return props.dailyLogs
+          .filter(
+            log =>
+              assignedIds.includes(log.agent._id) &&
+              log.order._id === props.order._id &&
+              typeof log.quantityCompleted === 'number'
+          )
+          .reduce((sum, log) => sum + log.quantityCompleted, 0);
+      });
+
   
       return {
         chartData,
         totalAgentUnitsValue,
         percentage,
         percentageClass,
+        totalUnits,
       }
       const agentNames = getCallerNames(order, agents); 
     },

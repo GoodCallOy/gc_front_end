@@ -12,6 +12,7 @@
 
       <v-form v-if="isEditing" @submit.prevent="saveChanges">
         <v-text-field v-model="editedOrder.totalQuantity" label="Total Quantity" type="number" />
+        <v-text-field v-model="editedOrder.pricePerUnit" label="Price Per Unit" type="number" />
         <v-select v-model="editedOrder.caseUnit" :items="goalTypes" label="Case Unit" />
         <v-select v-model="editedOrder.orderStatus" :items="orderStatuses" label="Status" />
         <v-text-field v-model="editedOrder.estimatedRevenue" label="Estimated Revenue" type="number" />

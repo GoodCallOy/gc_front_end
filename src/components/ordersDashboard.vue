@@ -38,7 +38,7 @@
       </v-col>
     </v-row>
   </v-container> -->
-  <v-container>
+  <v-container  style="width: 80%;" >
     <h1 class="text-h4 mb-4">All Orders</h1>
     <div class="grid-container ">
       <DashboardCard01
@@ -106,14 +106,12 @@ onMounted(() => {
   }
   
   .grid-container {
-    display: flex;
-    gap: 16px; /* space between items */
-    overflow-x: auto;
-    overflow-y: hidden;
-    padding: 1rem; /* optional padding */
-    scroll-behavior: smooth; /* optional smooth scroll */
-    width: 90vw; /* adjust as needed */
-    margin-bottom: 1rem; /* ✅ Add spacing to push down the charts */
+    display: grid;
+    grid-template-columns: repeat(3, 1fr); /* 3 columns */
+    gap: 16px;
+    
+    width: 75vw;
+    margin-bottom: 1rem;
     flex-shrink: 0; /* ✅ Prevent it from collapsing or overlapping */
 
     /* Hide scrollbar for Webkit browsers (Chrome, Safari) */
