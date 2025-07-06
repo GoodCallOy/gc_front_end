@@ -39,7 +39,7 @@
     </v-row>
   </v-container> -->
   <v-container  style="width: 80%;" >
-    <h1 class="text-h4 mb-4">All Orders</h1>
+    <h1 class="text-h4 mb-4" style="width: 75vw;">All Orders</h1>
     <div class="grid-container ">
       <DashboardCard01
       v-for="(order, index) in orders"
@@ -109,7 +109,6 @@ onMounted(() => {
     display: grid;
     grid-template-columns: repeat(3, 1fr); /* 3 columns */
     gap: 16px;
-    
     width: 75vw;
     margin-bottom: 1rem;
     flex-shrink: 0; /* ✅ Prevent it from collapsing or overlapping */

@@ -36,6 +36,10 @@
       "orderDashboard": "Order Dashboard",
       "language": "Finnish",
       "logout": "Logout"
+    },
+    "sections": {
+      "dashboard": "Dashboard",
+      "management": "Management"
     }
   }
   
