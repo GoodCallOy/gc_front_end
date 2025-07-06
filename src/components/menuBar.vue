@@ -5,7 +5,7 @@ import { useI18n } from 'vue-i18n';
 import { useRouter, useRoute } from 'vue-router';
 import axios from 'axios';
 
-const isDrawerOpen = ref(false);
+const isDrawerOpen = ref(true);
 
 const { t, locale } = useI18n();
 const router = useRouter();
