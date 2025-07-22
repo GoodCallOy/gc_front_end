@@ -18,6 +18,8 @@ const BASE_URL =
 
 const store = useStore() // Access Vuex store
 const user = computed(() => store.state.user)
+import urls from '@/js/config.js'
+
 
 const dashboardOpen = ref(false)
 const agentsOpen = ref(false)
@@ -56,7 +58,7 @@ function navigateTo(value) {
 const logout = async () => {
   try {
     console.log('Logging out...')
-    await axios.get(`https://localhost:3030/api/v1/auth/logout`, { withCredentials: true })
+    await axios.get(`${urls.backEndURL}/auth/logout`, { withCredentials: true })
 
     store.commit('LOGOUT') // Clear user from Vuex
 
