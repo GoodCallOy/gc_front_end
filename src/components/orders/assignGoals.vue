@@ -178,9 +178,6 @@
             clearable
         />
         <div v-if="form.assignedCallers.length" class="mt-4">
-    <div>
-        Assign Goals ({{ selectedOrder.caseName ? selectedOrder.caseName : 'No order selected' }})
-        </div>
         <v-list>
             <v-list-item
             v-for="agentId in form.assignedCallers"
