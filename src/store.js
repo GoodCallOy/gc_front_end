@@ -10,6 +10,7 @@ const store = createStore({
     agents: [],
     agentStats: [],
     cases: [],
+    GcCases: [],
     orders: [],
     gcAgents: [],
     dailyLogs: [],
@@ -37,6 +38,7 @@ const store = createStore({
     },
     user: state => state.user,
     cases: state => state.cases,
+    GcCases: state => state.GcCases,
     agents: state => state.agents,
     agentStats: state => state.agentStats,
     orders: state => state.orders,
@@ -102,6 +104,20 @@ const store = createStore({
         console.error('❌ Error fetching cases:', error)
       }
     },
+    async fetchGcCases({ state, commit }, force = false) {
+      if (!force && state.GcCases.length && (Date.now() - state.lastFetch.GcCases < CACHE_TIMEOUT)) {
+        console.log('✅ Using cached GcCases (data is fresh)')
+        return
+      }
+      try {
+        console.log('🌍 Fetching cases from API')
+        const response = await axios.get(`${urls.backEndURL}/GcCases?t=${Date.now()}`)
+        commit('setCases', response.data)
+        commit('setLastFetch', { key: 'GcCases', time: Date.now() })
+      } catch (error) {
+        console.error('❌ Error fetching GcCases:', error)
+      }
+    },
     
     async fetchCurrentDateRange({ commit }) {
       const currentDate = new Date()
@@ -146,8 +162,8 @@ const store = createStore({
         commit('SET_USER', JSON.parse(user))
       }
     },
-    async fetchOrders({ state, commit }) {
-      if (state.orders.length && (Date.now() - state.lastFetch.orders < CACHE_TIMEOUT)) {
+    async fetchOrders({ state, commit }, force = false) {
+      if (!force && state.orders.length && (Date.now() - state.lastFetch.orders < CACHE_TIMEOUT)) {
         console.log('✅ Using cached orders (data is fresh)')
         return
       }
@@ -161,8 +177,8 @@ const store = createStore({
         console.error('❌ Error fetching orders:', error)
       }
     },
-    async fetchgcAgents({ state, commit }) {
-      if (state.gcAgents.length && (Date.now() - state.lastFetch.gcAgents < CACHE_TIMEOUT)) {
+    async fetchgcAgents({ state, commit }, force = false) {
+      if (!force && state.gcAgents.length && (Date.now() - state.lastFetch.gcAgents < CACHE_TIMEOUT)) {
         console.log('✅ Using cached gcAgents (data is fresh)')
         return
       }
@@ -205,6 +221,9 @@ const store = createStore({
     },
     setCases(state, cases) {
       state.cases = cases
+    },
+    setGcCases(state, GcCases) {
+      state.GcCases = GcCases
     },
     setCurrentPage(state, currentPage) {
       state.currentPage = currentPage

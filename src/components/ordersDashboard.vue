@@ -66,6 +66,8 @@ async function fetchAllData() {
   await store.dispatch('fetchDailyLogs')
 }
 
+
+
 const orders = computed(() => store.getters['orders'])
 console.log('dashOrders', orders.value)
 const gcAgents = computed(() => store.getters['gcAgents'])

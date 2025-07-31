@@ -1,0 +1,483 @@
+<template>
+  <v-container fluid style="width: 90%;"> 
+    <v-card elevation="1">
+        <div class="d-flex align-center justify-space-around">
+  <!-- Add Order Button (left) -->
+  <v-btn color="primary" @click="openAddOrderModal">
+    Add Order
+  </v-btn>
+
+  <!-- Date Range Display (center) -->
+  <div class="d-flex align-center">
+    <v-btn icon flat class="pa-0 ma-0" @click="getPreviousMonth">
+      <v-icon>mdi-chevron-left</v-icon>
+    </v-btn>
+    <div class="text-h6 font-weight-medium mx-3">{{ getFormattedDateRange() }}</div>
+    <v-btn icon flat @click="getNextMonth">
+      <v-icon>mdi-chevron-right</v-icon>
+    </v-btn>
+  </div>
+
+  <!-- Edit Case Button (right) -->
+  <v-btn
+    color="secondary"
+    :disabled="!selectedOrder"
+    @click="openEditCaseModal"
+  >
+    Edit Order
+  </v-btn>
+</div>
+    </v-card>
+
+    <v-row>
+      <!-- Orders Table -->
+      <v-col cols="8">
+        <v-data-table
+          :headers="orderHeaders"
+          :items="filteredSortedOrders"
+          item-value="_id"
+          class="elevation-1"
+          @click:row="selectOrder"
+        >
+          <template #item.goalsDistributed="{ item }">
+            {{ getDistributedGoals(item) }}
+          </template>
+        </v-data-table>
+      </v-col>
+
+      <!-- Agent Assignment -->
+      <v-col cols="4" class="pa-4">
+        <h3 class="text-h6 mb-2">Assign Goals for ({{ selectedOrder && selectedOrder.caseName || 'No order selected' }})</h3>
+
+        <v-list v-if="selectedOrder && selectedOrder.assignedCallers && selectedOrder.assignedCallers.length" dense>
+  <v-list-item
+    v-for="agentId in selectedOrder.assignedCallers"
+    :key="agentId"
+  >
+    <v-list-item-content>
+      <v-list-item-title>{{ agentName(agentId) }}</v-list-item-title>
+    </v-list-item-content>
+    <v-text-field
+      v-model.number="agentGoals[agentId]"
+      type="number"
+      class="ma-2"
+      dense
+      hide-details
+      style="max-width: 80px;"
+    />
+  </v-list-item>
+</v-list>
+<div v-else class="text-grey">No agents assigned to this order.</div>
+
+        <v-btn
+          color="primary"
+          class="mt-4"
+          :disabled="!selectedOrder"
+          @click="assignGoals"
+          
+        >
+          Save Assignments
+        </v-btn>
+      </v-col>
+    </v-row>
+  </v-container>
+
+  <!-- Add Order Modal -->
+<v-dialog v-model="showAddOrderModal" max-width="600">
+  <v-card>
+    <v-card-title>
+        {{ isEditMode ? 'Edit Order' : 'Add New Order' }}
+    </v-card-title>
+    <v-card-text>
+      <!-- Your add order form goes here -->
+     
+      <div class="d-flex flex-column align-center" style="height: 100vh; justify-content: center;">  
+    <v-form ref="formRef" @submit.prevent="submitOredrForm">
+      <v-select
+        v-model="form.caseId"
+        :items="caseOptions"
+        item-value="value"
+        item-title="title"
+        label="Select Case"
+        clearable
+      />
+
+      <v-select
+        v-model="form.caseUnit"
+        :items="caseUnits"
+        label="caseUnit"
+        :rules="[v => !!v || 'Case Unit is required']"
+        required
+      />
+
+      <v-text-field
+        v-model.number="form.pricePerUnit"
+        label="Price per Unit (€)"
+        type="number"
+        :rules="[v => !!v || 'Price per unit is required']"
+        required
+      />
+      <v-text-field
+        v-model.number="form.totalQuantity"
+        label="Total Quantity"
+        type="number"
+        :rules="[v => !!v || 'Quantity is required']"
+        required
+      />
+
+      <v-text-field
+        v-model="form.startDate"
+        label="startDate"
+        type="date"
+        :rules="[v => !!v || 'Start date is required']"
+        required
+      />
+
+      <v-text-field
+        v-model="form.deadline"
+        label="Deadline"
+        type="date"
+        :rules="[v => !!v || 'Deadline is required']"
+        required
+      />
+
+      <v-select
+        v-model="form.orderStatus"
+        :items="orderStatuses"
+        label="Order Status"
+        :rules="[v => !!v || 'Order status is required']"
+        required
+      />
+
+      <v-text-field
+        v-model.number="form.estimatedRevenue"
+        label="Estimated Revenue (€)"
+        type="number"
+        :rules="[v => !!v || 'Estimated revenue is required']"
+        required
+      />
+
+      <v-select
+        v-model="form.assignedCallers"
+        :items="agentOptions"
+        item-value="value"
+        item-title="title"
+        label="Assign Callers"
+        multiple
+        chips
+        closable-chips
+        clearable
+      />
+      <div v-if="form.assignedCallers.length" class="mt-4">
+  <div>
+    Assign Goals ({{ selectedOrder.caseName ? selectedOrder.caseName : 'No order selected' }})
+    </div>
+      <v-list>
+        <v-list-item
+          v-for="agentId in form.assignedCallers"
+          :key="agentId"
+        >
+          <v-list-item-content>
+            <v-list-item-title>
+              {{ agentName(agentId) }}
+            </v-list-item-title>
+          </v-list-item-content>
+          <v-list-item-action>
+            <v-text-field
+              v-model.number="agentGoals[agentId]"
+              label="Goal"
+              type="number"
+              min="0"
+              style="max-width: 100px"
+            />
+          </v-list-item-action>
+        </v-list-item>
+      </v-list>
+      <v-btn type="submit" color="primary" class="mt-4">
+        {{ isEditMode ? 'Save Changes' : 'Create Order' }}
+      </v-btn>
+    </div>
+     
+    </v-form>
+    
+
+  </div>  
+      
+    </v-card-text>
+    <v-card-actions>
+      <v-spacer />
+      <v-btn text @click="closeAddOrderModal">Close</v-btn>
+    </v-card-actions>
+  </v-card>
+</v-dialog>
+
+<!-- Edit Case Modal -->
+<v-dialog v-model="showEditCaseModal" max-width="600">
+  <v-card>
+    <v-card-title>Edit Case</v-card-title>
+    <v-card-text>
+      <!-- Your edit case form goes here -->
+      <div>Edit Case Form Placeholder</div>
+    </v-card-text>
+    <v-card-actions>
+      <v-spacer />
+      <v-btn text @click="closeEditCaseModal">Close</v-btn>
+    </v-card-actions>
+  </v-card>
+</v-dialog>
+</template>
+
+
+<script setup>
+import { ref, onMounted, computed, reactive } from 'vue'
+import { useStore } from 'vuex'
+import { goToNextMonth, goToPreviousMonth, formattedDateRange, isCurrentMonth } from '@/js/dateUtils';
+import axios from 'axios'
+import urls from '@/js/config.js'
+
+import DashboardCard01 from '@/partials/dashboard/caseCard2.vue'
+
+const store = useStore()
+const formRef = ref(null)
+const agentGoals = reactive({});
+
+
+async function fetchAllData() {
+  await store.dispatch('fetchOrders', true); // force fetch
+  await store.dispatch('fetchgcAgents', true); // force fetch
+  await store.dispatch('fetchGcCases', true); // force fetch
+}
+
+
+const orders = computed(() => store.getters['orders'])
+
+const gcAgents = computed(() => store.getters['gcAgents'])
+
+const agents = gcAgents
+const currentDateRange = computed(() => store.getters['currentDateRange'])
+
+const cases = computed(() => store.getters['cases'])
+
+const form = reactive({
+  caseId: '',
+  caseUnit: '',
+  pricePerUnit: '',
+  totalQuantity: '',
+  startDate: '',
+  deadline: '',
+  orderStatus: '',
+  estimatedRevenue: '',
+  assignedCallers: []
+})
+
+const getFormattedDateRange = () => {
+    return formattedDateRange(currentDateRange.value);
+}
+
+const getIsCurrentMonth = () => {
+    return isCurrentMonth(currentDateRange.value)
+}
+
+const getPreviousMonth = () => {
+    const prevMonth = goToPreviousMonth(currentDateRange.value);
+    updateDateRange(prevMonth);
+}
+
+const getNextMonth = () => {
+    const nextMonth = goToNextMonth(currentDateRange.value);
+    updateDateRange(nextMonth);
+}
+
+const updateDateRange = (newRange) => {
+    store.commit('setDateRange', newRange); // Use the correct mutation name
+}
+
+const filteredSortedOrders = computed(() => {
+  if (!orders.value || !orders.value.length || !currentDateRange.value || !currentDateRange.value.length) return [];
+
+  // Use the first date in the range as the "current" date
+  const currentDate = new Date(currentDateRange.value[0]);
+
+  return orders.value
+    .filter(order => {
+      const start = new Date(order.startDate);
+      const end = new Date(order.deadline);
+      return start <= currentDate && end >= currentDate;
+    })
+    .sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
+});
+
+const selectedOrder = ref(null)
+const isEditMode = ref(false);
+
+const showAddOrderModal = ref(false);
+const showEditCaseModal = ref(false);
+
+function toDateInputString(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  // Pad month and day with leading zeros
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${month}-${day}`;
+}
+
+function openAddOrderModal() {
+  resetForm();
+  isEditMode.value = false;
+  showAddOrderModal.value = true;
+}
+
+function openEditCaseModal() {
+  if (!selectedOrder.value) return;
+  // Populate form with selected order's data
+  Object.assign(form, {
+    caseId: selectedOrder.value.caseId,
+    caseUnit: selectedOrder.value.caseUnit,
+    pricePerUnit: selectedOrder.value.pricePerUnit,
+    totalQuantity: selectedOrder.value.totalQuantity,
+    startDate: toDateInputString(selectedOrder.value.startDate),
+    deadline: toDateInputString(selectedOrder.value.deadline),
+    orderStatus: selectedOrder.value.orderStatus,
+    estimatedRevenue: selectedOrder.value.estimatedRevenue,
+    assignedCallers: [...(selectedOrder.value.assignedCallers || [])],
+  });
+  // Populate agentGoals if present
+  Object.keys(agentGoals).forEach(k => agentGoals[k] = 0);
+  if (selectedOrder.value.agentGoals) {
+    for (const [agentId, value] of Object.entries(selectedOrder.value.agentGoals)) {
+      agentGoals[agentId] = value;
+    }
+  }
+  isEditMode.value = true;
+  showAddOrderModal.value = true;
+}
+
+function closeAddOrderModal() {
+  
+  showAddOrderModal.value = false;
+}
+
+function closeEditCaseModal() {
+  showEditCaseModal.value = false;
+}
+
+const orderHeaders = [
+  { text: 'Case Name', value: 'caseName' },
+  { text: 'Total Goals', value: 'totalQuantity' },
+  { text: 'Goals Distributed', value: 'goalsDistributed' },
+]
+
+const getDistributedGoals = (order) => {
+  return Object.values(order.agentGoals || {}).reduce((sum, val) => sum + val, 0)
+}
+
+const selectOrder = (order, event) => {
+  selectedOrder.value = event.item;
+  Object.keys(agentGoals).forEach(k => agentGoals[k] = 0);
+  if (event.item.agentGoals) {
+    for (const [agentId, value] of Object.entries(event.item.agentGoals)) {
+      agentGoals[agentId] = value;
+    }
+  }
+}
+
+const assignGoals = async () => {
+  if (!selectedOrder.value) return;
+  try {
+    // Prepare the updated order object
+    const updatedOrder = {
+      ...selectedOrder.value,
+      agentGoals: { ...agentGoals }
+    };
+    // Send the update request
+    console.log('Updating order with goals:', updatedOrder);
+    await axios.put(`${urls.backEndURL}/orders/${selectedOrder.value._id}`, updatedOrder);
+    // Optionally refresh orders here if needed
+    await fetchAllData();
+     // Reselect the updated order from the new orders array
+    const updated = orders.value.find(o => o._id === selectedOrder.value._id);
+    if (updated) selectedOrder.value = updated;
+  } catch (err) {
+    console.error('Failed to update order:', err.response?.data || err.message);
+    alert('Failed to save goals!');
+  }
+};
+
+const agentOptions = computed(() => agents.value.map(a => ({
+  value: a._id,
+  title: a.name
+})))
+
+const caseOptions = computed(() => cases.value.map(c => ({
+  value: c._id,
+  title: c.name
+})))
+
+const caseUnits = ['hours', 'interviews', 'meetings']
+const orderStatuses = ['pending', 'in-progress', 'completed', 'cancelled', 'on-hold']
+
+const assignedGoalsCount = computed(() =>
+  form.assignedCallers.reduce((sum, id) => sum + (Number(agentGoals[id]) || 0), 0)
+);
+
+const agentName = id => {
+  const agent = agents.value.find(a => a._id === id);
+  return agent ? agent.name : id;
+};
+
+const resetForm = () => {
+  form.caseId = '';
+  form.caseUnit = '';
+  form.totalQuantity = '';
+  form.pricePerUnit = '';
+  form.startDate = '';
+  form.deadline = '';
+  form.orderStatus = '';
+  form.estimatedRevenue = '';
+  form.assignedCallers = [];
+  Object.keys(agentGoals).forEach(k => agentGoals[k] = 0);
+};
+
+const submitOredrForm = async () => {
+  try {
+    const selectedCase = cases.value.find(c => c._id === form.caseId);
+    const payload = {
+      ...form,
+      caseName: selectedCase ? selectedCase.name : '',
+      agentGoals: { ...agentGoals }
+    };
+    if (isEditMode.value && selectedOrder.value) {
+      // Edit mode: update the order
+      console.log('Updating order:', selectedOrder.value._id, payload);
+      await axios.put(`${urls.backEndURL}/orders/${selectedOrder.value._id}`, { ...selectedOrder.value, ...payload });
+    } else {
+      // Add mode: create a new order
+      await axios.post(`${urls.backEndURL}/orders/`, payload);
+    }
+    await fetchAllData();
+    if (isEditMode.value && selectedOrder.value) {
+      const updated = orders.value.find(o => o._id === selectedOrder.value._id);
+      if (updated) selectedOrder.value = updated;
+    }
+    resetForm();
+    closeAddOrderModal();
+  } catch (err) {
+    console.error('Failed to save order:', err.response?.data || err.message);
+  }
+};
+
+
+onMounted(async () => {
+  
+  fetchAllData()
+
+  if (!currentDateRange || currentDateRange.length < 2) {
+      const startDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1); // First day of the current month
+      const endDate = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0); // Last day of the current month
+
+      updateDateRange([startDate, endDate]); // Set the default date range
+    }
+})
+
+</script>

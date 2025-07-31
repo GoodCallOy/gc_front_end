@@ -22,6 +22,7 @@ import Login from '@/components/LoginPage.vue';
 import OrderProgressTable from '@/components/OrderProgressTable.vue';
 import orderDashboard from '@/components/ordersDashboard.vue';
 import orderDetails from '@/components/orderDetails.vue';
+import assignGoals from '@/components/orders/assignGoals.vue';
 
 const routes = [
   { path: '/', redirect: '/login' }, // Redirect root path to login
@@ -49,6 +50,7 @@ const routes = [
       { path: '/order-progress-chart', name: 'OrderProgressTable', component: OrderProgressTable },
       { path: '/order-dashboard', name: 'orderDashboard', component: orderDashboard },
       { path: '/order-details', name: 'orderDetails', component: orderDetails },
+      { path: '/assign-goals', name: 'assignGoals', component: assignGoals },
       { 
         path: '/singleCase', 
         name: 'singleCase', 

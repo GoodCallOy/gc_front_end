@@ -120,6 +120,12 @@ const logout = async () => {
           :active="route.name === 'orderDashboard'"
           @click="navigateTo('orderDashboard')"
         ></v-list-item>
+        <v-list-item
+          prepend-icon="mdi-account-plus"
+          :title="t('buttons.orderDashboard')"  
+          :active="route.name === 'orderDashboard'"
+          @click="navigateTo('assignGoals')"
+        ></v-list-item>
       </v-list-group>
       <!-- Agents Group -->
       <v-list-group

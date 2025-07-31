@@ -1,6 +1,5 @@
 <template>
   <div class="d-flex flex-column align-center" style="height: 100vh; justify-content: center;">  
-    <h1 class="mb-3 mt-5">Add New Order</h1>
     <v-form ref="formRef" @submit.prevent="submitForm">
       <v-select
         v-model="form.caseId"
@@ -31,6 +30,14 @@
         label="Total Quantity"
         type="number"
         :rules="[v => !!v || 'Quantity is required']"
+        required
+      />
+
+      <v-text-field
+        v-model="form.startDate"
+        label="startDate"
+        type="date"
+        :rules="[v => !!v || 'Start date is required']"
         required
       />
 
@@ -113,6 +120,7 @@ const form = reactive({
   caseUnit: '',
   pricePerUnit: '',
   totalQuantity: '',
+  startDate: '',
   deadline: '',
   orderStatus: '',
   estimatedRevenue: '',
@@ -155,7 +163,11 @@ const submitForm = async () => {
     const payload = {
       ...form,
       caseName: selectedCase ? selectedCase.name : '',
-      agentGoals: { ...agentGoals }
+      agentGoals: { ...agentGoals },
+      assignedCallers: form.assignedCallers.map(id => {
+        const agent = agents.value.find(a => a._id === id);
+        return agent ? { id, name: agent.name } : { id, name: '' };
+      })
     };
     console.log('Order created:', payload);
     await axios.post(`${urls.backEndURL}/orders/`, payload);
@@ -164,6 +176,8 @@ const submitForm = async () => {
     form.caseId = '';
     form.caseUnit = '';
     form.totalQuantity = '';
+    form.pricePerUnit = '';
+    form.startDate = '';
     form.deadline = '';
     form.orderStatus = '';
     form.estimatedRevenue = '';

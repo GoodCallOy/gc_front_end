@@ -16,10 +16,10 @@
         </v-btn>
 
         <!-- Current Month Label -->
-        <div class="text-h6 font-weight-medium mx-3"> {{ this.getFormattedDateRange }}</div>
+        <div class="text-h6 font-weight-medium mx-3"> {{ getFormattedDateRange }}</div>
 
         <!-- Next Button -->
-        <v-btn icon flat @click="getNextMonth" v-if="!getIsCurrentMonth">
+        <v-btn v-if="!getIsCurrentMonth" icon flat @click="getNextMonth">
           <v-icon>mdi-chevron-right</v-icon>
         </v-btn>
       </div>
@@ -114,8 +114,8 @@ export default {
       
     getFormattedDateRange() {
       return formattedDateRange(this.currentDateRange);
-      },
-      getIsCurrentMonth() {
+    },
+    getIsCurrentMonth() {
       return isCurrentMonth(this.currentDateRange)
     },
     hourMeeting() {
