@@ -1,48 +1,57 @@
 <template>
   <v-container fluid style="width: 90%;"> 
-    <v-card elevation="1">
+    <v-card elevation="1" class="mb-4">
         <div class="d-flex align-center justify-space-around">
-  <!-- Add Order Button (left) -->
-  <v-btn color="primary" @click="openAddOrderModal">
-    Add Order
-  </v-btn>
 
-  <!-- Date Range Display (center) -->
-  <div class="d-flex align-center">
-    <v-btn icon flat class="pa-0 ma-0" @click="getPreviousMonth">
-      <v-icon>mdi-chevron-left</v-icon>
-    </v-btn>
-    <div class="text-h6 font-weight-medium mx-3">{{ getFormattedDateRange() }}</div>
-    <v-btn icon flat @click="getNextMonth">
-      <v-icon>mdi-chevron-right</v-icon>
-    </v-btn>
-  </div>
+            <v-btn color="primary" @click="openAddAgentModal">
+                Add Agent
+            </v-btn>
 
-  <!-- Edit Case Button (right) -->
-  <v-btn
-    color="secondary"
-    :disabled="!selectedOrder"
-    @click="openEditCaseModal"
-  >
-    Edit Order
-  </v-btn>
-</div>
+            <v-btn color="primary" @click="openAddCaseModal">
+                Add Case
+            </v-btn>
+
+            <!-- Date Range Display (center) -->
+            <div class="d-flex align-center">
+                <v-btn icon flat class="pa-0 ma-0" @click="getPreviousMonth">
+                <v-icon>mdi-chevron-left</v-icon>
+                </v-btn>
+                <div class="text-h6 font-weight-medium mx-3">{{ getFormattedDateRange() }}</div>
+                <v-btn icon flat @click="getNextMonth">
+                <v-icon>mdi-chevron-right</v-icon>
+                </v-btn>
+            </div>
+
+            <v-btn color="primary" @click="openAddOrderModal">
+                Add Order
+            </v-btn>
+
+            <v-btn
+                color="secondary"
+                :disabled="!selectedOrder"
+                @click="openEditOrderModal"
+            >
+                Edit Order
+            </v-btn>
+        </div>
     </v-card>
 
     <v-row>
       <!-- Orders Table -->
       <v-col cols="8">
         <v-data-table
-          :headers="orderHeaders"
-          :items="filteredSortedOrders"
-          item-value="_id"
-          class="elevation-1"
-          @click:row="selectOrder"
+            :headers="orderHeaders"
+            :items="filteredSortedOrders"
+            item-value="_id"
+            class="elevation-1"
+            :items-per-page="20"
+            @click:row="selectOrder"  
         >
-          <template #item.goalsDistributed="{ item }">
+        <template #item.goalsDistributed="{ item }">
             {{ getDistributedGoals(item) }}
-          </template>
+        </template>
         </v-data-table>
+        
       </v-col>
 
       <!-- Agent Assignment -->
@@ -82,150 +91,230 @@
     </v-row>
   </v-container>
 
-  <!-- Add Order Modal -->
-<v-dialog v-model="showAddOrderModal" max-width="600">
-  <v-card>
-    <v-card-title>
-        {{ isEditMode ? 'Edit Order' : 'Add New Order' }}
-    </v-card-title>
-    <v-card-text>
-      <!-- Your add order form goes here -->
-     
-      <div class="d-flex flex-column align-center" style="height: 100vh; justify-content: center;">  
-    <v-form ref="formRef" @submit.prevent="submitOredrForm">
-      <v-select
-        v-model="form.caseId"
-        :items="caseOptions"
-        item-value="value"
-        item-title="title"
-        label="Select Case"
-        clearable
-      />
+  <!-- Modals -->
+    <v-dialog v-model="showAddOrderModal" max-width="600">
+    <v-card>
+        <v-card-title>
+            {{ isEditMode ? 'Edit Order' : 'Add New Order' }}
+        </v-card-title>
+        <v-card-text>
+        <!-- Your add order form goes here -->
+        
+        <div class="d-flex flex-column align-center" style="justify-content: center; overflow-y: auto;">  
+        <v-form ref="formRef" style="width: 60%;" @submit.prevent="submitOredrForm">
+        <v-select
+            v-model="form.caseId"
+            :items="caseOptions"
+            item-value="value"
+            item-title="title"
+            label="Select Case"
+            clearable
+        />
 
-      <v-select
-        v-model="form.caseUnit"
-        :items="caseUnits"
-        label="caseUnit"
-        :rules="[v => !!v || 'Case Unit is required']"
-        required
-      />
+        <v-select
+            v-model="form.caseUnit"
+            :items="caseUnits"
+            label="caseUnit"
+            :rules="[v => !!v || 'Case Unit is required']"
+            required
+        />
 
-      <v-text-field
-        v-model.number="form.pricePerUnit"
-        label="Price per Unit (€)"
-        type="number"
-        :rules="[v => !!v || 'Price per unit is required']"
-        required
-      />
-      <v-text-field
-        v-model.number="form.totalQuantity"
-        label="Total Quantity"
-        type="number"
-        :rules="[v => !!v || 'Quantity is required']"
-        required
-      />
+        <v-text-field
+            v-model.number="form.pricePerUnit"
+            label="Price per Unit (€)"
+            type="number"
+            :rules="[v => !!v || 'Price per unit is required']"
+            required
+        />
+        <v-text-field
+            v-model.number="form.totalQuantity"
+            label="Total Quantity"
+            type="number"
+            :rules="[v => !!v || 'Quantity is required']"
+            required
+        />
 
-      <v-text-field
-        v-model="form.startDate"
-        label="startDate"
-        type="date"
-        :rules="[v => !!v || 'Start date is required']"
-        required
-      />
+        <v-text-field
+            v-model="form.startDate"
+            label="startDate"
+            type="date"
+            :rules="[v => !!v || 'Start date is required']"
+            required
+        />
 
-      <v-text-field
-        v-model="form.deadline"
-        label="Deadline"
-        type="date"
-        :rules="[v => !!v || 'Deadline is required']"
-        required
-      />
+        <v-text-field
+            v-model="form.deadline"
+            label="Deadline"
+            type="date"
+            :rules="[v => !!v || 'Deadline is required']"
+            required
+        />
 
-      <v-select
-        v-model="form.orderStatus"
-        :items="orderStatuses"
-        label="Order Status"
-        :rules="[v => !!v || 'Order status is required']"
-        required
-      />
+        <v-select
+            v-model="form.orderStatus"
+            :items="orderStatuses"
+            label="Order Status"
+            :rules="[v => !!v || 'Order status is required']"
+            required
+        />
 
-      <v-text-field
-        v-model.number="form.estimatedRevenue"
-        label="Estimated Revenue (€)"
-        type="number"
-        :rules="[v => !!v || 'Estimated revenue is required']"
-        required
-      />
+        <v-text-field
+            v-model.number="form.estimatedRevenue"
+            label="Estimated Revenue (€)"
+            type="number"
+            :rules="[v => !!v || 'Estimated revenue is required']"
+            required
+        />
 
-      <v-select
-        v-model="form.assignedCallers"
-        :items="agentOptions"
-        item-value="value"
-        item-title="title"
-        label="Assign Callers"
-        multiple
-        chips
-        closable-chips
-        clearable
-      />
-      <div v-if="form.assignedCallers.length" class="mt-4">
-  <div>
-    Assign Goals ({{ selectedOrder.caseName ? selectedOrder.caseName : 'No order selected' }})
-    </div>
-      <v-list>
-        <v-list-item
-          v-for="agentId in form.assignedCallers"
-          :key="agentId"
-        >
-          <v-list-item-content>
-            <v-list-item-title>
-              {{ agentName(agentId) }}
-            </v-list-item-title>
-          </v-list-item-content>
-          <v-list-item-action>
-            <v-text-field
-              v-model.number="agentGoals[agentId]"
-              label="Goal"
-              type="number"
-              min="0"
-              style="max-width: 100px"
-            />
-          </v-list-item-action>
-        </v-list-item>
-      </v-list>
-      <v-btn type="submit" color="primary" class="mt-4">
-        {{ isEditMode ? 'Save Changes' : 'Create Order' }}
-      </v-btn>
-    </div>
-     
-    </v-form>
+        <v-select
+            v-model="form.assignedCallers"
+            :items="agentOptions"
+            item-value="value"
+            item-title="title"
+            label="Assign Callers"
+            multiple
+            chips
+            closable-chips
+            clearable
+        />
+        <div v-if="form.assignedCallers.length" class="mt-4">
+    <div>
+        Assign Goals ({{ selectedOrder.caseName ? selectedOrder.caseName : 'No order selected' }})
+        </div>
+        <v-list>
+            <v-list-item
+            v-for="agentId in form.assignedCallers"
+            :key="agentId"
+            >
+            <v-list-item-content>
+                <v-list-item-title>
+                {{ agentName(agentId) }}
+                </v-list-item-title>
+            </v-list-item-content>
+            <v-list-item-action>
+                <v-text-field
+                v-model.number="agentGoals[agentId]"
+                label="Goal"
+                type="number"
+                min="0"
+                style="max-width: 100px"
+                />
+            </v-list-item-action>
+            </v-list-item>
+        </v-list>
+        <v-btn type="submit" color="primary" class="mt-4">
+            {{ isEditMode ? 'Save Changes' : 'Create Order' }}
+        </v-btn>
+        </div>
+        
+        </v-form>
+        
+
+    </div>  
+        
+        </v-card-text>
+        <v-card-actions>
+        <v-spacer />
+        <v-btn text @click="closeAddOrderModal">Close</v-btn>
+        </v-card-actions>
+    </v-card>
+    </v-dialog>
     
+    <v-dialog v-model="showAddAgentModal" max-width="600">
+    <v-card>
+        <v-card-title>Add Agent</v-card-title>
+        <v-card-text>
+        <div class="d-flex flex-column align-center" style="justify-content: center;">
+            <v-form ref="agentForm" style="width: 60%;" @submit.prevent="submitAgentForm">
+                <v-text-field
+                    v-model="agent.name"
+                    label="Name"
+                    :rules="[v => !!v || 'Name is required']"
+                    required
+                />
 
-  </div>  
-      
-    </v-card-text>
-    <v-card-actions>
-      <v-spacer />
-      <v-btn text @click="closeAddOrderModal">Close</v-btn>
-    </v-card-actions>
-  </v-card>
-</v-dialog>
+                <v-text-field
+                    v-model="agent.email"
+                    label="Email"
+                    :rules="[v => !!v || 'Email is required', v => /.+@.+\..+/.test(v) || 'Email must be valid']"
+                    required
+                />
 
-<!-- Edit Case Modal -->
-<v-dialog v-model="showEditCaseModal" max-width="600">
-  <v-card>
-    <v-card-title>Edit Case</v-card-title>
-    <v-card-text>
-      <!-- Your edit case form goes here -->
-      <div>Edit Case Form Placeholder</div>
-    </v-card-text>
-    <v-card-actions>
-      <v-spacer />
-      <v-btn text @click="closeEditCaseModal">Close</v-btn>
-    </v-card-actions>
-  </v-card>
-</v-dialog>
+                <v-select
+                    v-model="agent.role"
+                    :items="roles"
+                    label="Role"
+                    :rules="[v => !!v || 'Role is required']"
+                    required
+                />
+
+                <v-switch
+                    v-model="agent.active"
+                    label="Active"
+                />
+
+                <v-btn type="submit" color="primary">Add Agent</v-btn>
+                <v-alert 
+                    v-if="message" 
+                    :type="alertType" 
+                    class="ml-3" 
+                    dense 
+                    dismissible>
+                    {{ message }}
+                    </v-alert>
+            </v-form>
+        </div>
+        </v-card-text>
+        <v-card-actions>
+        <v-spacer />
+        <v-btn text @click="closeAddAgentModal">Close</v-btn>
+        </v-card-actions>
+    </v-card>
+    </v-dialog>
+
+    <v-dialog v-model="showAddCaseModal" max-width="600">
+    <v-card>
+        <v-card-title>Add Case</v-card-title>
+        <v-card-text>
+        <!-- Your edit case form goes here -->
+        <div class="d-flex flex-column align-center">
+            <v-form ref="caseForm" style="width: 60%;" @submit.prevent="submitCaseForm">
+                <v-text-field
+                    v-model="gcCase.name"
+                    label="Case Name"
+                    :rules="[v => !!v || 'Name is required']"
+                    required
+                />
+
+                <v-text-field
+                    v-model="gcCase.contactInfo.contactName"
+                    label="Contact Name"
+                />
+
+                <v-text-field
+                    v-model="gcCase.contactInfo.contactTitle"
+                    label="Contact Title"
+                />
+
+                <v-text-field
+                    v-model="gcCase.contactInfo.email"
+                    label="Email"
+                    :rules="[v => !v || /.+@.+\..+/.test(v) || 'Invalid email']"
+                />
+
+                <v-btn type="submit" color="primary">Add Case</v-btn>
+            </v-form>
+        </div>
+        </v-card-text>
+        <v-card-actions>
+        <v-spacer />
+        <v-btn text @click="closeAddCaseModal">Close</v-btn>
+        </v-card-actions>
+    </v-card>
+    </v-dialog>
 </template>
+
+
 
 
 <script setup>
@@ -240,6 +329,15 @@ import DashboardCard01 from '@/partials/dashboard/caseCard2.vue'
 const store = useStore()
 const formRef = ref(null)
 const agentGoals = reactive({});
+const agentForm = ref(null);
+const caseForm = ref(null);
+const selectedOrder = ref(null)
+const isEditMode = ref(false);
+
+const showEditOrderModal = ref(false);
+const showAddCaseModal = ref(false);
+const showAddAgentModal = ref(false);
+const showAddOrderModal = ref(false);
 
 
 async function fetchAllData() {
@@ -250,13 +348,30 @@ async function fetchAllData() {
 
 
 const orders = computed(() => store.getters['orders'])
-
 const gcAgents = computed(() => store.getters['gcAgents'])
-
 const agents = gcAgents
 const currentDateRange = computed(() => store.getters['currentDateRange'])
-
 const cases = computed(() => store.getters['cases'])
+const roles = ['admin', 'caller', 'manager']
+const message = ref('')
+const alertType = ref('success') // 'success' or 'error'
+
+
+const agent = ref({
+  name: '',
+  email: '',
+  role: '',
+  active: true
+})
+
+const gcCase = ref({
+  name: '',
+  contactInfo: {
+    contactName: '',
+    contactTitle: '',
+    email: ''
+  }
+})
 
 const form = reactive({
   caseId: '',
@@ -307,12 +422,6 @@ const filteredSortedOrders = computed(() => {
     .sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
 });
 
-const selectedOrder = ref(null)
-const isEditMode = ref(false);
-
-const showAddOrderModal = ref(false);
-const showEditCaseModal = ref(false);
-
 function toDateInputString(dateStr) {
   if (!dateStr) return '';
   const d = new Date(dateStr);
@@ -328,7 +437,17 @@ function openAddOrderModal() {
   showAddOrderModal.value = true;
 }
 
-function openEditCaseModal() {
+function openAddAgentModal() {
+  resetAgentForm();
+  showAddAgentModal.value = true;
+}
+
+function openAddCaseModal() {
+  resetCaseForm();
+  showAddCaseModal.value = true;
+}
+
+function openEditOrderModal() {
   if (!selectedOrder.value) return;
   // Populate form with selected order's data
   Object.assign(form, {
@@ -354,21 +473,31 @@ function openEditCaseModal() {
 }
 
 function closeAddOrderModal() {
-  
   showAddOrderModal.value = false;
 }
 
-function closeEditCaseModal() {
-  showEditCaseModal.value = false;
+function closeEditOrderModal() {
+  showEditOrderModal.value = false;
 }
 
-const orderHeaders = [
+function closeAddAgentModal() {
+  showAddAgentModal.value = false;
+}
+
+function closeAddCaseModal() {
+  showAddCaseModal.value = false;
+}
+
+const orderHeaders = ref([
   { text: 'Case Name', value: 'caseName' },
   { text: 'Total Goals', value: 'totalQuantity' },
-  { text: 'Goals Distributed', value: 'goalsDistributed' },
-]
+  { text: 'Goals Distributed', value: 'goalsDistributed', sortable: false },
+])
 
 const getDistributedGoals = (order) => {
+    console.log('getDistributedGoals for order:', order);
+    console.log('getDistributedGoals:', Object.values(order.agentGoals || {}).reduce((sum, val) => sum + val, 0));
+    
   return Object.values(order.agentGoals || {}).reduce((sum, val) => sum + val, 0)
 }
 
@@ -439,6 +568,28 @@ const resetForm = () => {
   Object.keys(agentGoals).forEach(k => agentGoals[k] = 0);
 };
 
+function resetAgentForm() {
+  agent.value = {
+    name: '',
+    email: '',
+    role: '',
+    active: true
+  };
+  message.value = '';
+  alertType.value = 'success';
+}
+
+function resetCaseForm() {
+  gcCase.value = {
+    name: '',
+    contactInfo: {
+      contactName: '',
+      contactTitle: '',
+      email: ''
+    }
+  };
+}
+
 const submitOredrForm = async () => {
   try {
     const selectedCase = cases.value.find(c => c._id === form.caseId);
@@ -467,10 +618,53 @@ const submitOredrForm = async () => {
   }
 };
 
+const submitAgentForm = async () => {
+  const me = this;
+  try {
+    const response = await axios.post(`${urls.backEndURL}/gcAgents/`, agent.value)
+    console.log('Agent added:', response.data)
+    // reset form
+    agent.value = {
+      name: '',
+      email: '',
+      role: '',
+      active: true
+    }
+    me.alertType = "success";
+    setTimeout(() => {
+            me.message = "";
+    }, 3000);
+  } catch (err) {
+    console.error('Error adding agent:', err.response?.data || err.message)
+  }
+}
+
+const submitCaseForm = async () => {
+  try {
+     const response = await axios.post(`${urls.backEndURL}/gcCases/`, {
+      name: gcCase.value.name,
+      contactInfo: gcCase.value.contactInfo
+    })
+    console.log('Case added:', response.data)
+    gcCase.value = {
+      name: '',
+      contactInfo: {
+        contactName: '',
+        contactTitle: '',
+        email: ''
+      }
+    }
+  } catch (err) {
+    console.error(err)
+    console.log('Failed in adding case.', err)
+  }
+}
+
 
 onMounted(async () => {
   
-  fetchAllData()
+  await fetchAllData()
+  console.log('orders:', orders.value);
 
   if (!currentDateRange || currentDateRange.length < 2) {
       const startDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1); // First day of the current month
@@ -478,6 +672,7 @@ onMounted(async () => {
 
       updateDateRange([startDate, endDate]); // Set the default date range
     }
+    console.log('filteredSortedOrders',filteredSortedOrders.value)
 })
 
 </script>
