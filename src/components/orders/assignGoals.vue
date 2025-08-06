@@ -40,6 +40,7 @@
       <!-- Orders Table -->
       <v-col cols="8">
         <v-data-table
+            v-if="orders && orders.length"
             :headers="orderHeaders"
             :items="filteredSortedOrders"
             item-value="_id"
@@ -49,6 +50,16 @@
         >
         <template #item.goalsDistributed="{ item }">
             {{ getDistributedGoals(item) }}
+        </template>
+        <template #item.actions="{ item }">
+            <v-icon
+                style="cursor: pointer;"
+                color="grey"
+                class="mr-2"
+                @click.stop="deleteOrder(item._id)" 
+            >
+                mdi-delete
+            </v-icon>
         </template>
         </v-data-table>
         
@@ -316,12 +327,11 @@
 
 <script setup>
 import { ref, onMounted, computed, reactive } from 'vue'
+
 import { useStore } from 'vuex'
 import { goToNextMonth, goToPreviousMonth, formattedDateRange, isCurrentMonth } from '@/js/dateUtils';
 import axios from 'axios'
 import urls from '@/js/config.js'
-
-import DashboardCard01 from '@/partials/dashboard/caseCard2.vue'
 
 const store = useStore()
 const formRef = ref(null)
@@ -353,6 +363,12 @@ const roles = ['admin', 'caller', 'manager']
 const message = ref('')
 const alertType = ref('success') // 'success' or 'error'
 
+const orderHeaders = ([
+  { text: 'Case Name', value: 'caseName' },
+  { text: 'Total Goals', value: 'totalQuantity' },
+  { text: 'Goals Distributed', value: 'goalsDistributed', sortable: false },
+  { text: '', value: 'actions', sortable: false }
+])
 
 const agent = ref({
   name: '',
@@ -402,6 +418,34 @@ const getNextMonth = () => {
 
 const updateDateRange = (newRange) => {
     store.commit('setDateRange', newRange); // Use the correct mutation name
+}
+
+const getCurrentMonthDateRange = () => {
+  const now = new Date()
+  const firstDay = new Date(now.getFullYear(), now.getMonth(), 1)
+  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+  const format = (date) => date.toISOString().split('T')[0]
+  return [format(firstDay), format(lastDay)]
+}
+
+const getAgentMonthlyGoalTotals = () => {
+  const totals = {}
+
+  const now = new Date()
+  const firstDay = new Date(now.getFullYear(), now.getMonth(), 1)
+  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+
+  orders.value.forEach(order => {
+    const orderDate = new Date(order.createdAt || order.date || order.updatedAt)
+    if (orderDate >= firstDay && orderDate <= lastDay && order.assignedGoals) {
+      for (const [agentId, goals] of Object.entries(order.assignedGoals)) {
+        if (!totals[agentId]) totals[agentId] = 0
+        totals[agentId] += goals
+      }
+    }
+  })
+
+  return totals
 }
 
 const filteredSortedOrders = computed(() => {
@@ -485,16 +529,7 @@ function closeAddCaseModal() {
   showAddCaseModal.value = false;
 }
 
-const orderHeaders = ref([
-  { text: 'Case Name', value: 'caseName' },
-  { text: 'Total Goals', value: 'totalQuantity' },
-  { text: 'Goals Distributed', value: 'goalsDistributed', sortable: false },
-])
-
 const getDistributedGoals = (order) => {
-    console.log('getDistributedGoals for order:', order);
-    console.log('getDistributedGoals:', Object.values(order.agentGoals || {}).reduce((sum, val) => sum + val, 0));
-    
   return Object.values(order.agentGoals || {}).reduce((sum, val) => sum + val, 0)
 }
 
@@ -505,6 +540,17 @@ const selectOrder = (order, event) => {
     for (const [agentId, value] of Object.entries(event.item.agentGoals)) {
       agentGoals[agentId] = value;
     }
+  }
+}
+
+const deleteOrder = async (orderId) => {
+  const confirmDelete = confirm('Are you sure you want to delete this order?')
+  if (!confirmDelete) return
+
+  await axios.delete(`${urls.backEndURL}/orders/${orderId}`)
+  await fetchAllData();
+  if (selectedOrder.value && selectedOrder.value._id === orderId) {
+    selectedOrder.value = null
   }
 }
 

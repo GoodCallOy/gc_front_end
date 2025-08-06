@@ -132,6 +132,17 @@ const store = createStore({
       commit('setDateRange', selectedDateRange)
       return selectedDateRange
     },
+
+    async getCurrentMonthDateRange(){
+      const now = new Date()
+
+      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1)
+      const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+
+      const format = (date) => date.toISOString().split('T')[0]
+
+      return [format(firstDay), format(lastDay)]
+    },
     
     async fetchUser({ state, commit }) {
       
