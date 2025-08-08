@@ -67,58 +67,52 @@
 
       <!-- Agent Assignment -->
       <v-col cols="5" class="pa-4">
-        <v-row>
+         <h3 class="text-h6 mb-2">Assign Goals for ({{ selectedOrder && selectedOrder.caseName || 'No order selected' }})</h3>
+        <v-col cols="12" class="pa-0" v-if="selectedOrder?.assignedCallers?.length">
+  <v-row v-for="agentId in selectedOrder.assignedCallers" :key="agentId" class="mb-3">
+    <v-col cols="12">
+      <v-card outlined>
+        <v-row no-gutters>
+          <!-- Left side: name + input -->
           <v-col cols="5" class="pa-4">
-            <h3 class="text-h6 mb-2">Assign Goals for ({{ selectedOrder && selectedOrder.caseName || 'No order selected' }})</h3>
-            <v-list v-if="selectedOrder && selectedOrder.assignedCallers && selectedOrder.assignedCallers.length" dense>
-        <v-list-item
-          v-for="agentId in selectedOrder.assignedCallers"
-          :key="agentId"
-        >
-          <v-list-item-content>
-            <v-list-item-title>{{ agentName(agentId) }}</v-list-item-title>
-          </v-list-item-content>
-          <v-text-field
-            v-model.number="agentGoals[agentId]"
-            type="number"
-            class="ma-2"
-            dense
-            hide-details
-            style="max-width: 80px;"
-          />
-        </v-list-item>
-      </v-list>
-      <div v-else class="text-grey">No agents assigned to this order.</div>
-
-            <v-btn
-              color="primary"
-              class="mt-4"
-              :disabled="!selectedOrder"
-              @click="assignGoals"
-              
-            >
-              Save Assignments
-            </v-btn>
+            <div class="text-subtitle-1 font-weight-medium mb-2">{{ agentName(agentId) }}</div>
+            <v-text-field
+              v-model.number="agentGoals[agentId]"
+              type="number"
+              dense
+              hide-details
+              label="Goal"
+              style="max-width: 100px;"
+            />
           </v-col>
-         <v-col cols="7" class="pa-4">
-            <div v-if="selectedOrder?.agentSummary?.length">
-              <h3>Agent goals for this order</h3>
-              <ul>
-                <li v-for="agent in selectedOrder.agentSummary" :key="agent.id">
-                  <strong>{{ agent.name }}</strong><br>
 
-                  Monthly total: {{ agent.totalMonthlyGoals }}<br>
-                  Other orders:
-                  <ul>
-                    <li v-for="order in agent.otherOrders" :key="order.name">
-                      {{ order.name }} – {{ order.goal }}
-                    </li>
-                  </ul>
+          <!-- Right side: monthly goal + other orders -->
+          <v-col cols="7" class="pa-4" v-if="selectedOrder?.agentSummary">
+            <div v-if="selectedOrder.agentSummary.find(a => a.id === agentId)">
+              <div class="text-caption mb-1 text-grey">This month:</div>
+              <div class="mb-2">
+                {{ selectedOrder.agentSummary.find(a => a.id === agentId).totalMonthlyGoals }} total goals
+              </div>
+
+              <div class="text-caption mb-1 text-grey">Other orders:</div>
+              <ul class="pl-3">
+                <li
+                  v-for="order in selectedOrder.agentSummary.find(a => a.id === agentId).otherOrders"
+                  :key="order.name"
+                >
+                  {{ order.name }} – {{ order.goal }}
                 </li>
               </ul>
             </div>
           </v-col>
-        </v-row>   
+        </v-row>
+      </v-card>
+    </v-col>
+  </v-row>
+</v-col>
+
+<div v-else class="text-grey pa-4">No agents assigned to this order.</div>
+ 
       </v-col>
     </v-row>
   </v-container>
