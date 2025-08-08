@@ -114,6 +114,7 @@
 import { ref, onMounted, reactive, computed } from 'vue'
 import axios from 'axios'
 import urls from '../../js/config.js'
+import { watch } from 'vue'
 
 const form = reactive({
   caseId: '',
@@ -132,6 +133,15 @@ const agentGoals = reactive({});
 const cases = ref([])
 const agents = ref([])
 const formRef = ref(null)
+
+watch(
+  () => [form.pricePerUnit, form.totalQuantity],
+  ([price, quantity]) => {
+    const p = parseFloat(price)
+    const q = parseFloat(quantity)
+    form.estimatedRevenue = isNaN(p) || isNaN(q) ? '' : (p * q).toFixed(2)
+  }
+)
 
 const agentOptions = computed(() => agents.value.map(a => ({
   value: a._id,
