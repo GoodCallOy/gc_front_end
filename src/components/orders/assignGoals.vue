@@ -38,7 +38,7 @@
 
     <v-row>
       <!-- Orders Table -->
-      <v-col cols="8">
+      <v-col cols="7">
         <v-data-table
           v-if="orders && orders.length"
           :headers="orderHeaders"
@@ -79,38 +79,53 @@
       </v-col>
 
       <!-- Agent Assignment -->
-      <v-col cols="4" class="pa-4">
-        <h3 class="text-h6 mb-2">Assign Goals for ({{ selectedOrder && selectedOrder.caseName || 'No order selected' }})</h3>
+      <v-col cols="5" class="pa-4">
+         <h3 class="text-h6 mb-2">Assign Goals for ({{ selectedOrder && selectedOrder.caseName || 'No order selected' }})</h3>
+        <v-col cols="12" class="pa-0" v-if="selectedOrder?.assignedCallers?.length">
+  <v-row v-for="agentId in selectedOrder.assignedCallers" :key="agentId" class="mb-3">
+    <v-col cols="12">
+      <v-card outlined>
+        <v-row no-gutters>
+          <!-- Left side: name + input -->
+          <v-col cols="5" class="pa-4">
+            <div class="text-subtitle-1 font-weight-medium mb-2">{{ agentName(agentId) }}</div>
+            <v-text-field
+              v-model.number="agentGoals[agentId]"
+              type="number"
+              dense
+              hide-details
+              label="Goal"
+              style="max-width: 100px;"
+            />
+          </v-col>
 
-        <v-list v-if="selectedOrder && selectedOrder.assignedCallers && selectedOrder.assignedCallers.length" dense>
-  <v-list-item
-    v-for="agentId in selectedOrder.assignedCallers"
-    :key="agentId"
-  >
-    <v-list-item-content>
-      <v-list-item-title>{{ agentName(agentId) }}</v-list-item-title>
-    </v-list-item-content>
-    <v-text-field
-      v-model.number="agentGoals[agentId]"
-      type="number"
-      class="ma-2"
-      dense
-      hide-details
-      style="max-width: 80px;"
-    />
-  </v-list-item>
-</v-list>
-<div v-else class="text-grey">No agents assigned to this order.</div>
+          <!-- Right side: monthly goal + other orders -->
+          <v-col cols="7" class="pa-4" v-if="selectedOrder?.agentSummary">
+            <div v-if="selectedOrder.agentSummary.find(a => a.id === agentId)">
+              <div class="text-caption mb-1 text-grey">This month:</div>
+              <div class="mb-2">
+                {{ selectedOrder.agentSummary.find(a => a.id === agentId).totalMonthlyGoals }} total goals
+              </div>
 
-        <v-btn
-          color="primary"
-          class="mt-4"
-          :disabled="!selectedOrder"
-          @click="assignGoals"
-          
-        >
-          Save Assignments
-        </v-btn>
+              <div class="text-caption mb-1 text-grey">Other orders:</div>
+              <ul class="pl-3">
+                <li
+                  v-for="order in selectedOrder.agentSummary.find(a => a.id === agentId).otherOrders"
+                  :key="order.name"
+                >
+                  {{ order.name }} – {{ order.goal }}
+                </li>
+              </ul>
+            </div>
+          </v-col>
+        </v-row>
+      </v-card>
+    </v-col>
+  </v-row>
+</v-col>
+
+<div v-else class="text-grey pa-4">No agents assigned to this order.</div>
+ 
       </v-col>
     </v-row>
   </v-container>
@@ -450,25 +465,53 @@ const getCurrentMonthDateRange = () => {
   return [format(firstDay), format(lastDay)]
 }
 
-const getAgentMonthlyGoalTotals = () => {
+
+const getAgentMonthlyGoalTotals = (order) => {
   const totals = {}
+
+  // Build a lookup from agentId to agentName
+  const agentNameById = {}
+  agents.value.forEach(agent => {
+    agentNameById[agent._id] = agent.name
+  })
 
   const now = new Date()
   const firstDay = new Date(now.getFullYear(), now.getMonth(), 1)
   const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0)
 
+  console.log('Calculating monthly goal totals for range:', firstDay, lastDay, 'for orders:', orders.value.length)
+
   orders.value.forEach(order => {
-    const orderDate = new Date(order.createdAt || order.date || order.updatedAt)
-    if (orderDate >= firstDay && orderDate <= lastDay && order.assignedGoals) {
-      for (const [agentId, goals] of Object.entries(order.assignedGoals)) {
-        if (!totals[agentId]) totals[agentId] = 0
-        totals[agentId] += goals
+    const orderDate = new Date(order.startDate || order.deadline)
+    if (orderDate >= firstDay && orderDate <= lastDay && order.agentGoals) {
+      for (const [agentId, goal] of Object.entries(order.agentGoals)) {
+        if (!totals[agentId]) {
+          totals[agentId] = {
+            totalGoals: 0,
+            agentName: agentNameById[agentId] || 'Unknown Agent',
+            orders: []
+          }
+        }
+
+        totals[agentId].totalGoals += goal
+
+        const orderName = order.caseName || order._id || 'Unnamed Order'
+
+        // Avoid duplicates – check if order already exists for this agent
+        const existing = totals[agentId].orders.find(o => o.name === orderName)
+        if (!existing) {
+          totals[agentId].orders.push({ name: orderName, goal })
+        } else {
+          existing.goal += goal // just in case multiple entries exist for same order
+        }
       }
     }
   })
 
   return totals
 }
+
+
 
 const filteredSortedOrders = computed(() => {
   
@@ -557,12 +600,37 @@ const selectOrder = (order, event) => {
   console.log('selectedOrderId:', selectedOrderId.value);
 
   selectedOrder.value = event.item;
+
+  // Reset agentGoals reactive object
   Object.keys(agentGoals).forEach(k => agentGoals[k] = 0);
+
+  // Get monthly totals
+  const monthlyTotals = getAgentMonthlyGoalTotals(order);
+
+  // Clear previous agent summary
+  selectedOrder.value.agentSummary = [];
+
   if (event.item.agentGoals) {
-    for (const [agentId, value] of Object.entries(event.item.agentGoals)) {
-      agentGoals[agentId] = value;
+    for (const [agentId, goal] of Object.entries(event.item.agentGoals)) {
+      agentGoals[agentId] = goal;
+
+      const agent = agents.value.find(a => a._id === agentId);
+      const monthlyData = monthlyTotals[agentId] || {
+        totalGoals: 0,
+        orders: []
+      };
+
+      selectedOrder.value.agentSummary.push({
+        id: agentId,
+        name: agent ? agent.name : 'Unknown Agent',
+        goalForThisOrder: goal,
+        totalMonthlyGoals: monthlyData.totalGoals,
+        otherOrders: monthlyData.orders
+      });
     }
   }
+
+  console.log('Selected order with enriched agentSummary:', selectedOrder.value);
 }
 
 const deleteOrder = async (orderId) => {
@@ -689,12 +757,8 @@ const submitAgentForm = async () => {
     const response = await axios.post(`${urls.backEndURL}/gcAgents/`, agent.value)
     console.log('Agent added:', response.data)
     // reset form
-    agent.value = {
-      name: '',
-      email: '',
-      role: '',
-      active: true
-    }
+    resetAgentForm() 
+    closeAddAgentModal();
     me.alertType = "success";
     setTimeout(() => {
             me.message = "";
@@ -711,14 +775,9 @@ const submitCaseForm = async () => {
       contactInfo: gcCase.value.contactInfo
     })
     console.log('Case added:', response.data)
-    gcCase.value = {
-      name: '',
-      contactInfo: {
-        contactName: '',
-        contactTitle: '',
-        email: ''
-      }
-    }
+    // reset form
+    resetCaseForm()
+    closeAddCaseModal();
   } catch (err) {
     console.error(err)
     console.log('Failed in adding case.', err)
@@ -738,6 +797,7 @@ onMounted(async () => {
       updateDateRange([startDate, endDate]); // Set the default date range
     }
     console.log('filteredSortedOrders',filteredSortedOrders.value)
+  
 })
 
 </script>
