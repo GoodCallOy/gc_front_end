@@ -40,27 +40,40 @@
       <!-- Orders Table -->
       <v-col cols="8">
         <v-data-table
-            v-if="orders && orders.length"
-            :headers="orderHeaders"
-            :items="filteredSortedOrders"
-            item-value="_id"
-            class="elevation-1"
-            :items-per-page="20"
-            @click:row="selectOrder"  
+          v-if="orders && orders.length"
+          :headers="orderHeaders"
+          :items="filteredSortedOrders"
+          item-value="_id"
+          class="elevation-1"
+          :items-per-page="20"
+          :item-class="({ item }) => item._id === selectedOrderId ? 'selected-row' : ''"
+          @click:row="selectOrder"
         >
-        <template #item.goalsDistributed="{ item }">
+          <template #item.goalsDistributed="{ item }">
             {{ getDistributedGoals(item) }}
-        </template>
-        <template #item.actions="{ item }">
+          </template>
+
+          <template #item.edit="{ item }">
             <v-icon
-                style="cursor: pointer;"
-                color="grey"
-                class="mr-2"
-                @click.stop="deleteOrder(item._id)" 
+              style="cursor: pointer;"
+              color="grey"
+              class="mr-2"
+              @click.stop="selectOrderForEdit(item)" 
             >
-                mdi-delete
+              mdi-pencil
             </v-icon>
-        </template>
+          </template>
+
+          <template #item.actions="{ item }">
+            <v-icon
+              style="cursor: pointer;"
+              color="grey"
+              class="mr-2"
+              @click.stop="deleteOrder(item._id)" 
+            >
+              mdi-delete
+            </v-icon>
+          </template>
         </v-data-table>
         
       </v-col>
@@ -339,6 +352,7 @@ const agentGoals = reactive({});
 const agentForm = ref(null);
 const caseForm = ref(null);
 const selectedOrder = ref(null)
+const selectedOrderId = ref(null)
 const isEditMode = ref(false);
 
 const showEditOrderModal = ref(false);
@@ -364,10 +378,12 @@ const message = ref('')
 const alertType = ref('success') // 'success' or 'error'
 
 const orderHeaders = ([
-  { text: 'Case Name', value: 'caseName' },
-  { text: 'Total Goals', value: 'totalQuantity' },
-  { text: 'Goals Distributed', value: 'goalsDistributed', sortable: false },
-  { text: '', value: 'actions', sortable: false }
+  { title: 'Case Name', key: 'caseName' },
+  { title: 'Total Goals', key: 'totalQuantity' },
+  { title: 'Goals Distributed', key: 'goalsDistributed', sortable: false },
+  { title: 'Price Unit', key: 'caseUnit' },
+  { title: 'Edit', key: 'edit', sortable: false },
+  { title: 'Delete', key: 'actions', sortable: false }
 ])
 
 const agent = ref({
@@ -397,6 +413,12 @@ const form = reactive({
   estimatedRevenue: '',
   assignedCallers: []
 })
+
+const selectOrderForEdit = (item) => {
+  selectedOrderId.value = item._id
+  selectedOrder.value = item;
+  openEditOrderModal();
+}
 
 const getFormattedDateRange = () => {
     return formattedDateRange(currentDateRange.value);
@@ -449,6 +471,7 @@ const getAgentMonthlyGoalTotals = () => {
 }
 
 const filteredSortedOrders = computed(() => {
+  
   if (!orders.value || !orders.value.length || !currentDateRange.value || !currentDateRange.value.length) return [];
 
   // Use the first date in the range as the "current" date
@@ -517,10 +540,6 @@ function closeAddOrderModal() {
   showAddOrderModal.value = false;
 }
 
-function closeEditOrderModal() {
-  showEditOrderModal.value = false;
-}
-
 function closeAddAgentModal() {
   showAddAgentModal.value = false;
 }
@@ -534,6 +553,9 @@ const getDistributedGoals = (order) => {
 }
 
 const selectOrder = (order, event) => {
+  selectedOrderId.value = event.item._id
+  console.log('selectedOrderId:', selectedOrderId.value);
+
   selectedOrder.value = event.item;
   Object.keys(agentGoals).forEach(k => agentGoals[k] = 0);
   if (event.item.agentGoals) {
@@ -719,3 +741,8 @@ onMounted(async () => {
 })
 
 </script>
+<style>
+  ::v-deep(.selected-row) {
+    background-color: #e0f7fa !important; /* light blue */
+  }
+</style>
