@@ -198,7 +198,7 @@
         />
 
         <v-text-field
-            v-model.number="form.estimatedRevenue"
+            :model-value="estimatedRevenue"
             label="Estimated Revenue (€)"
             type="number"
             :rules="[v => !!v || 'Estimated revenue is required']"
@@ -354,7 +354,7 @@
 
 
 <script setup>
-import { ref, onMounted, computed, reactive } from 'vue'
+import { ref, onMounted, computed, reactive, watch, toRaw } from 'vue'
 
 import { useStore } from 'vuex'
 import { goToNextMonth, goToPreviousMonth, formattedDateRange, isCurrentMonth } from '@/js/dateUtils';
@@ -417,16 +417,28 @@ const gcCase = ref({
   }
 })
 
-const form = reactive({
-  caseId: '',
-  caseUnit: '',
-  pricePerUnit: '',
-  totalQuantity: '',
+const defaultForm = () => ({
+  caseId: null,
+  caseUnit: null,
+  pricePerUnit: 0,
+  totalQuantity: 0,
   startDate: '',
   deadline: '',
-  orderStatus: '',
-  estimatedRevenue: '',
+  orderStatus: null,
   assignedCallers: []
+})
+
+const form = ref(defaultForm())
+
+const estimatedRevenue = computed(() => {
+  const price = Number(form.value?.pricePerUnit ?? 0)
+  const qty = Number(form.value?.totalQuantity ?? 0)
+  return price * qty
+})
+
+// If you also want to keep `form.estimatedRevenue` synced:
+watch(estimatedRevenue, (val) => {
+  form.value.estimatedRevenue = val
 })
 
 const selectOrderForEdit = (item) => {
@@ -511,8 +523,6 @@ const getAgentMonthlyGoalTotals = (order) => {
   return totals
 }
 
-
-
 const filteredSortedOrders = computed(() => {
   
   if (!orders.value || !orders.value.length || !currentDateRange.value || !currentDateRange.value.length) return [];
@@ -539,9 +549,10 @@ function toDateInputString(dateStr) {
 }
 
 function openAddOrderModal() {
-  resetForm();
-  isEditMode.value = false;
-  showAddOrderModal.value = true;
+  form.value = defaultForm()
+  Object.keys(agentGoals).forEach(k => agentGoals[k] = 0)
+  isEditMode.value = false
+  showAddOrderModal.value = true
 }
 
 function openAddAgentModal() {
@@ -555,28 +566,33 @@ function openAddCaseModal() {
 }
 
 function openEditOrderModal() {
-  if (!selectedOrder.value) return;
-  // Populate form with selected order's data
-  Object.assign(form, {
-    caseId: selectedOrder.value.caseId,
-    caseUnit: selectedOrder.value.caseUnit,
-    pricePerUnit: selectedOrder.value.pricePerUnit,
-    totalQuantity: selectedOrder.value.totalQuantity,
-    startDate: toDateInputString(selectedOrder.value.startDate),
-    deadline: toDateInputString(selectedOrder.value.deadline),
-    orderStatus: selectedOrder.value.orderStatus,
-    estimatedRevenue: selectedOrder.value.estimatedRevenue,
-    assignedCallers: [...(selectedOrder.value.assignedCallers || [])],
-  });
-  // Populate agentGoals if present
-  Object.keys(agentGoals).forEach(k => agentGoals[k] = 0);
-  if (selectedOrder.value.agentGoals) {
-    for (const [agentId, value] of Object.entries(selectedOrder.value.agentGoals)) {
-      agentGoals[agentId] = value;
+  if (!selectedOrder.value) return
+
+  // reset form first
+  form.value = {
+    ...defaultForm(),
+    ...{
+      caseId: selectedOrder.value.caseId,
+      caseUnit: selectedOrder.value.caseUnit,
+      pricePerUnit: selectedOrder.value.pricePerUnit,
+      totalQuantity: selectedOrder.value.totalQuantity,
+      startDate: toDateInputString(selectedOrder.value.startDate),
+      deadline: toDateInputString(selectedOrder.value.deadline),
+      orderStatus: selectedOrder.value.orderStatus,
+      assignedCallers: [...(selectedOrder.value.assignedCallers || [])]
     }
   }
-  isEditMode.value = true;
-  showAddOrderModal.value = true;
+
+  // reset agentGoals
+  Object.keys(agentGoals).forEach(k => agentGoals[k] = 0)
+  if (selectedOrder.value.agentGoals) {
+    for (const [agentId, value] of Object.entries(selectedOrder.value.agentGoals)) {
+      agentGoals[agentId] = value
+    }
+  }
+
+  isEditMode.value = true
+  showAddOrderModal.value = true
 }
 
 function closeAddOrderModal() {
@@ -725,31 +741,40 @@ function resetCaseForm() {
 
 const submitOredrForm = async () => {
   try {
-    const selectedCase = cases.value.find(c => c._id === form.caseId);
+    const selectedCase = cases.value.find(c => c._id === form.value.caseId)
+
     const payload = {
-      ...form,
+      ...toRaw(form.value), // remove Vue reactivity
+      estimatedRevenue: estimatedRevenue.value, // ensure computed is included
       caseName: selectedCase ? selectedCase.name : '',
       agentGoals: { ...agentGoals }
-    };
+    }
+
     if (isEditMode.value && selectedOrder.value) {
       // Edit mode: update the order
-      console.log('Updating order:', selectedOrder.value._id, payload);
-      await axios.put(`${urls.backEndURL}/orders/${selectedOrder.value._id}`, { ...selectedOrder.value, ...payload });
+      console.log('Updating order:', selectedOrder.value._id, payload)
+      await axios.put(`${urls.backEndURL}/orders/${selectedOrder.value._id}`, {
+        ...toRaw(selectedOrder.value),
+        ...payload
+      })
     } else {
       // Add mode: create a new order
-      await axios.post(`${urls.backEndURL}/orders/`, payload);
+      await axios.post(`${urls.backEndURL}/orders/`, payload)
     }
-    await fetchAllData();
+
+    await fetchAllData()
+
     if (isEditMode.value && selectedOrder.value) {
-      const updated = orders.value.find(o => o._id === selectedOrder.value._id);
-      if (updated) selectedOrder.value = updated;
+      const updated = orders.value.find(o => o._id === selectedOrder.value._id)
+      if (updated) selectedOrder.value = updated
     }
-    resetForm();
-    closeAddOrderModal();
+
+    resetForm()
+    closeAddOrderModal()
   } catch (err) {
-    console.error('Failed to save order:', err.response?.data || err.message);
+    console.error('Failed to save order:', err.response?.data || err.message)
   }
-};
+}
 
 const submitAgentForm = async () => {
   const me = this;
