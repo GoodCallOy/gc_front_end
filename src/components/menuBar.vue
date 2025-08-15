@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, nextTick } from 'vue';
 import { useStore } from 'vuex'
 import { useI18n } from 'vue-i18n';
 import { useRouter, useRoute } from 'vue-router';
@@ -20,6 +20,7 @@ const store = useStore() // Access Vuex store
 const user = computed(() => store.state.user)
 import urls from '@/js/config.js'
 
+const opened = ref([])
 
 const dashboardOpen = ref(false)
 const agentsOpen = ref(false)
@@ -29,6 +30,7 @@ const oldLinksOpen = ref(false)
 
 function closeAllGroups() {
   console.log('Closing all groups in menuBar')
+   opened.value = []
   dashboardOpen.value = false
   agentsOpen.value = false
   formsOpen.value = false
@@ -50,9 +52,10 @@ function toggleLanguage() {
   locale.value = locale.value === 'en' ? 'fi' : 'en';
 }
 
-function navigateTo(value) {
-  closeAllGroups();
-  router.push({ name: value });
+async function navigateTo(name) {
+  await router.push({ name })
+  await nextTick()
+  closeAllGroups()
 }
 
 const logout = async () => {
@@ -82,20 +85,27 @@ const logout = async () => {
     expand-on-hover 
   >
     <v-list v-if="isDrawerOpen">
-      <v-list-item
-        v-if="user"
-        :prepend-avatar="user.user.avatar"
-        :subtitle="user.user.email"
-        :title="user.user.name"
-      ></v-list-item>
-      <v-divider></v-divider>
+      <template v-if="user && user.user">
+        <v-list-item :prepend-avatar="user.user.avatar">
+          <v-list-item-title>{{ user.user.name }}</v-list-item-title>
+          <v-list-item-subtitle>{{ user.user.email }}</v-list-item-subtitle>
+        </v-list-item>
+
+        <v-list-item class="d-flex justify-center" style="background-color: cadetblue;">
+          <v-list-item-title class="text-capitalize font-weight-bold align-center">
+            {{ user.user.role }}
+          </v-list-item-title>
+        </v-list-item>
+      </template>
     </v-list>
     
-    <v-list density="compact" nav>
+    <v-list density="compact" nav  v-model:opened="opened">
 
       <!-- Dashboard Group -->
       <v-list-group
+        v-if="user?.user?.role === 'admin' || user?.user?.role === 'manager'" 
         v-model="dashboardOpen"
+        value="dashboard"
         prepend-icon="mdi-view-dashboard"
       >
         <template #activator="{ props }">
@@ -104,64 +114,28 @@ const logout = async () => {
 
         <v-list-item
           prepend-icon="mdi-laptop"
-          :title="t('buttons.dashboard')"  
-          :active="route.name === 'home'"
-          @click="navigateTo('home')"
-        ></v-list-item>
-        <v-list-item
-          prepend-icon="mdi-laptop"
-          :title="t('buttons.dashboard2')"  
-          :active="route.name === 'dash2'"
-          @click="navigateTo('dash2')"
-        ></v-list-item>
-        <v-list-item
-          prepend-icon="mdi-account-plus"
           :title="t('buttons.orderDashboard')"  
           :active="route.name === 'orderDashboard'"
           @click="navigateTo('orderDashboard')"
         ></v-list-item>
         <v-list-item
+          prepend-icon="mdi-laptop"
+          :title="t('buttons.dashboard')"  
+          :active="route.name === 'home'"
+          @click="navigateTo('home')"
+        ></v-list-item>
+        <v-list-item
           prepend-icon="mdi-account-plus"
-          :title="t('buttons.orderDashboard')"  
-          :active="route.name === 'orderDashboard'"
+          :title="t('buttons.assignGoals')"  
+          :active="route.name === 'assignGoals'"
           @click="navigateTo('assignGoals')"
         ></v-list-item>
-      </v-list-group>
-      <!-- Agents Group -->
-      <v-list-group
-        v-model="agentsOpen"
-        prepend-icon="mdi-account-group"
-      >
-        <template #activator="{ props }">
-          <v-list-item v-bind="props" title="Agents" />
-        </template>
-
-        <v-list-item
+         <v-list-item
           prepend-icon="mdi-account-multiple"
           :title="t('buttons.agents')"  
           :active="route.name === 'agents'"
           @click="navigateTo('agents')"
         ></v-list-item>  
-
-      </v-list-group>
-
-      <!-- Forms Group -->
-      <v-list-group
-        v-model="formsOpen"
-        prepend-icon="mdi-form-textbox"
-      >
-        <template #activator="{ props }">
-          <v-list-item v-bind="props" title="Forms" />
-        </template>
-
-        <v-list-item
-          title="Add Agents"
-          to="/agents/add"
-        />
-        <v-list-item
-          title="Add Stats"
-          to="/agents/stats"
-        />
       </v-list-group>
       <!-- Orders -->
       <v-list-group
@@ -176,21 +150,24 @@ const logout = async () => {
           :title="t('buttons.addCaseForm')"  
           :active="route.name === 'addCaseForm'"
           @click="navigateTo('addCaseForm')"
+          v-if="user?.user?.role === 'admin' || user?.user?.role === 'manager'"  
         ></v-list-item>
         <v-list-item
           prepend-icon="mdi-folder-plus"
           :title="t('buttons.addOrderForm')"  
           :active="route.name === 'addOrderForm'"
           @click="navigateTo('addOrderForm')"
+          v-if="user?.user?.role === 'admin' || user?.user?.role === 'manager'" 
         ></v-list-item>
         <v-list-item
           prepend-icon="mdi-account-plus"
           :title="t('buttons.addGcAgent')"  
           :active="route.name === 'addGcAgent'"
           @click="navigateTo('addGcAgent')"
+          v-if="user?.user?.role === 'admin'"
         ></v-list-item>
         <v-list-item
-          prepend-icon="mdi-account-minus"
+          prepend-icon="mdi-account-plus"
           :title="t('buttons.addDailyLog')"  
           :active="route.name === 'addDailyLog'"
           @click="navigateTo('addDailyLog')"
@@ -206,10 +183,12 @@ const logout = async () => {
       <v-list-group
         v-model="oldLinksOpen"
         prepend-icon="mdi-form-textbox"
+        v-if="user?.user?.role === 'admin' || user?.user?.role === 'manager'"
       >
         <template #activator="{ props }">
           <v-list-item v-bind="props" title="Old links" />
         </template>
+        
         <v-list-item
           prepend-icon="mdi-folder-plus"
           :title="t('buttons.addCase')"  

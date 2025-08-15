@@ -19,7 +19,7 @@
     },
     "buttons": {
       "close": "Close",
-      "dashboard": "Dashboard",
+      "dashboard": "Dashboard (old)",
       "dashboard2": "Dashboard2",
       "agents": "Agents",
       "cases": "Cases",
@@ -34,6 +34,7 @@
       "addDailyLog": "Add Daily Log",
       "orderProgress": "Order progress",
       "orderDashboard": "Order Dashboard",
+      "assignGoals": "Assign Goals",
       "language": "Finnish",
       "logout": "Logout"
     },
