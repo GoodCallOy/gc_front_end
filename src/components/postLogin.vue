@@ -3,59 +3,70 @@
   <div class="post-login-wrapper">
     <div class="post-login-card">
       <div class="title">Signing you in…</div>
-      <pre v-if="userJson" class="data">{{ userJson }}</pre>
-      <div class="subtitle">{{ statusMessage }}</div>
+
+      <v-list v-if="userFromStore">
+        <v-list-item :prepend-avatar="userFromStore.avatar">
+          <v-list-item-title>{{ userFromStore.name }}</v-list-item-title>
+          <v-list-item-subtitle>{{ userFromStore.email }}</v-list-item-subtitle>
+        </v-list-item>
+
+        <v-list-item class="d-flex justify-center" style="background-color: cadetblue;">
+          <v-list-item-title class="text-capitalize font-weight-bold align-center">
+            {{ userFromStore.role }}
+          </v-list-item-title>
+        </v-list-item>
+      </v-list>
     </div>
   </div>
 </template>
 
 <script setup>
 import axios from 'axios'
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import urls from '@/js/config.js'
 import { useStore } from 'vuex'
+import urls from '@/js/config.js'
+
 const store = useStore()
 const router = useRouter()
+
 const statusMessage = ref('Contacting the server…')
 const userJson = ref('')
-const destinationRouteName = ref(null)
+const REDIRECT_DELAY_MS = 5000
 
-const REDIRECT_DELAY_MS = 5000 // <- change this to taste (ms). Set 0 to disable delay.
+// What the template will read
+const userFromStore = computed(() => store.state.user?.user || null)
 
 function getHomeRouteNameForRole(role) {
-    console.log(`Determining home route for role: ${role}`)
   if (role === 'admin' || role === 'manager') return 'home'
   if (role === 'caller') return 'agentDashboard'
   return 'login'
 }
-function delay(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms))
-}
+const delay = ms => new Promise(res => setTimeout(res, ms))
 
 onMounted(async () => {
   try {
-    const { data: user } = await axios.get(`${urls.backEndURL}/auth/me`, { withCredentials: true })
-    
-    const currentUser = user.user
+    // Adjust path if your backend is mounted under /api/v1
+    const { data } = await axios.get(`${urls.backEndURL}/auth/me`, { withCredentials: true })
+    // Some backends return { user: {...} }, others return the user directly:
+    const currentUser = data.user ?? data
+
     userJson.value = JSON.stringify(currentUser, null, 2)
-    console.log('Current user:', currentUser)
 
-    localStorage.setItem('auth_user', JSON.stringify(currentUser));  
-    store.commit('SET_USER', { user: currentUser }); 
+    // Persist for guard fallbacks and page reloads
+    localStorage.setItem('auth_user', JSON.stringify(currentUser))
 
+    // IMPORTANT: commit shape must match what your guard reads (state.user.user.role)
+    // Make sure your mutation stores under module 'user' with a 'user' field.
+    // Example mutation: state.user = payload.user
+    store.commit('SET_USER', { user: currentUser })
 
-    destinationRouteName.value = getHomeRouteNameForRole(currentUser.role)
-    statusMessage.value = `Loaded user. Redirecting to ${destinationRouteName.value}…`
+    const dest = getHomeRouteNameForRole(currentUser.role)
+    statusMessage.value = `Loaded user. Redirecting to ${dest}…`
 
-    if (REDIRECT_DELAY_MS > 0) {
-      await delay(REDIRECT_DELAY_MS)
-    }
-    
-    console.log(`Redirecting to ${destinationRouteName.value}...`)
-    
+    if (REDIRECT_DELAY_MS > 0) await delay(REDIRECT_DELAY_MS)
 
-    router.replace({ name: currentUser.role === 'caller' ? 'agentDashboard' : 'home' });
+    router.replace({ name: dest })
   } catch (error) {
     statusMessage.value = 'Authentication failed. Sending you to login…'
     router.replace({ name: 'login' })
