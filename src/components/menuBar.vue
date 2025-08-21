@@ -58,18 +58,29 @@ async function navigateTo(name) {
   closeAllGroups()
 }
 
-const logout = async () => {
+async function logout() {
   try {
-    console.log('Logging out...')
+    // if you use cookie sessions, you MUST send credentials
+    console.log('Logging out user:', user.value)
     await axios.get(`${urls.backEndURL}/auth/logout`, { withCredentials: true })
-
-    store.commit('LOGOUT') // Clear user from Vuex
-
-    console.log('User logged out successfully')
-    
-    window.location.href = BASE_URL
   } catch (error) {
-    console.error('Logout failed:', error)
+    // network issues? still clear local state below
+    console.warn('Logout request failed:', error?.response?.status, error?.message)
+  } finally {
+    // clear ALL local auth state BEFORE routing
+    localStorage.removeItem('auth_user')
+    localStorage.removeItem('token')
+
+    // clear Vuex (use your real mutation name)
+    if (store._mutations?.clearUser) {
+      store.commit('LOGOUT')
+    } else {
+      // fallback if you only have setUser
+      store.commit('SET_USER', { user: null })
+    }
+
+    // now go to login; guard won't bounce you because role is gone
+    router.replace({ name: 'login' })
   }
 }
 

@@ -5,6 +5,9 @@ import { loadFonts } from './plugins/webfontloader';
 import i18n from './i18n';
 import router from './router';
 import store from './store'; // Import Vuex store
+import axios from 'axios';
+
+axios.defaults.withCredentials = true;
 
 loadFonts();
 

@@ -1,6 +1,8 @@
 import { createRouter, createWebHashHistory  } from 'vue-router';
-import MainLayout from '@/layouts/mainLayout.vue';
 
+import store from '@/store';
+
+import MainLayout from '@/layouts/mainLayout.vue';
 import DashBoard from '@/components/dashBoard.vue';
 import DashBoard2 from '@/components/dashboard2.vue';
 import Agents from '@/components/agentsPage.vue';
@@ -23,48 +25,52 @@ import OrderProgressTable from '@/components/OrderProgressTable.vue';
 import orderDashboard from '@/components/ordersDashboard.vue';
 import orderDetails from '@/components/orderDetails.vue';
 import assignGoals from '@/components/orders/assignGoals.vue';
+import agentDashboard from '@/components/agentDashboard.vue';
+
 
 const routes = [
   { path: '/', redirect: '/login' }, // Redirect root path to login
   { path: '/login', name: 'login', component: Login },
-  
+  { path: '/post-login', name: 'postLogin', component: () => import('@/components/postLogin.vue') },
   
   {
     path: '/',
     component: MainLayout,
     children: [
       
-      { path: '/dashboard', name: 'home', component: DashBoard },
-      { path: '/dashboard2', name: 'dash2', component: DashBoard2 },
-      { path: '/agents', name: 'agents', component: Agents },
-      { path: '/add-agent', name: 'addAgent', component: AddAgent },
-      { path: '/add-gc-agent', name: 'addGcAgent', component: AddGcAgent },
-      { path: '/add-agent-stats', name: 'addAgentStats', component: AddAgentStats },
-      { path: '/add-case', name: 'addCase', component: AddCase },
-      { path: '/add-case-form', name: 'addCaseForm', component: AddCaseform },
-      { path: '/add-order', name: 'addOrderForm', component: addOrderForm },
-      { path: '/cases', name: 'cases', component: Cases },
-      { path: '/add-daily-log', name: 'addDailyLog', component: addDailyLog },
-      { path: '/add-agent-goals', name: 'addAgentGoals', component: AddAgentGoals },
-      { path: '/add-agent-case-info', name: 'addAgentCaseInfo', component: addAgentCaseInfo },
-      { path: '/order-progress-chart', name: 'OrderProgressTable', component: OrderProgressTable },
-      { path: '/order-dashboard', name: 'orderDashboard', component: orderDashboard },
-      { path: '/order-details', name: 'orderDetails', component: orderDetails },
-      { path: '/assign-goals', name: 'assignGoals', component: assignGoals },
+      { path: 'dashboard', name: 'home', component: DashBoard, meta: { requiresAuth: true, roles: ['admin', 'manager'] }  },
+      { path: 'dashboard2', name: 'dash2', component: DashBoard2, meta: { requiresAuth: true, roles: ['admin', 'manager'] }  },
+      { path: 'agentDashboard', name: 'agentDashboard', component: agentDashboard, meta: { requiresAuth: true, roles: ['caller'] }  },
+      
+      { path: 'agents', name: 'agents', component: Agents },
+      { path: 'add-agent', name: 'addAgent', component: AddAgent },
+      { path: 'add-gc-agent', name: 'addGcAgent', component: AddGcAgent },
+      { path: 'add-agent-stats', name: 'addAgentStats', component: AddAgentStats },
+      { path: 'add-case', name: 'addCase', component: AddCase },
+      { path: 'add-case-form', name: 'addCaseForm', component: AddCaseform },
+      { path: 'add-order', name: 'addOrderForm', component: addOrderForm },
+      { path: 'cases', name: 'cases', component: Cases },
+      { path: 'add-daily-log', name: 'addDailyLog', component: addDailyLog },
+      { path: 'add-agent-goals', name: 'addAgentGoals', component: AddAgentGoals },
+      { path: 'add-agent-case-info', name: 'addAgentCaseInfo', component: addAgentCaseInfo },
+      { path: 'order-progress-chart', name: 'OrderProgressTable', component: OrderProgressTable },
+      { path: 'order-dashboard', name: 'orderDashboard', component: orderDashboard, meta: { requiresAuth: true, roles: ['admin', 'manager'] }  },
+      { path: 'order-details', name: 'orderDetails', component: orderDetails },
+      { path: 'assign-goals', name: 'assignGoals', component: assignGoals, meta: { requiresAuth: true, roles: ['admin', 'manager'] }  },
       { 
-        path: '/singleCase', 
+        path: 'singleCase', 
         name: 'singleCase', 
         component: SingleCase,
         props: route => ({ activeCase: route.query.case }),
       },
       { 
-        path: '/singleAgent', 
+        path: 'singleAgent', 
         name: 'singleAgent', 
         component: SingleAgent,
         props: route => ({ activeAgent: route.query.agent }),
       },
       { 
-        path: '/agentInCase', 
+        path: 'agentInCase', 
         name: 'agentInCase', 
         component: AgentInCase,
         props: route => ({
@@ -73,7 +79,7 @@ const routes = [
         }),
       },
       {
-        path: '/editAgent',
+        path: 'editAgent',
         name: 'editAgent',
         component: EditAgent,
         props: route => ({ activeAgent: route.query.activeAgent || "" })
@@ -92,6 +98,76 @@ const router = createRouter({
       return { top: 0 }; // Scroll to top on navigation
     }
   },
+});
+
+function decodeJwtPayload(token) {
+  try {
+    const parts = token.split('.');
+    const base64Payload = parts[1];
+    const json = atob(base64Payload || '');
+    return JSON.parse(json);
+  } catch (error) {
+    console.error('Failed to decode JWT payload:', error);
+    return null;
+  }
+}
+
+function getCurrentUserRole() {
+  // 1) Vuex store (preferred)
+  const storeUser = store.state.user?.user;
+  if (storeUser?.role) return storeUser.role;
+
+  // 2) Cached user from localStorage (your PostLogin writes this)
+  try {
+    const cached = localStorage.getItem('auth_user');
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      if (parsed?.role) return parsed.role;
+    }
+  } catch {}
+
+  // 3) (Optional) JWT fallback if you ever use one
+  const token = localStorage.getItem('token');
+  if (token) {
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1] || ''));
+      if (payload?.role) return payload.role;
+    } catch {}
+  }
+
+  return null;
+}
+
+function getHomeRouteNameForRole(role) {
+  if (role === 'admin' || role === 'manager') return 'home';           // /dashboard
+  if (role === 'caller') return 'agentDashboard';                      // /agent-dashboard
+  return 'login';
+}
+
+router.beforeEach((to, from, next) => {
+  if (to.name === 'postLogin') return next();
+
+  const routeRequiresAuth = to.matched.some(record => record.meta?.requiresAuth);
+  const userRole = getCurrentUserRole();
+  console.log('Guard role source:', getCurrentUserRole());
+
+  // If a route needs auth and we don't know the user's role yet, send to login.
+  if (routeRequiresAuth && !userRole) {
+    return next({ name: 'login' });
+  }
+
+  // If a logged-in user hits /login, send them to the correct home
+  if (to.name === 'login' && userRole) {
+    return next({ name: getHomeRouteNameForRole(userRole) });
+  }
+
+  // Enforce role restrictions on routes that specify `meta.roles`
+  const routeHasRoleRestrictions = Array.isArray(to.meta?.roles);
+  if (routeHasRoleRestrictions && userRole && !to.meta.roles.includes(userRole)) {
+    return next({ name: getHomeRouteNameForRole(userRole) });
+  }
+
+  next();
 });
 
 export default router;
