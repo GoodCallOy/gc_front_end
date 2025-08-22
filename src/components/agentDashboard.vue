@@ -1,6 +1,6 @@
 <template>
   <v-container  style="width: 80%;" >
-    <h1 class="text-h4 mb-4" style="width: 75vw;">Agent Home</h1>
+    <h1 class="text-h4 mb-4" style="width: 75vw;">Cases for {{ currentUser.name }}</h1>
     <div class="grid-container ">
       <agentCaseCard
       v-for="(userOrder, index) in userOrders"

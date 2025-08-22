@@ -3,75 +3,53 @@
     <v-card v-if="order" class="pa-4"   >
       <v-row justify="space-between">
         <v-col>
-          <h2>Order Details</h2>
-        </v-col>
-        <v-col cols="auto">
-          <v-btn @click="isEditing = !isEditing">{{ isEditing ? 'Cancel' : 'Edit' }}</v-btn>
+          <h2>Case Details</h2>
         </v-col>
       </v-row>
 
-      <v-form v-if="isEditing" @submit.prevent="saveChanges">
-        <v-text-field v-model="editedOrder.totalQuantity" label="Total Quantity" type="number" />
-        <v-text-field v-model="editedOrder.pricePerUnit" label="Price Per Unit" type="number" />
-        <v-select v-model="editedOrder.caseUnit" :items="goalTypes" label="Case Unit" />
-        <v-select v-model="editedOrder.orderStatus" :items="orderStatuses" label="Status" />
-        <v-text-field v-model="editedOrder.estimatedRevenue" label="Estimated Revenue" type="number" />
-        <v-text-field v-model="editedOrder.deadline" label="Deadline" type="date" />
-        <v-select
-          v-model="editedOrder.assignedCallers"
-          :items="agents"
-          item-title="name"
-          item-value="_id"
-          label="Assigned Callers"
-          multiple
-          chips
-        />
-        <div v-if="editedOrder.assignedCallers && editedOrder.agentGoals">
-          <strong>Edit Agent Goals:</strong>
-          <v-list>
-            <v-list-item
-              v-for="id in editedOrder.assignedCallers"
-              :key="id"
-            >
-              <v-list-item-content>
-                <v-list-item-title>
-                  {{ agentName(id) }}
-                </v-list-item-title>
-              </v-list-item-content>
-              <v-list-item-action>
-                <v-text-field
-                  v-model.number="editedOrder.agentGoals[id]"
-                  label="Goal"
-                  type="number"
-                  min="0"
-                  style="max-width: 100px"
-                />
-              </v-list-item-action>
-            </v-list-item>
-          </v-list>
-          <v-btn type="submit" color="primary" class="mt-4">Save</v-btn>
-        </div>
-        
-      </v-form>
 
-      <div v-else>
-        <p><strong>Case:</strong> {{ order.caseName }}</p>
-        <p><strong>case Unit:</strong> {{ order.caseUnit }}</p>
-        <p><strong>Price per Unit:</strong> {{ order.pricePerUnit }}</p>
-        <p><strong>Status:</strong> {{ order.orderStatus }}</p>
-        <p><strong>Deadline:</strong> {{ formatDate(order.deadline) }}</p>
-        <p><strong>Quantity:</strong> {{ order.totalQuantity }}</p>
-        <p><strong>Estimated Revenue:</strong> €{{ order.estimatedRevenue }}</p>
-        <p><strong>Callers:</strong> {{ getCallerNames(order, agents) }}</p>
-        <div v-if="order.agentGoals">
-          <strong>Agent Goals:</strong>
-          <ul>
-            <li v-for="id in order.assignedCallers" :key="id">
-              {{ agentName(id) }}: {{ order.agentGoals[id] || 0 }}
-            </li>
-          </ul>
+      <div>
+        <v-row>
+            <v-col cols="3">
+                <strong>Case:</strong> {{ order.caseName }}
+            </v-col>
+            <v-col cols="3">
+                <strong>Case Unit:</strong> {{ order.caseUnit }}
+            </v-col>
+            <v-col cols="3">
+                <strong>Price per Unit:</strong> {{ order.pricePerUnit }}
+            </v-col>
+            <v-col cols="3">
+                <strong>Status:</strong> {{ order.orderStatus }}
+            </v-col>
+        </v-row>
+        <v-row>
+            <v-col cols="3">
+               <strong>Deadline:</strong> {{ formatDate(order.deadline) }}
+            </v-col>
+            <v-col cols="3">
+               <strong>Quantity:</strong> {{ order.totalQuantity }}
+            </v-col>
+            <v-col cols="3">
+                <strong>Estimated Revenue:</strong> €{{ order.estimatedRevenue }}
+            </v-col>
+            <v-col cols="3">
+                <strong>Callers:</strong> {{ getCallerNames(order, agents) }}
+            </v-col>
+        </v-row>
+        <v-row>
+            <v-col cols="12">
+                <div v-if="order.agentGoals">
+                    <strong>Agent Goals:</strong>
+                    <ul>
+                        <li v-for="id in order.assignedCallers" :key="id">
+                        {{ agentName(id) }}: {{ order.agentGoals[id] || 0 }}
+                        </li>
+                    </ul>
+                </div>
+            </v-col>
+        </v-row>
         </div>
-      </div>
     </v-card>
   </v-container>
   <v-card class="mx-auto my-4 pa-4 elevation-4" style="width: 90%; background-color: #eeeff1;">
