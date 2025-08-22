@@ -54,9 +54,10 @@ const routes = [
       { path: 'add-agent-goals', name: 'addAgentGoals', component: AddAgentGoals },
       { path: 'add-agent-case-info', name: 'addAgentCaseInfo', component: addAgentCaseInfo },
       { path: 'order-progress-chart', name: 'OrderProgressTable', component: OrderProgressTable },
-      { path: 'order-dashboard', name: 'orderDashboard', component: orderDashboard, meta: { requiresAuth: true, roles: ['admin', 'manager'] }  },
-      { path: 'order-details', name: 'orderDetails', component: orderDetails },
-      { path: 'assign-goals', name: 'assignGoals', component: assignGoals, meta: { requiresAuth: true, roles: ['admin', 'manager'] }  },
+      { path: 'order-dashboard', name: 'orderDashboard', component: orderDashboard, meta: { requiresAuth: true, roles: ['admin', 'manager'] } },
+      { path: 'order-details', name: 'orderDetails', component: orderDetails, meta: { requiresAuth: true, roles: ['admin', 'manager'] } },
+      { path: 'agent-case-details', name: 'agentCaseDetails', component: orderDetails },
+      { path: 'assign-goals', name: 'assignGoals', component: assignGoals, meta: { requiresAuth: true, roles: ['admin', 'manager'] } },
       { 
         path: 'singleCase', 
         name: 'singleCase', 

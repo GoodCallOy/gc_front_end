@@ -48,6 +48,18 @@ watch(isDrawerOpen, (open) => {
   }
 });
 
+const currentUser = computed(() => {
+  const fromStore = store.state.user?.user || null
+  if (fromStore) return fromStore
+
+  // fallback if store isn't hydrated yet
+  try {
+    return JSON.parse(localStorage.getItem('auth_user') || 'null')
+  } catch {
+    return null
+  }
+})
+
 function toggleLanguage() {
   locale.value = locale.value === 'en' ? 'fi' : 'en';
 }
@@ -77,6 +89,7 @@ async function logout() {
     } else {
       // fallback if you only have setUser
       store.commit('SET_USER', { user: null })
+      localStorage.removeItem('auth_user')
     }
 
     // now go to login; guard won't bounce you because role is gone
@@ -96,15 +109,15 @@ async function logout() {
     expand-on-hover 
   >
     <v-list v-if="isDrawerOpen">
-      <template v-if="user && user.user">
-        <v-list-item :prepend-avatar="user.user.avatar">
-          <v-list-item-title>{{ user.user.name }}</v-list-item-title>
-          <v-list-item-subtitle>{{ user.user.email }}</v-list-item-subtitle>
+      <template v-if="currentUser">
+        <v-list-item :prepend-avatar="currentUser.avatar">
+          <v-list-item-title>{{ currentUser.name }}</v-list-item-title>
+          <v-list-item-subtitle>{{ currentUser.email }}</v-list-item-subtitle>
         </v-list-item>
 
         <v-list-item class="d-flex justify-center" style="background-color: cadetblue;">
           <v-list-item-title class="text-capitalize font-weight-bold align-center">
-            {{ user.user.role }}
+            {{ currentUser.role }}
           </v-list-item-title>
         </v-list-item>
       </template>
