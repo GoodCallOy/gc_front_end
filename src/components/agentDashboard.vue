@@ -1,11 +1,11 @@
 <template>
   <v-container  style="width: 80%;" >
-    <h1 class="text-h4 mb-4" style="width: 75vw;">Agent Home</h1>
+    <h1 class="text-h4 mb-4" style="width: 75vw;">Cases for {{ currentUser.name }}</h1>
     <div class="grid-container ">
-      <DashboardCard01
-      v-for="(order, index) in orders"
+      <agentCaseCard
+      v-for="(userOrder, index) in userOrders"
       :key="index"
-      :order="order"
+      :order="userOrder"
       :agents="gcAgents"
       :dailyLogs="dailyLogs"
       />
@@ -14,9 +14,9 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useStore } from 'vuex'
-import DashboardCard01 from '@/partials/dashboard/caseCard2.vue'
+import agentCaseCard from './agentCaseCard.vue'
 
 const store = useStore()
 
@@ -27,7 +27,7 @@ async function fetchAllData() {
   await store.dispatch('fetchDailyLogs')
 }
 
-
+const userOrders = ref([])
 
 const orders = computed(() => store.getters['orders'])
 console.log('dashOrders', orders.value)
@@ -35,6 +35,20 @@ const gcAgents = computed(() => store.getters['gcAgents'])
 console.log('gcAgents', gcAgents.value)
 const dailyLogs = computed(() => store.getters['dailyLogs'])
 console.log('dailyLogs', dailyLogs.value)
+
+const currentUser = computed(() => {
+  return store.state.user?.user
+      ?? JSON.parse(localStorage.getItem('auth_user') || 'null');
+});
+console.log('user', currentUser.value)
+
+function findOrdersForUser(allOrdersArray, userId) {
+  if (!userId) return []
+  return (allOrdersArray || []).filter(order =>
+    (order.assignedCallers || []).some(callerId => String(callerId) === '6856e51412867861c1055748')
+  )
+}
+
 
 const formatDate = date => new Date(date).toLocaleDateString()
 
@@ -44,8 +58,12 @@ function getCallerNames(order) {
     .join(', ')
 }
 
-onMounted(() => {
-  fetchAllData()
+onMounted(async () => {
+  await fetchAllData()
+  const userId = currentUser.value?._id || currentUser.value?.id
+  userOrders.value = findOrdersForUser(orders.value, userId)
+  console.log('userOrders', userOrders.value)
+
 })
 </script>
 
