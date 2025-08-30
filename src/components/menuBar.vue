@@ -160,6 +160,12 @@ async function logout() {
           :active="route.name === 'agents'"
           @click="navigateTo('agents')"
         ></v-list-item>  
+        <v-list-item
+          prepend-icon="mdi-account-multiple"
+          :title="t('buttons.editAgent')"  
+          :active="route.name === 'agents'"
+          @click="navigateTo('agents')"
+        ></v-list-item>  
       </v-list-group>
       <!-- Orders -->
       <v-list-group
@@ -170,18 +176,19 @@ async function logout() {
           <v-list-item v-bind="props" title="Orders" />
         </template>
         <v-list-item
+          v-if="user?.user?.role === 'admin' || user?.user?.role === 'manager'" 
           prepend-icon="mdi-folder-plus"
           :title="t('buttons.addCaseForm')"  
           :active="route.name === 'addCaseForm'"
-          @click="navigateTo('addCaseForm')"
-          v-if="user?.user?.role === 'admin' || user?.user?.role === 'manager'"  
+          @click="navigateTo('addCaseForm')" 
         ></v-list-item>
         <v-list-item
+          v-if="user?.user?.role === 'admin' || user?.user?.role === 'manager'" 
           prepend-icon="mdi-folder-plus"
           :title="t('buttons.addOrderForm')"  
           :active="route.name === 'addOrderForm'"
           @click="navigateTo('addOrderForm')"
-          v-if="user?.user?.role === 'admin' || user?.user?.role === 'manager'" 
+   
         ></v-list-item>
         <v-list-item
           prepend-icon="mdi-account-plus"

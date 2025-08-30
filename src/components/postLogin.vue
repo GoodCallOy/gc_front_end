@@ -2,7 +2,7 @@
 <template>
   <div class="post-login-wrapper">
     <div class="post-login-card">
-      <div class="title">Signing you in…</div>
+      <div class="title">Signing you in as…</div>
 
       <v-list v-if="userFromStore">
         <v-list-item :prepend-avatar="userFromStore.avatar">

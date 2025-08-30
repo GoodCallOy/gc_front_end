@@ -21,6 +21,13 @@
           :rules="nameRules"
           required
         />
+
+        <v-text-field
+          v-model="agent.position"
+          label="Position"
+          :rules="nameRules"
+          required
+        />
   
         <div class="button-alert-container">
           <v-btn :disabled="!valid" type="submit" color="primary">Save Changes</v-btn>
@@ -41,7 +48,7 @@
   <script>
   import axios from "axios";
   import urls from '../js/config.js';  
-  
+
   export default {
     name: "editAgent",
     props: {
@@ -69,6 +76,7 @@
     mounted() {
       // Fetch agent data by name when the component is mounted
       this.fetchAgentByName();
+      store.dispatch('fetchUsers');
     },
     methods: {
       async fetchAgentByName() {

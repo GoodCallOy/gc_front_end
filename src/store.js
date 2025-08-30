@@ -7,6 +7,7 @@ const CACHE_TIMEOUT = 10 * 60 * 1000 // 10 minutes
 const store = createStore({
   state: {
     user: null,
+    users: [],
     agents: [],
     agentStats: [],
     cases: [],
@@ -37,6 +38,7 @@ const store = createStore({
       })
     },
     user: state => state.user,
+    users: state => state.users,
     cases: state => state.cases,
     GcCases: state => state.GcCases,
     agents: state => state.agents,
@@ -167,6 +169,16 @@ const store = createStore({
       }
     },
 
+    async fetchUsers({ commit }) {
+      const res = await axios.get(`${urls.backEndURL}/user`, { withCredentials: true })
+      if (!Array.isArray(res.data)) {
+        console.error('Unexpected shape from /users:', res.data)
+        commit('setUsers', [])
+        return
+      }
+      commit('setUsers', res.data) // <-- use res.data, not res.data.users
+    },
+
     loadUserFromStorage({ commit }) {
       const user = localStorage.getItem('user')
       if (user) {
@@ -254,6 +266,9 @@ const store = createStore({
     SET_USER(state, user) {
       state.user = user
       localStorage.setItem('user', JSON.stringify(user))
+    },
+    setUsers(state, users) {
+      state.users = users 
     },
     LOGOUT(state) {
       state.user = null

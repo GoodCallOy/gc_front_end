@@ -36,7 +36,8 @@
       "orderDashboard": "Order Dashboard",
       "assignGoals": "Assign Goals",
       "language": "Finnish",
-      "logout": "Logout"
+      "logout": "Logout",
+      "editAgent": "Edit Agent"
     },
     "sections": {
       "dashboard": "Dashboard",
