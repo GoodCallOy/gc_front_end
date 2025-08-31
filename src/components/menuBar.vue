@@ -191,11 +191,18 @@ async function logout() {
    
         ></v-list-item>
         <v-list-item
+          v-if="user?.user?.role === 'admin'"
           prepend-icon="mdi-account-plus"
           :title="t('buttons.addGcAgent')"  
           :active="route.name === 'addGcAgent'"
-          @click="navigateTo('addGcAgent')"
+          @click="navigateTo('addGcAgent')"        
+        ></v-list-item>
+        <v-list-item
           v-if="user?.user?.role === 'admin'"
+          prepend-icon="mdi-account-plus"
+          :title="t('buttons.listGcAgents')"  
+          :active="route.name === 'listGcAgents'"
+          @click="navigateTo('listGcAgents')" 
         ></v-list-item>
         <v-list-item
           prepend-icon="mdi-account-plus"

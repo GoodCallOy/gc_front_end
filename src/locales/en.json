@@ -31,6 +31,7 @@
       "addCaseForm": "Add case form",
       "addOrderForm": "Add Order form",
       "addGcAgent": "Add GC agent",
+      "listGcAgents": "list GC agents",
       "addDailyLog": "Add Daily Log",
       "orderProgress": "Order progress",
       "orderDashboard": "Order Dashboard",

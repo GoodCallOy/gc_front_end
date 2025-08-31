@@ -27,6 +27,8 @@ import orderDetails from '@/components/orderDetails.vue';
 import assignGoals from '@/components/orders/assignGoals.vue';
 import agentDashboard from '@/components/agentDashboard.vue';
 import agentCaseDetails from '@/components/agentCaseDetails.vue';
+import listGcAgents from '@/components/agents/listGcAgents.vue';
+import editGcAgent from '@/components/agents/editGcAgent.vue';
 
 
 const routes = [
@@ -42,7 +44,10 @@ const routes = [
       { path: 'dashboard', name: 'home', component: DashBoard, meta: { requiresAuth: true, roles: ['admin', 'manager'] }  },
       { path: 'dashboard2', name: 'dash2', component: DashBoard2, meta: { requiresAuth: true, roles: ['admin', 'manager'] }  },
       { path: 'agentDashboard', name: 'agentDashboard', component: agentDashboard, meta: { requiresAuth: true, roles: ['caller'] }  },
-      
+      { path: 'listGcAgents', name: 'listGcAgents', component: listGcAgents, meta: { requiresAuth: true, roles: ['admin'] }  },  
+      { path: 'editGcAgent', name: 'editGcAgent', component: editGcAgent, meta: { requiresAuth: true, roles: ['admin'] },
+        props: route => ({ activeAgent: route.query.activeAgent || "" })  
+      },
       { path: 'agents', name: 'agents', component: Agents },
       { path: 'add-agent', name: 'addAgent', component: AddAgent },
       { path: 'add-gc-agent', name: 'addGcAgent', component: AddGcAgent },
