@@ -28,13 +28,12 @@
         required
       />
 
-      <!-- 🔽 NEW: pick an existing Google user to link -->
       <v-select
         v-model="selectedUserId"
         :items="userOptions"
         item-title="title"
         item-value="value"
-        label="Link to Google User (optional)"
+        label="Link to Google User"
         clearable
       />
 
@@ -69,6 +68,7 @@ const agent = ref({
   name: '',
   email: '',
   role: '',
+  linkedUserId: null,
   active: true,
 })
 
@@ -77,12 +77,25 @@ const roles = ['admin', 'manager', 'caller']
 // users from store and options for the select
 const users = computed(() => store.getters['users'] || [])
 
+
 const userOptions = computed(() =>
-  users.value.map(u => ({
-    title: `${u.name} (${u.email})`,
-    value: u._id || u.id, // normalize to the id your backend expects
-  }))
-)
+  (users.value || [])
+    .map(user => {
+      const id = String(user._id ?? user.id ?? user.userId ?? user.uuid ?? '');
+      const nameCandidate =
+        user.name ??
+        user.displayName ??
+        `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim();
+      const name = nameCandidate || 'Unnamed';
+      const email = user.email ?? user.emails?.[0]?.value ?? '';
+      console.log('Mapping user to option:', { id, name, email });
+      return {
+        title: email ? `${name} (${email})` : name,
+        value: id, // v-model will receive this ID
+      };
+    })
+    .filter(opt => opt.value) // drop entries without an id
+);
 
 // selected user id to submit
 const selectedUserId = ref(null)
@@ -91,29 +104,22 @@ const message = ref('')
 const alertType = ref('success')
 
 async function submitForm() {
+  console.log('Submitting form with agent:', agent.value, 'and selectedUserId:', selectedUserId.value)
   try {
     const payload = {
       ...agent.value,
       linkedUserId: selectedUserId.value ?? null, // backend can link later
     }
 
+    console.log('Payload to be sent:', payload)
+
     const { data } = await axios.post(`${urls.backEndURL}/gcAgents/`, payload, {
       withCredentials: true,
     })
     console.log('Agent added:', data)
 
-    // OPTIONAL: if you want to immediately link the new agent to the user:
-    // if (selectedUserId.value) {
-    //   await axios.patch(
-    //     `${urls.backEndURL}/api/v1/admin/access/users/${selectedUserId.value}/link-agent`,
-    //     { agentId: data._id },
-    //     { withCredentials: true }
-    //   )
-    // }
-
-    // reset
     agent.value = { name: '', email: '', role: '', active: true }
-    selectedUserId.value = null
+
 
     alertType.value = 'success'
     message.value = 'Agent created successfully.'

@@ -46,9 +46,8 @@ const delay = ms => new Promise(res => setTimeout(res, ms))
 
 onMounted(async () => {
   try {
-    // Adjust path if your backend is mounted under /api/v1
     const { data } = await axios.get(`${urls.backEndURL}/auth/me`, { withCredentials: true })
-    // Some backends return { user: {...} }, others return the user directly:
+    
     const currentUser = data.user ?? data
 
     userJson.value = JSON.stringify(currentUser, null, 2)
