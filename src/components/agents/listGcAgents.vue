@@ -1,16 +1,16 @@
 <!-- src/components/AgentCards.vue -->
 <template>
   <v-container class="py-6">
-    <div class="text-h5 mb-4">Agents</div>
+    <div class="text-h5 mb-4">Users</div>
 
-    <v-alert v-if="!agents.length" type="info" variant="tonal">
-      No agents yet.
+    <v-alert v-if="!users.length" type="info" variant="tonal">
+      No users yet.
     </v-alert>
 
     <v-row v-else dense>
       <v-col
-        v-for="agent in agents"
-        :key="agent._id"
+        v-for="user in users"
+        :key="user._id"
         cols="12"
         sm="6"
         md="4"
@@ -18,17 +18,20 @@
       >
         <v-card class="h-100 d-flex flex-column">
           <v-card-title class="text-truncate">
-            {{ agent.name }}
+            {{ user.name }}
           </v-card-title>
           <v-card-subtitle class="text-truncate">
-            {{ agent.email }}
+            {{ user.email }}
           </v-card-subtitle>
 
           <v-spacer />
 
           <v-card-actions>
-            <v-chip size="small" class="mr-2" :color="agent.active ? 'success' : 'grey'">
-              {{ agent.role }}
+            <v-chip size="small" class="mr-2" :color="user.active ? 'success' : 'grey'">
+              {{ user.role }}
+            </v-chip>
+            <v-chip size="small" class="mr-2" :color="user.linkedUserId ? 'success' : 'grey'">
+              {{ user.linkedUserId ? 'Linked' : 'Unlinked' }}
             </v-chip>
 
             <v-spacer />
@@ -36,7 +39,7 @@
             <v-btn
               size="small"
               color="primary"
-              @click="goToEditAgent(agent)"
+              @click="goToEditAgent(user)"
             >
               Edit
             </v-btn>
@@ -57,23 +60,23 @@ const router = useRouter()
 
 // Load agents once if not already in the store
 onMounted(async () => {
-  const list = store.getters['gcAgents']
+  const list = store.getters['users']
   if (!Array.isArray(list) || list.length === 0) {
     try {
-      await store.dispatch('fetchgcAgents', true) // your existing action
+      await store.dispatch('fetchUsers', true) // your existing action
     } catch (e) {
-      console.error('Failed to fetch agents:', e)
+      console.error('Failed to fetch users:', e)
     }
   }
 })
 
-const agents = computed(() => store.getters['gcAgents'] || [])
+const users = computed(() => store.getters['users'] || [])
 
 // Navigate to edit page (your router expects ?activeAgent=<id>)
-function goToEditAgent(agent) {
+function goToEditAgent(user) {
   router.push({
     name: 'editGcAgent',
-    query: { activeAgent: agent._id }
+    query: { selectedUser: user._id }
   })
 }
 </script>

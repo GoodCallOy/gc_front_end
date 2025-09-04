@@ -37,6 +37,14 @@ const REDIRECT_DELAY_MS = 5000
 // What the template will read
 const userFromStore = computed(() => store.state.user?.user || null)
 
+async function fetchAllData() {
+  await store.dispatch('fetchOrders')
+  await store.dispatch('fetchgcAgents')
+  await store.dispatch('fetchDailyLogs')
+  await store.dispatch('fetchUsers')
+
+}
+
 function getHomeRouteNameForRole(role) {
   if (role === 'admin' || role === 'manager') return 'home'
   if (role === 'caller') return 'agentDashboard'
@@ -55,10 +63,9 @@ onMounted(async () => {
     // Persist for guard fallbacks and page reloads
     localStorage.setItem('auth_user', JSON.stringify(currentUser))
 
-    // IMPORTANT: commit shape must match what your guard reads (state.user.user.role)
-    // Make sure your mutation stores under module 'user' with a 'user' field.
-    // Example mutation: state.user = payload.user
     store.commit('SET_USER', { user: currentUser })
+
+    await fetchAllData()
 
     const dest = getHomeRouteNameForRole(currentUser.role)
     statusMessage.value = `Loaded user. Redirecting to ${dest}…`
@@ -74,9 +81,9 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.post-login-wrapper { min-height: 60vh; display: grid; place-items: center; }
-.post-login-card { text-align: center; padding: 1.25rem 1.5rem; border-radius: 12px; border: 1px solid rgba(0,0,0,.08); background: #fff; box-shadow: 0 4px 18px rgba(0,0,0,.06); }
-.title { font-size: 1.1rem; font-weight: 600; margin-bottom: .5rem; }
-.subtitle { color: #666; font-size: .95rem; }
-.data { text-align: left; background: #f6f8fa; padding: .75rem; border-radius: 8px; margin: .5rem 0 0; max-width: 520px; max-height: 240px; overflow: auto; }
+  .post-login-wrapper { min-height: 60vh; display: grid; place-items: center; }
+  .post-login-card { text-align: center; padding: 1.25rem 1.5rem; border-radius: 12px; border: 1px solid rgba(0,0,0,.08); background: #fff; box-shadow: 0 4px 18px rgba(0,0,0,.06); }
+  .title { font-size: 1.1rem; font-weight: 600; margin-bottom: .5rem; }
+  .subtitle { color: #666; font-size: .95rem; }
+  .data { text-align: left; background: #f6f8fa; padding: .75rem; border-radius: 8px; margin: .5rem 0 0; max-width: 520px; max-height: 240px; overflow: auto; }
 </style>

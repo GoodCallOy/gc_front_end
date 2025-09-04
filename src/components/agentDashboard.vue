@@ -20,13 +20,6 @@ import agentCaseCard from './agentCaseCard.vue'
 
 const store = useStore()
 
-
-async function fetchAllData() {
-  await store.dispatch('fetchOrders')
-  await store.dispatch('fetchgcAgents')
-  await store.dispatch('fetchDailyLogs')
-}
-
 const userOrders = ref([])
 
 const orders = computed(() => store.getters['orders'])
@@ -49,7 +42,6 @@ function findOrdersForUser(allOrdersArray, userId) {
   )
 }
 
-
 const formatDate = date => new Date(date).toLocaleDateString()
 
 function getCallerNames(order) {
@@ -59,7 +51,6 @@ function getCallerNames(order) {
 }
 
 onMounted(async () => {
-  await fetchAllData()
   const userId = currentUser.value?._id || currentUser.value?.id
   userOrders.value = findOrdersForUser(orders.value, userId)
   console.log('userOrders', userOrders.value)

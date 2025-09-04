@@ -208,7 +208,7 @@ const store = createStore({
       try {
         console.log('🌍 Fetching gcAgents from API')
         const response = await axios.get(`${urls.backEndURL}/gcAgents?t=${Date.now()}`)
-        console.log('✅ gcAgents fetched successfully in store:', response.data)
+        console.log('✅ gcAgents fetched successfully in store:')
         commit('setgcAgents', response.data)
         commit('setLastFetch', { key: 'gcAgents', time: Date.now() })
       } catch (error) {

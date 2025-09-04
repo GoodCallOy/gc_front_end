@@ -18,6 +18,7 @@ const BASE_URL =
 
 const store = useStore() // Access Vuex store
 const user = computed(() => store.state.user)
+const agents = computed(() => store.state.users)
 import urls from '@/js/config.js'
 
 const opened = ref([])
@@ -27,6 +28,8 @@ const agentsOpen = ref(false)
 const formsOpen = ref(false)
 const ordersOpen = ref(false)
 const oldLinksOpen = ref(false)
+
+console.log('agents from store in menuBar:', agents.value);
 
 function closeAllGroups() {
   console.log('Closing all groups in menuBar')
@@ -41,6 +44,7 @@ function closeAllGroups() {
 watch(user, (newVal) => {
   console.log('🟢 user changed in menuBar:', newVal);
 }, { immediate: true });
+
 
 watch(isDrawerOpen, (open) => {
   if (!open) {

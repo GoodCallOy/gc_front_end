@@ -4,14 +4,14 @@
 
     <v-form ref="formRef" @submit.prevent="submitForm">
       <v-text-field
-        v-model="agent.name"
+        v-model="editUser.name"
         label="Name"
         :rules="[v => !!v || 'Name is required']"
         required
       />
 
       <v-text-field
-        v-model="agent.email"
+        v-model="editUser.email"
         label="Email"
         :rules="[
           v => !!v || 'Email is required',
@@ -21,7 +21,7 @@
       />
 
       <v-select
-        v-model="agent.role"
+        v-model="editUser.role"
         :items="roles"
         label="Role"
         :rules="[v => !!v || 'Role is required']"
@@ -29,18 +29,19 @@
       />
 
       <v-select
-        v-model="selectedUserId"
-        :items="userOptions"
+        v-model="selectedAgentId"
+        :items="agentOptions"
         item-title="title"
         item-value="value"
-        label="Link to Google User"
+        label="Link to agent"
         clearable
+        @update:modelValue="onSelectAgent"
       />
 
-      <v-switch v-model="agent.active" label="Active" />
+      <!-- <v-switch v-model="agent.active" label="Active" /> -->
 
       <div class="button-alert-container">
-        <v-btn type="submit" color="primary">Edit Agent</v-btn>
+        <v-btn type="submit" color="primary">Save Agent</v-btn>
         <v-alert v-if="message" :type="alertType" class="ml-3" dense dismissible>
           {{ message }}
         </v-alert>
@@ -50,12 +51,13 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, reactive, watchEffect } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { toRaw } from 'vue'
 import axios from 'axios'
 import urls from '@/js/config.js'
 import store from '@/store'
+import EditAgent from '../editAgent.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -64,22 +66,79 @@ const formRef = ref(null)
 
 const roles = ['admin', 'manager', 'caller']
 
-const agent = ref({
-  name: '',
-  email: '',
-  role: '',
-  active: true,
-  linkedUserId: null,
+
+const agents = computed(() => store.state.gcAgents || [])
+const users = computed(() => store.state.users || [])
+const userFromStore = computed(() => store.state.user || [])
+console.log('userFromStore:', userFromStore.value);
+console.log('users:', users.value);
+
+const selectedUserId = computed(() => {
+  const q = route.query.selectedUser
+  return Array.isArray(q) ? q[0] : (q ?? '')
 })
 
-const selectedUserId = ref(null)
+const selectedUser = computed(() => {
+  const id = selectedUserId.value
+  if (!id) return null
+  return users.value.find(u => String(u._id ?? u.id) === id) ?? null
+})
+
+console.log('selectedUserId:', selectedUserId.value);
+console.log('selectedUser:', selectedUser.value);
+
+const editUser = reactive({
+  id: '',
+  googleId: '',
+  name: '',
+  email: '',
+  avatar: '',
+  access: '',
+  role: 'caller',
+  linkedUserId: '',
+})
+
+const agent = reactive({
+  id: '',
+  name: '',
+  email: '',
+  avatar: '',
+  role: '',
+  linkedUserId: null,
+  active: true,})
+
+function loadFormData(source) {
+  console.log('Loading form data for user:', source)
+  editUser.id = source.id || source._id || ''
+  editUser.googleId = source.googleId || ''
+  editUser.name = source.name || ''
+  editUser.email = source.email || ''
+  editUser.avatar = source.avatar || ''
+  editUser.access = source.access || ''
+  editUser.role = source.role || 'caller'
+  // keep as string for the input; send null when empty
+  editUser.linkedUserId = source.linkedUserId ? String(source.linkedUserId) : ''
+}
+
+function onSelectAgent(id) {
+  const found = (agents.value || []).find(
+    a => String(a._id ?? a.id) === String(id)
+  );
+  if (found && found.role) {
+    editUser.role = found.role;          // <-- copy role to editUser
+  } else if (!id) {
+    // selection cleared; choose desired behavior:
+    // editUser.role = 'caller';         // or keep last value, or reset to default
+  }
+}
+
+const selectedAgentId = ref(null)
 
 const message = ref('')
 const alertType = ref('success')
 
-// Are we editing? (list page should route with ?activeAgent=<id>)
-const agentId = computed(() => String(route.query.activeAgent || ''))
-const isEditMode = computed(() => !!agentId.value)
+
+const isEditMode = computed(() => !!editUser.value)
 
 // Users from store → options for "Link to Google User"
 onMounted(async () => {
@@ -90,42 +149,36 @@ onMounted(async () => {
     try { await store.dispatch('fetchgcAgents', true) } catch {}
   }
   if (isEditMode.value) {
-    await loadAgent(agentId.value)
+    await loadAgent(EditAgent.value)
   }
+
+  if (selectedUser.value) loadFormData(selectedUser.value)
 })
 
-const users = computed(() => store.getters['users'] || [])
-const userOptions = computed(() =>
-  (users.value || [])
+
+const agentOptions = computed(() =>
+  (agents.value || [])
     .map(u => {
       const id = String(u._id ?? u.id ?? '')
       const name = u.name || 'Unnamed'
       const email = u.email || ''
-      return { value: id, title: email ? `${name} (${email})` : name }
+      const active = u.active ? 'Active' : '🔴'
+      const role = u.role || ''
+      return { value: id, title: email ? `${name} (${email}, ${role}, ${active})` : name }
     })
     .filter(o => o.value)
 )
 
-async function loadAgent(id) {
+async function loadAgent(agentinfo) {
   // try store first
-  const list = store.getters['gcAgents'] || []
-  let found = list.find(a => a._id === id)
-
-  if (!found) {
-    // fallback to API
-    const { data } = await axios.get(`${urls.backEndURL}/api/v1/gcAgents/${id}`, { withCredentials: true })
-    found = data
-  }
-  if (!found) return
-
+  
   agent.value = {
-    name: found.name || '',
-    email: found.email || '',
-    role: found.role || '',
-    active: typeof found.active === 'boolean' ? found.active : true,
-    linkedUserId: found.linkedUserId ?? null,
+    id: agentinfo._id || agentinfo.id || '',
+    name: agentinfo.name || '',
+    email: agentinfo.email || '',
+    role: agentinfo.role || '',
+    active: typeof agentinfo.active === 'boolean' ? agentinfo.active : true,
   }
-  selectedUserId.value = found.linkedUserId ? String(found.linkedUserId) : null
 }
 
 async function submitForm() {
@@ -134,36 +187,27 @@ async function submitForm() {
   if (valid === false) return
 
   const payload = {
-    ...toRaw(agent.value),
-    linkedUserId: selectedUserId.value ?? null,
+    ...selectedUser.value,
+    linkedUserId: selectedAgentId.value ?? null,
+    role: editUser.role,
   }
-
+  console.log('Submitting payload:', payload)
+  console.log('Submitting for user ID:', selectedUserId.value)
   try {
-    if (isEditMode.value) {
-      // UPDATE
-      const { data } = await axios.put(
-        `${urls.backEndURL}/gcAgents/${agentId.value}`,
-        payload,
-        { withCredentials: true }
-      )
-      alertType.value = 'success'
-      message.value = 'Agent updated.'
-      // refresh store
-      try { await store.dispatch('fetchgcAgents', true) } catch {}
-      // keep you on the page; or router.back() if you prefer
-    } else {
-      // CREATE
-      const { data } = await axios.post(
-        `${urls.backEndURL}/api/v1/gcAgents/`,
-        payload,
-        { withCredentials: true }
-      )
-      alertType.value = 'success'
-      message.value = 'Agent created.'
-      try { await store.dispatch('fetchgcAgents', true) } catch {}
-      // optionally go to edit page for this new agent:
-      router.replace({ name: 'editAgent', query: { activeAgent: data._id } })
-    }
+    
+    // UPDATE
+    const { data } = await axios.put(
+      `${urls.backEndURL}/user/${selectedUserId.value}`,
+      payload,
+      { withCredentials: true }
+    )
+    alertType.value = 'success'
+    message.value = 'Agent updated.'
+    // refresh store
+    try { await store.dispatch('fetchgcAgents', true) } catch {}
+    console.log('Agent updated:', data)
+    // keep you on the page; or router.back() if you prefer
+    
     setTimeout(() => (message.value = ''), 3000)
   } catch (err) {
     console.error('Save failed:', err.response?.data || err.message)
