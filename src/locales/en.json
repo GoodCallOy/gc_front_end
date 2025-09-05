@@ -38,7 +38,8 @@
       "assignGoals": "Assign Goals",
       "language": "Finnish",
       "logout": "Logout",
-      "editAgent": "Edit Agent"
+      "editAgent": "Edit Agent",
+      "agentDashboard": "Dashboard"
     },
     "sections": {
       "dashboard": "Dashboard",

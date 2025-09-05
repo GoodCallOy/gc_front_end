@@ -126,7 +126,7 @@ async function logout() {
       </template>
     </v-list>
     
-    <v-list density="compact" nav  v-model:opened="opened">
+    <v-list v-model:opened="opened" density="compact" nav>
 
       <!-- Dashboard Group -->
       <v-list-group
@@ -170,6 +170,13 @@ async function logout() {
           @click="navigateTo('agents')"
         ></v-list-item>  
       </v-list-group>
+      <v-list-item
+          v-if="user?.user?.role === 'caller'" 
+          prepend-icon="mdi-laptop"
+          :title="t('buttons.agentDashboard')"  
+          :active="route.name === 'agentDashboard'"
+          @click="navigateTo('agentDashboard')"
+        ></v-list-item>
       <!-- Orders -->
       <v-list-group
         v-model="ordersOpen"
