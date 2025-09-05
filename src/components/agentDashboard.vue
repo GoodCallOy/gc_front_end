@@ -8,6 +8,7 @@
       :order="userOrder"
       :agents="gcAgents"
       :dailyLogs="dailyLogs"
+      :currentUser="currentUser"
       />
     </div>
   </v-container>

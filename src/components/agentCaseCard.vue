@@ -16,12 +16,24 @@
             <h2 class="text-h6">{{ order.caseName }}</h2>
         </header>
         <v-row align="center" class="mt-2">
-            <v-col cols="7">
+            <v-col cols="5">
                 <v-card-subtitle class="text-caption">
-                    Goal: €{{ order.estimatedRevenue }}
+                    My goal: {{ displayMyGoal }}
                 </v-card-subtitle>
             </v-col>
-            <v-col cols="5" class="d-flex text-align-left">
+            <v-col cols="7">
+                <v-card-subtitle class="text-caption">
+                    My revenue: €{{ myRevenue }}
+                </v-card-subtitle>
+            </v-col>
+        </v-row>
+        <v-row align="center" class="mt-2">
+          <v-col cols="8">
+                <v-card-subtitle class="text-caption">
+                    Case revenue: €{{ order.estimatedRevenue }}
+                </v-card-subtitle>
+            </v-col>
+            <v-col cols="4" class="d-flex text-align-left">
                 <v-card-subtitle class="text-caption">
                     {{ order.orderStatus }}
                 </v-card-subtitle>
@@ -63,16 +75,13 @@
   import { chartAreaGradient } from '../charts/ChartjsConfig'
   import LineChart from '../charts/LineChart01.vue'
   import EditMenu from '../components/DropdownEditMenu.vue'
-  import { useRouter, useRoute } from 'vue-router';
-
-  const router = useRouter();
-  const route = useRoute();
+  
   
   // Import utilities
   import { adjustColorOpacity } from '../utils/Utils'
   
   export default {
-    name: 'DashboardCard01',
+    name: 'agentCaseCard',
     components: {
       LineChart,
       EditMenu,
@@ -87,6 +96,10 @@
         required: true,
         },
         dailyLogs: {
+        type: Object,
+        required: true,
+        },
+        currentUser: {
         type: Object,
         required: true,
         },
@@ -180,6 +193,28 @@
         return totalUnits * (props.order.pricePerUnit || 0);
       });
 
+      console.log('currentUser in card:', props.currentUser);
+      const myAgentId = computed(() =>
+        String(props.currentUser?.linkedUserId ?? '')
+      )
+      console.log('myAgentId:', myAgentId)
+      const myGoal = computed(() => {
+        const map = props.order?.agentGoals ?? {}
+        const id = myAgentId.value
+        if (!id) return 0
+        // keys in agentGoals are strings -> bracket access is correct
+        return Number(map[id] ?? 0)
+      })
+
+      const displayMyGoal = computed(() =>
+        myAgentId.value ? `${myGoal.value}` : 'N/A'
+      )
+      console.log('myAgentId:', myAgentId, 'myGoal:', myGoal)
+      console.log('displayMyGoal:', displayMyGoal)
+
+      const myRevenue = myGoal.value * (props.order.pricePerUnit || 0)
+      console.log('myRevenue:', myRevenue)
+
       const percentage = computed(() => {
         const goal = props.order.estimatedRevenue || 0;
         if (!goal) return 0;
@@ -223,6 +258,10 @@
         percentage,
         percentageClass,
         totalUnits,
+         displayMyGoal,
+        myGoal,
+        myAgentId,
+        myRevenue,
       }
       const agentNames = getCallerNames(order, agents); 
     },
