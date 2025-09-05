@@ -16,16 +16,12 @@
             <h2 class="text-h6">{{ order.caseName }}</h2>
         </header>
         <v-row align="center" class="mt-2">
-            <v-col cols="5">
+            <v-col cols="12">
                 <v-card-subtitle class="text-caption">
-                    My goal: {{ displayMyGoal }}
+                    My goal: {{ totalUnits }}/{{ displayMyGoal }}
                 </v-card-subtitle>
             </v-col>
-            <v-col cols="7">
-                <v-card-subtitle class="text-caption">
-                    Amount to goal: {{ totalUnits }}
-                </v-card-subtitle>
-            </v-col>
+
         </v-row>
         <v-row align="center" class="mt-2">
             <v-col cols="12">
