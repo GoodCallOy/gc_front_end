@@ -23,19 +23,28 @@
             </v-col>
             <v-col cols="7">
                 <v-card-subtitle class="text-caption">
-                    My revenue: €{{ myRevenue }}
+                    Amount to goal: €{{ displayMyGoal }}
                 </v-card-subtitle>
             </v-col>
         </v-row>
         <v-row align="center" class="mt-2">
-          <v-col cols="8">
+            <v-col cols="12">
                 <v-card-subtitle class="text-caption">
-                    Case revenue: €{{ order.estimatedRevenue }}
+                    My estimated revenue: €{{ myRevenue }}
                 </v-card-subtitle>
             </v-col>
-            <v-col cols="4" class="d-flex text-align-left">
+        </v-row>
+        <v-row align="center" class="mt-2">
+          <v-col cols="12">
                 <v-card-subtitle class="text-caption">
-                    {{ order.orderStatus }}
+                    Case's estimated revenue: €{{ order.estimatedRevenue }}
+                </v-card-subtitle>
+            </v-col>
+        </v-row>
+        <v-row align="center" class="mt-2">
+            <v-col cols="12" class="d-flex text-align-left">
+                <v-card-subtitle class="text-caption">
+                    case status: {{ order.orderStatus }}
                 </v-card-subtitle>
             </v-col>
         </v-row>
@@ -71,7 +80,7 @@
   
   
   <script>
-  import { ref, computed } from 'vue'
+  import { ref, computed, watchEffect } from 'vue'
   import { chartAreaGradient } from '../charts/ChartjsConfig'
   import LineChart from '../charts/LineChart01.vue'
   import EditMenu from '../components/DropdownEditMenu.vue'
@@ -87,22 +96,10 @@
       EditMenu,
     },
     props: {
-        order: {
-        type: Object,
-        required: true,
-        },
-        agents: {
-        type: Object,
-        required: true,
-        },
-        dailyLogs: {
-        type: Object,
-        required: true,
-        },
-        currentUser: {
-        type: Object,
-        required: true,
-        },
+      order: { type: Object, required: true },
+      agents: { type: Array, default: () => [] },
+      dailyLogs: { type: Array, default: () => [] },
+      currentUser: { type: Object, required: true },
     },
     setup(props) {
       const chartData = ref({
@@ -167,60 +164,11 @@
           },
         ],
       })
-      const totalAgentUnitsValue = computed(() => {
-        if (
-          !props.order ||
-          !props.order.assignedCallers ||
-          !Array.isArray(props.dailyLogs)
-        )
-          return 0;
-
-        // Get all agent IDs assigned to this order
-        const assignedIds = props.order.assignedCallers;
-        
-
-        // Sum quantityCompleted for all dailyLogs where agent is assigned to this order
-        const totalUnits = props.dailyLogs
-          .filter(
-            log =>
-              assignedIds.includes(log.agent._id) &&
-              log.order._id === props.order._id &&
-              typeof log.quantityCompleted === 'number'
-          )
-          .reduce((sum, log) => sum + log.quantityCompleted, 0);
-          
-
-        return totalUnits * (props.order.pricePerUnit || 0);
-      });
-
-      console.log('currentUser in card:', props.currentUser);
-      const myAgentId = computed(() =>
-        String(props.currentUser?.linkedUserId ?? '')
-      )
-      console.log('myAgentId:', myAgentId)
-      const myGoal = computed(() => {
-        const map = props.order?.agentGoals ?? {}
-        const id = myAgentId.value
-        if (!id) return 0
-        // keys in agentGoals are strings -> bracket access is correct
-        return Number(map[id] ?? 0)
-      })
-
-      const displayMyGoal = computed(() =>
-        myAgentId.value ? `${myGoal.value}` : 'N/A'
-      )
-      console.log('myAgentId:', myAgentId, 'myGoal:', myGoal)
-      console.log('displayMyGoal:', displayMyGoal)
-
-      const myRevenue = myGoal.value * (props.order.pricePerUnit || 0)
-      console.log('myRevenue:', myRevenue)
 
       const percentage = computed(() => {
-        const goal = props.order.estimatedRevenue || 0;
-        if (!goal) return 0;
         if (totalAgentUnitsValue.value === 0) return 0;
-        const ret_percentage = (totalAgentUnitsValue.value / goal) * 100;
-        
+        const ret_percentage = (totalAgentUnitsValue.value / myRevenue.value) * 100;
+
         return Number(ret_percentage.toFixed(1))
       });
 
@@ -232,37 +180,82 @@
         return 'percentage-green';
       });
 
-      const totalUnits = computed(() => {
-        if (
-          !props.order ||
-          !props.order.assignedCallers ||
-          !Array.isArray(props.dailyLogs)
+      const myAgentId = computed(() =>
+        String(props.currentUser?.linkedUserId ?? props.currentUser?.id ?? '')
+      )
+      const orderId = computed(() => String(props.order?._id ?? ''))
+
+      // all logs that belong to the current agent (reactive)
+      const agentLogs = computed(() => {
+        const myId = myAgentId.value
+        if (!myId) return []
+        const logs = Array.isArray(props.dailyLogs) ? props.dailyLogs : []
+        return logs.filter(l => String(l?.agent?._id ?? l?.agent ?? '') === myId)
+      })
+      console.log('agentLogs', agentLogs.value)
+
+      // only this order’s logs for the current agent
+      const myAgentOrderLogs = computed(() =>
+        agentLogs.value.filter(
+          l => String(l?.order?._id ?? l?.order ?? '') === orderId.value
         )
-          return 0;
+      )
 
-        const assignedIds = props.order.assignedCallers;
-        return props.dailyLogs
-          .filter(
-            log =>
-              assignedIds.includes(log.agent._id) &&
-              log.order._id === props.order._id &&
-              typeof log.quantityCompleted === 'number'
-          )
-          .reduce((sum, log) => sum + log.quantityCompleted, 0);
-      });
+      // your goal from order.agentGoals
+      const myGoal = computed(() => {
+        const map = props.order?.agentGoals ?? {}
+        const id = myAgentId.value
+        return id ? Number(map[id] ?? 0) : 0
+      })
 
-  
+      const euro = new Intl.NumberFormat(undefined, { style: 'currency', currency: 'EUR' })
+      const displayMyGoal = computed(() => (myAgentId.value ? `${myGoal.value}` : 'N/A'))
+
+      // ✅ make this computed so it updates when myGoal or price changes
+      const myRevenue = computed(() =>
+        myGoal.value * (Number(props.order?.pricePerUnit) || 0)
+      )
+
+      // revenue completed for this agent on this order (from daily logs)
+      const totalAgentUnitsValue = computed(() => {
+        console.log('Calculating totalAgentUnitsValue...', agentLogs.value)
+        const units = agentLogs.value.reduce(
+          (sum, l) => sum + (Number(l.quantityCompleted) || 0),
+          0
+        )
+        return units * (Number(props.order?.pricePerUnit) || 0)
+      })
+
+      // total units across all assigned (fix id normalization)
+      const totalUnits = computed(() =>
+        (agentLogs.value || []).reduce(
+          (sum, log) => sum + (Number(log?.quantityCompleted) || 0),
+          0
+        )
+      )
+
+      // helpful: see when things actually populate (runs on every change)
+      watchEffect(() => {
+        console.log('agentLogs count:', agentLogs.value.length)
+        console.log('agent logs for this order:', agentLogs.value )
+        console.log('myAgentOrderLogs count:', myAgentOrderLogs.value.length)
+        console.log('totalAgentUnitsValue:', totalAgentUnitsValue.value)
+        const units = myAgentOrderLogs.value.reduce((s,l)=>s+(Number(l?.quantityCompleted)||0),0)
+        console.log('myAgentOrderLogs total units:', units)
+      })
+
       return {
         chartData,
-        totalAgentUnitsValue,
         percentage,
         percentageClass,
-        totalUnits,
-         displayMyGoal,
-        myGoal,
         myAgentId,
-        myRevenue,
+        myGoal,
+        displayMyGoal,
+        myRevenue,              // <-- return so template can use it
+        totalAgentUnitsValue,
+        totalUnits,
       }
+
       const agentNames = getCallerNames(order, agents); 
     },
 

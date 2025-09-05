@@ -67,6 +67,9 @@ onMounted(async () => {
 
     await fetchAllData()
 
+    const dailyLogs = computed(() => store.getters['dailyLogs'])
+    console.log('dailyLogs', dailyLogs.value)
+
     const dest = getHomeRouteNameForRole(currentUser.role)
     statusMessage.value = `Loaded user. Redirecting to ${dest}…`
 
