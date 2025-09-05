@@ -77,7 +77,6 @@ async function navigateTo(name) {
 async function logout() {
   try {
     // if you use cookie sessions, you MUST send credentials
-    console.log('Logging out user:', user.value)
     await axios.get(`${urls.backEndURL}/auth/logout`, { withCredentials: true })
   } catch (error) {
     // network issues? still clear local state below

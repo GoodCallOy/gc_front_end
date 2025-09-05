@@ -1,6 +1,6 @@
 <template>
   <v-container  style="width: 80%;" >
-    <h1 class="text-h4 mb-4" style="width: 75vw;">Cases for {{ currentUser.name }}</h1>
+    <h1 class="text-h4 mb-4" style="width: 75vw;"> Cases for {{ selectedGcAgent ? selectedGcAgent.name : '—' }}</h1>
     <div class="grid-container ">
       <agentCaseCard
       v-for="(userOrder, index) in userOrders"
@@ -29,31 +29,48 @@ console.log('gcAgents', gcAgents.value)
 const dailyLogs = computed(() => store.getters['dailyLogs'])
 console.log('dailyLogs', dailyLogs.value)
 
+
 const currentUser = computed(() => {
   return store.state.user?.user
-      ?? JSON.parse(localStorage.getItem('auth_user') || 'null');
+      ?? JSON.parse(localStorage.getItem('auth_user') || 'null')
+      ?? null;
 });
 console.log('user', currentUser.value)
 
-function findOrdersForUser(allOrdersArray, userId) {
-  if (!userId) return []
+const selectedGcAgent = computed(() => {
+  const user = currentUser.value;
+  const linkId = user?.linkedUserId ?? null;
+  if (!linkId) return null;
+
+  return (gcAgents.value || []).find(a =>
+    String(a._id ?? a.id) === String(linkId)
+  ) || null;
+});
+
+console.log('selectedGcAgent:', selectedGcAgent.value);
+
+watch([orders, selectedGcAgent], ([allOrders, agent]) => {
+  userOrders.value = agent
+    ? findOrdersForUser(allOrders, agent._id ?? agent.id)
+    : [];
+}, { immediate: true });
+
+function findOrdersForUser(allOrdersArray, agentId) {
+  const wanted = String(agentId || '');
+  if (!wanted) return [];
   return (allOrdersArray || []).filter(order =>
-    (order.assignedCallers || []).some(callerId => String(callerId) === '6856e51412867861c1055748')
-  )
-}
-
-const formatDate = date => new Date(date).toLocaleDateString()
-
-function getCallerNames(order) {
-  return order.assignedCallers
-    .map(id => gcAgents.value.find(agent => agent._id === id)?.name || 'Unknown')
-    .join(', ')
+    (order.assignedCallers || []).some(id => String(id?._id ?? id) === wanted)
+  );
 }
 
 onMounted(async () => {
-  const userId = currentUser.value?._id || currentUser.value?.id
-  userOrders.value = findOrdersForUser(orders.value, userId)
-  console.log('userOrders', userOrders.value)
+  try {
+    await store.dispatch('fetchOrders')
+    await store.dispatch('fetchgcAgents')
+    await store.dispatch('fetchDailyLogs')
+  } catch (error) {
+    console.error('Error fetching data on mount:', error)
+  }
 
 })
 </script>
