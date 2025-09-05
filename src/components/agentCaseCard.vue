@@ -23,7 +23,7 @@
             </v-col>
             <v-col cols="7">
                 <v-card-subtitle class="text-caption">
-                    Amount to goal: €{{ displayMyGoal }}
+                    Amount to goal: {{ totalUnits }}
                 </v-card-subtitle>
             </v-col>
         </v-row>
