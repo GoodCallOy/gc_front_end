@@ -105,6 +105,14 @@ const store = createStore({
           );
           break;
           
+        case 'ordersDashboard':
+          fetchPromises.push(
+            dispatch('fetchOrders'),
+            dispatch('fetchgcAgents'),
+            dispatch('fetchDailyLogs')
+          );
+          break;
+          
         default:
           console.warn(`Unknown context: ${context}, fetching all data`);
           fetchPromises.push(

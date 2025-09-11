@@ -66,6 +66,25 @@
       />
 
       <v-select
+        v-model="form.manager"
+        :items="agentOptions"
+        item-value="value"
+        item-title="title"
+        label="Select Manager"
+        :rules="[v => !!v || 'Manager is required']"
+        required
+        clearable
+      />
+
+      <v-text-field
+        v-model.number="form.agentsPrice"
+        label="Agents Price (€)"
+        type="number"
+        :rules="[v => !!v || 'Agents price is required']"
+        required
+      />
+
+      <v-select
         v-model="form.assignedCallers"
         :items="agentOptions"
         item-value="value"
@@ -125,6 +144,8 @@ const form = reactive({
   deadline: '',
   orderStatus: '',
   estimatedRevenue: '',
+  manager: '',
+  agentsPrice: '',
   assignedCallers: []
 })
 
@@ -191,6 +212,8 @@ const submitForm = async () => {
     form.deadline = '';
     form.orderStatus = '';
     form.estimatedRevenue = '';
+    form.manager = '';
+    form.agentsPrice = '';
     form.assignedCallers = [];
   } catch (err) {
     console.error('Failed to create order:', err.response?.data || err.message);

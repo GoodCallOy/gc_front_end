@@ -1,48 +1,22 @@
 <template>
-  <!-- <v-container>
-    <h1 class="text-h4 mb-4">All Orders</h1>
-
-    <v-row>
-      <v-col
-        v-for="order in orders"
-        :key="order._id"
-        cols="12"
-        sm="6"
-        md="4"
-      >
-        <v-card class="order-card" elevation="4">
-          <v-card-title class="text-h6">
-            {{ order.caseName }}
-          </v-card-title>
-
-          <v-card-subtitle class="text-caption">
-            Goal: {{ order.goalType }} | Status: {{ order.orderStatus }}
-          </v-card-subtitle>
-
-          <v-card-text>
-            <div><strong>Deadline:</strong> {{ formatDate(order.deadline) }}</div>
-            <div><strong>Revenue:</strong> €{{ order.estimatedRevenue }}</div>
-            <div>
-              <strong>Callers:</strong>
-              <span v-if="order.assignedCallers.length">
-                {{ getCallerNames(order) }}
-              </span>
-              <span v-else>None</span>
-            </div>
-          </v-card-text>
-
-          <v-card-actions>
-            <v-btn color="primary" :to="`/orders/${order._id}`">View Details</v-btn>
-          </v-card-actions>
-        </v-card>
-      </v-col>
-    </v-row>
-  </v-container> -->
   <v-container  style="width: 80%;" >
-    <h1 class="text-h4 mb-4" style="width: 75vw;">All Orders</h1>
+    <!-- Date Navigation Header -->
+    <v-card elevation="1" class="mb-4">
+      <div class="d-flex align-center justify-center pa-4">
+        <v-btn icon flat class="pa-0 ma-0" @click="getPreviousMonth">
+          <v-icon>mdi-chevron-left</v-icon>
+        </v-btn>
+        <div class="text-h6 font-weight-medium mx-3">{{ getFormattedDateRange() }}</div>
+        <v-btn icon flat @click="getNextMonth">
+          <v-icon>mdi-chevron-right</v-icon>
+        </v-btn>
+      </div>
+    </v-card>
+    
+    <h1 class="text-h4 mb-4" style="width: 75vw;">All Orders - {{ getFormattedDateRange() }}</h1>
     <div class="grid-container ">
       <DashboardCard01
-      v-for="(order, index) in orders"
+      v-for="(order, index) in filteredOrders"
       :key="index"
       :order="order"
       :agents="gcAgents"
@@ -53,27 +27,59 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useStore } from 'vuex'
+import { goToNextMonth, goToPreviousMonth, formattedDateRange, isCurrentMonth } from '@/js/dateUtils';
 import DashboardCard01 from '@/partials/dashboard/caseCard2.vue'
 
 const store = useStore()
 
+const orders = computed(() => store.getters['orders'])
+const gcAgents = computed(() => store.getters['gcAgents'])
+const dailyLogs = computed(() => store.getters['dailyLogs'])
+const currentDateRange = computed(() => store.getters['currentDateRange'])
 
-async function fetchAllData() {
-  await store.dispatch('fetchOrders')
-  await store.dispatch('fetchgcAgents')
-  await store.dispatch('fetchDailyLogs')
+// Filter orders by the selected month
+const filteredOrders = computed(() => {
+  if (!orders.value || !currentDateRange.value || currentDateRange.value.length < 2) {
+    return orders.value || [];
+  }
+
+  const [startDate, endDate] = currentDateRange.value;
+  const monthStart = new Date(startDate);
+  const monthEnd = new Date(endDate);
+
+  return orders.value.filter(order => {
+    const orderStart = new Date(order.startDate);
+    const orderEnd = new Date(order.deadline);
+    
+    // Check if order overlaps with the selected month
+    return orderStart <= monthEnd && orderEnd >= monthStart;
+  });
+});
+
+// Date navigation functions
+const getFormattedDateRange = () => {
+  return formattedDateRange(currentDateRange.value);
 }
 
+const getIsCurrentMonth = () => {
+  return isCurrentMonth(currentDateRange.value);
+}
 
+const getPreviousMonth = () => {
+  const prevMonth = goToPreviousMonth(currentDateRange.value);
+  updateDateRange(prevMonth);
+}
 
-const orders = computed(() => store.getters['orders'])
-console.log('dashOrders', orders.value)
-const gcAgents = computed(() => store.getters['gcAgents'])
-console.log('gcAgents', gcAgents.value)
-const dailyLogs = computed(() => store.getters['dailyLogs'])
-console.log('dailyLogs', dailyLogs.value)
+const getNextMonth = () => {
+  const nextMonth = goToNextMonth(currentDateRange.value);
+  updateDateRange(nextMonth);
+}
+
+const updateDateRange = (newRange) => {
+  store.commit('setDateRange', newRange);
+}
 
 const formatDate = date => new Date(date).toLocaleDateString()
 
@@ -83,8 +89,34 @@ function getCallerNames(order) {
     .join(', ')
 }
 
-onMounted(() => {
-  fetchAllData()
+onMounted(async () => {
+  try {
+    // Register this component as active
+    store.commit('addActiveComponent', 'ordersDashboard');
+    
+    // Selective fetching - only fetch data needed for orders dashboard
+    await store.dispatch('fetchForContext', 'ordersDashboard');
+    
+    // Initialize date range if not set
+    if (!currentDateRange.value || currentDateRange.value.length < 2) {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = now.getMonth();
+      // Use UTC methods to avoid timezone issues
+      const firstDay = new Date(Date.UTC(year, month, 1));
+      const lastDay = new Date(Date.UTC(year, month + 1, 0));
+      const format = (date) => date.toISOString().split('T')[0]
+      const newRange = [format(firstDay), format(lastDay)]
+      updateDateRange(newRange)
+    }
+  } catch (error) {
+    console.error('Error fetching data on mount:', error)
+  }
+})
+
+onUnmounted(() => {
+  // Unregister this component when it's destroyed
+  store.commit('removeActiveComponent', 'ordersDashboard');
 })
 </script>
 

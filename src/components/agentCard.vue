@@ -1,14 +1,15 @@
 <template>
-  <v-card class="mx-2 my-2 mb-5" elevation="16" style="width: 175px; height: 300px;">
-    <v-card-title>{{ agent.name }}</v-card-title>
+  <v-card class="mx-2 my-2 mb-5" elevation="16" style="width: 200px; height: 350px;">
+    <v-card-title class="text-center">{{ agent.name }}</v-card-title>
     <v-card-text>
-      <p>Meetings: {{ agent.meetings }}</p>
-      <p>Call Time: {{ agent.call_time }} hours</p>
-      <p>Calls Made: {{ agent.calls_made }}</p>
-      <p>Outgoing Calls: {{ agent.outgoing_calls }}</p>
-      <p>Answered Calls: {{ agent.answered_calls }}</p>
-      <p>Response Rate: {{ agent.response_rate }}%</p>
-      <p>Case: {{ agent.case }}</p>
+      <p><strong>Meetings:</strong> {{ agent.meetings || 0 }}</p>
+      <p><strong>Call Time:</strong> {{ agent.call_time || 0 }} hrs</p>
+      <p><strong>Outgoing Calls:</strong> {{ agent.outgoing_calls || 0 }}</p>
+      <p><strong>Answered Calls:</strong> {{ agent.answered_calls || 0 }}</p>
+      <p><strong>Response Rate:</strong> {{ agent.response_rate || 0 }}%</p>
+      <p><strong>Completed Calls:</strong> {{ agent.completed_calls || 0 }}</p>
+      <p><strong>Quantity Completed:</strong> {{ agent.quantityCompleted || 0 }}</p>
+      <p><strong>Case:</strong> {{ agent.case || 'No activity' }}</p>
     </v-card-text>
 
     <v-card-text>
