@@ -214,7 +214,6 @@
 
       // revenue completed for this agent on this order (from daily logs)
       const totalAgentUnitsValue = computed(() => {
-        console.log('Calculating totalAgentUnitsValue...', agentLogs.value)
         const units = agentLogs.value.reduce(
           (sum, l) => sum + (Number(l.quantityCompleted) || 0),
           0
@@ -232,12 +231,7 @@
 
       // helpful: see when things actually populate (runs on every change)
       watchEffect(() => {
-        console.log('agentLogs count:', agentLogs.value.length)
-        console.log('agent logs for this order:', agentLogs.value )
-        console.log('myAgentOrderLogs count:', myAgentOrderLogs.value.length)
-        console.log('totalAgentUnitsValue:', totalAgentUnitsValue.value)
         const units = myAgentOrderLogs.value.reduce((s,l)=>s+(Number(l?.quantityCompleted)||0),0)
-        console.log('myAgentOrderLogs total units:', units)
       })
 
       return {

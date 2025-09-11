@@ -44,6 +44,18 @@
     "sections": {
       "dashboard": "Dashboard",
       "management": "Management"
+    },
+    "agentWeeklyTable": {
+      "case": "Case",
+      "weekGoal": "Week Goal",
+      "currentResults": "Current Results",
+      "resultsNeeded": "Results Needed",
+      "callsMade": "Calls Made",
+      "hoursComplete": "Hours Complete",
+      "hourPerMeeting": "h/meeting",
+      "callsPerMeeting": "calls/meeting",
+      "turnoverPerMeeting": "Turnover/meeting",
+      "turnoverNow": "Turnover Now"
     }
   }
   

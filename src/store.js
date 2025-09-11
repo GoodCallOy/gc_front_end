@@ -45,6 +45,7 @@ const store = createStore({
     agentStats: state => state.agentStats,
     orders: state => state.orders,
     currentPage: state => state.currentPage,
+    currentDate: () => new Date().toISOString(),
     currentDateRange: state => state.dateRange,
     gcAgents: state => state.gcAgents || [],
     dailyLogs: state => state.dailyLogs || [],

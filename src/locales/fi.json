@@ -17,7 +17,19 @@
       "addAgentCaseInfo": "Lisää agenttitapaustiedot",
       "language": "English",
       "logout": "Kirjaudu ulos"
-
+    },
+    "agentWeeklyTable": {
+      "case": "tapaus",
+      "weekGoal": "Viikko tavoite",
+      "currentResults": "Tulos nyt",
+      "resultsNeeded": "Vielä tehtävänä",
+      "callsMade": "Tehdyt soitot",
+      "hoursComplete": "Tehdyt tunnit",
+      "hourPerMeeting": "h/tapaaminen",
+      "callsPerMeeting": "puhelua/tapaaminen",
+      "turnoverPerMeeting": "Liikevaihto/tapaaminen",
+      "turnoverNow": "Liikevaihto Now"
     }
+
   }
   
