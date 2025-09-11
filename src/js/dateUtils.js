@@ -45,10 +45,14 @@ export function formattedDateRange(currentDateRange) {
     // Move to the previous month
     newStartDate.setMonth(newStartDate.getMonth() - 1);
 
-    // Calculate the new end date (last day of the previous month)
-    const newEndDate = new Date(newStartDate.getFullYear(), newStartDate.getMonth() + 1, 0);
+    // Calculate the new end date (last day of the previous month) using UTC
+    const newEndDate = new Date(Date.UTC(newStartDate.getFullYear(), newStartDate.getMonth() + 1, 0));
 
-    const prevMonthDates = [newStartDate, newEndDate];
+    // Format dates as ISO strings for consistency with store
+    const prevMonthDates = [
+      newStartDate.toISOString().split('T')[0], 
+      newEndDate.toISOString().split('T')[0]
+    ];
     
     return prevMonthDates;
   }
@@ -58,10 +62,14 @@ export function formattedDateRange(currentDateRange) {
 
     // Move to the next month
     newStartDate.setMonth(newStartDate.getMonth() + 1);
-    // Calculate the new end date (last day of the next month)
-    const newEndDate = new Date(newStartDate.getFullYear(), newStartDate.getMonth() + 1, 0);
+    // Calculate the new end date (last day of the next month) using UTC
+    const newEndDate = new Date(Date.UTC(newStartDate.getFullYear(), newStartDate.getMonth() + 1, 0));
     
-    const nextMonthDates = [newStartDate, newEndDate];
+    // Format dates as ISO strings for consistency with store
+    const nextMonthDates = [
+      newStartDate.toISOString().split('T')[0], 
+      newEndDate.toISOString().split('T')[0]
+    ];
 
      return nextMonthDates;
   }

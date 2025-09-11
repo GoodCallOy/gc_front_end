@@ -24,10 +24,20 @@ const store = createStore({
       gcAgents: null,
       dailyLogs: null,
     },
-    dateRange: [
-      new Date(new Date().setDate(new Date().getDate() - 7)).toISOString().split('T')[0],
-      new Date().toISOString().split('T')[0],
-    ],
+    // Track which components are currently active
+    activeComponents: new Set(),
+    dateRange: (() => {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = now.getMonth();
+      // Use UTC methods to avoid timezone issues
+      const firstDay = new Date(Date.UTC(year, month, 1));
+      const lastDay = new Date(Date.UTC(year, month + 1, 0));
+      return [
+        firstDay.toISOString().split('T')[0],
+        lastDay.toISOString().split('T')[0],
+      ];
+    })(),
   },
   
   getters: {
@@ -50,6 +60,7 @@ const store = createStore({
     gcAgents: state => state.gcAgents || [],
     dailyLogs: state => state.dailyLogs || [],
     lastFetch: state => state.lastFetch,
+    activeComponents: state => state.activeComponents,
   },
 
   actions: {
@@ -61,6 +72,53 @@ const store = createStore({
         dispatch('fetchCases')
       ])
       console.log('✅ All data fetched')
+    },
+    
+    // Selective fetching based on component context
+    async fetchForContext({ dispatch }, context) {
+      console.log(`🔄 Selective fetching for context: ${context}`);
+      
+      const fetchPromises = [];
+      
+      switch (context) {
+        case 'agentDashboard':
+          fetchPromises.push(
+            dispatch('fetchOrders'),
+            dispatch('fetchgcAgents'),
+            dispatch('fetchDailyLogs')
+          );
+          break;
+          
+        case 'assignGoals':
+          fetchPromises.push(
+            dispatch('fetchOrders', true), // force fetch
+            dispatch('fetchgcAgents', true), // force fetch
+            dispatch('fetchGcCases', true) // force fetch
+          );
+          break;
+          
+        case 'dashboard':
+          fetchPromises.push(
+            dispatch('fetchAgents'),
+            dispatch('fetchAgentStats'),
+            dispatch('fetchCases')
+          );
+          break;
+          
+        default:
+          console.warn(`Unknown context: ${context}, fetching all data`);
+          fetchPromises.push(
+            dispatch('fetchOrders'),
+            dispatch('fetchgcAgents'),
+            dispatch('fetchDailyLogs'),
+            dispatch('fetchAgents'),
+            dispatch('fetchAgentStats'),
+            dispatch('fetchCases')
+          );
+      }
+      
+      await Promise.all(fetchPromises);
+      console.log(`✅ Data fetched for context: ${context}`);
     },
     
     async fetchAgents({ state, commit }) {
@@ -270,6 +328,12 @@ const store = createStore({
     },
     setUsers(state, users) {
       state.users = users 
+    },
+    addActiveComponent(state, component) {
+      state.activeComponents.add(component)
+    },
+    removeActiveComponent(state, component) {
+      state.activeComponents.delete(component)
     },
     LOGOUT(state) {
       state.user = null

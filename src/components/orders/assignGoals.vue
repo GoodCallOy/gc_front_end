@@ -402,9 +402,8 @@ const showAddOrderModal = ref(false);
 
 
 async function fetchAllData() {
-  await store.dispatch('fetchOrders', true); // force fetch
-  await store.dispatch('fetchgcAgents', true); // force fetch
-  await store.dispatch('fetchGcCases', true); // force fetch
+  // Selective fetching - only fetch data needed for assign goals
+  await store.dispatch('fetchForContext', 'assignGoals');
 }
 
 
@@ -944,10 +943,15 @@ onMounted(async () => {
   console.log('orders:', orders.value);
 
   if (!currentDateRange || currentDateRange.length < 2) {
-      const startDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1); // First day of the current month
-      const endDate = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0); // Last day of the current month
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = now.getMonth();
+      // Use UTC methods to avoid timezone issues
+      const startDate = new Date(Date.UTC(year, month, 1)); // First day of the current month
+      const endDate = new Date(Date.UTC(year, month + 1, 0)); // Last day of the current month
+      const format = (date) => date.toISOString().split('T')[0]
 
-      updateDateRange([startDate, endDate]); // Set the default date range
+      updateDateRange([format(startDate), format(endDate)]); // Set the default date range
     }
     console.log('filteredSortedOrders',filteredSortedOrders.value)
 
