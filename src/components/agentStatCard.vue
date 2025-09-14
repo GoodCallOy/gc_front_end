@@ -13,6 +13,20 @@
       <v-col cols="7"><strong>Qty Completed:</strong> {{ quantityCompleted }}</v-col>
       <v-col cols="12"><strong>Amount Made:</strong> €{{ totalAgentUnitsValue }}</v-col>
     </v-row>
+    
+    <!-- Edit Button -->
+    <v-row class="mt-2" v-if="logData">
+      <v-col cols="12" class="text-center">
+        <v-btn 
+          color="primary" 
+          size="small" 
+          prepend-icon="mdi-pencil"
+          @click="editLog"
+        >
+          Edit Log
+        </v-btn>
+      </v-col>
+    </v-row>
   </v-card>
 </template>
 
@@ -28,9 +42,12 @@ const props = defineProps({
   responseRate: [String, Number],
   date: String,
   quantityCompleted: [String, Number],
+  logData: Object, // The complete log object for editing
 });
 
 import { computed } from 'vue';
+
+const emit = defineEmits(['edit-log']);
 
 const formattedDate = computed(() => {
   if (!props.date) return '';
@@ -42,9 +59,16 @@ const formattedDate = computed(() => {
     year: '2-digit'
   }).replace(/\//g, '.');
 });
+
 const totalAgentUnitsValue = computed(() => {
   return (props.pricePerUnit * props.quantityCompleted).toFixed(2);
 });
+
+const editLog = () => {
+  if (props.logData) {
+    emit('edit-log', props.logData);
+  }
+};
 </script>
 
 <style scoped>

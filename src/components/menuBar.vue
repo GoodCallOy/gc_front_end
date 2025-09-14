@@ -71,6 +71,31 @@ const currentUser = computed(() => {
   }
 })
 
+// Home route detection
+const isHomeRoute = computed(() => {
+  const homeRoutes = ['orderDashboard', 'agentDashboard', 'dashboard']
+  return homeRoutes.includes(route.name)
+})
+
+// Get home route based on user role
+function getHomeRouteForRole(role) {
+  switch (role) {
+    case 'admin':
+    case 'manager':
+      return 'orderDashboard'
+    case 'caller':
+      return 'agentDashboard'
+    default:
+      return 'dashboard'
+  }
+}
+
+// Navigate to home
+function navigateToHome() {
+  const homeRoute = getHomeRouteForRole(currentUser.value?.role)
+  navigateTo(homeRoute)
+}
+
 function toggleLanguage() {
   locale.value = locale.value === 'en' ? 'fi' : 'en';
 }
@@ -134,6 +159,17 @@ async function logout() {
     </v-list>
     
     <v-list v-model:opened="opened" density="compact" nav>
+      
+      <!-- Home Button -->
+      <v-list-item
+        prepend-icon="mdi-home"
+        :title="t('buttons.home')"
+        :active="isHomeRoute"
+        @click="navigateToHome"
+        class="mb-2"
+      />
+      
+      <v-divider class="mb-2" />
 
       <!-- Dashboard Group -->
       <v-list-group
@@ -219,7 +255,7 @@ async function logout() {
           @click="navigateTo('listGcAgents')" 
         ></v-list-item>
         <v-list-item
-          v-if="user?.user?.role === 'admin' || user?.user?.role === 'manager'"
+          v-if="user?.user?.role === 'admin' || user?.user?.role === 'manager' || (user?.user?.role === 'caller' && isCallerLinkedToAgent)"
           prepend-icon="mdi-account-plus"
           :title="t('buttons.addDailyLog')"  
           :active="route.name === 'addDailyLog'"

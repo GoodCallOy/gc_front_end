@@ -40,6 +40,7 @@
       "logout": "Logout",
       "editAgent": "Edit Agent",
       "agentDashboard": "Dashboard",
+      "home": "Home",
       "contactManagerForCases": "Contact your manager to be assigned to cases",
       "accountNotLinked": "Account not linked - contact your manager"
     },

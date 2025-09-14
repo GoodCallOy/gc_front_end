@@ -59,6 +59,8 @@
             :responseRate="log.response_rate"
             :date="log.date"
             :quantityCompleted="log.quantityCompleted"
+            :logData="log"
+            @edit-log="editLog"
           />
         </v-col>
       </v-row>
@@ -129,6 +131,14 @@
   const editOrder = () => {
     // Navigate to the edit order form
     router.push({ name: 'editOrderForm', params: { id: orderId } });
+  }
+
+  const editLog = (logData) => {
+    // Navigate to the daily log form with the log data for editing
+    router.push({ 
+      name: 'addDailyLog', 
+      query: { editLog: JSON.stringify(logData) }
+    });
   }
 
   const formatDate = dateStr => new Date(dateStr).toLocaleDateString()

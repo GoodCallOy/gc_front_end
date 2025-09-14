@@ -27,6 +27,7 @@
       "logout": "Kirjaudu ulos",
       "editAgent": "Muokkaa agenttia",
       "agentDashboard": "Kojelauta",
+      "home": "Koti",
       "contactManagerForCases": "Ota yhteyttä esimieheesi saadaksesi tapauksia",
       "accountNotLinked": "Tili ei ole linkitetty - ota yhteyttä esimieheesi"
     },

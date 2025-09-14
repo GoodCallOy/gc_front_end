@@ -50,6 +50,19 @@
       <template #item.responseRate="{ value }">
         {{ value }}%
       </template>
+      
+      <!-- Actions column -->
+      <template #item.actions="{ item }">
+        <v-btn
+          icon
+          size="small"
+          color="primary"
+          @click="editLog(item.originalLog)"
+          title="Edit Log"
+        >
+          <v-icon>mdi-pencil</v-icon>
+        </v-btn>
+      </template>
     </v-data-table>
   </v-card>
   </v-container>
@@ -60,10 +73,12 @@
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useStore } from 'vuex'
 import { useI18n } from 'vue-i18n';
+import { useRouter } from 'vue-router';
 import { goToNextMonth, goToPreviousMonth, formattedDateRange, isCurrentMonth } from '@/js/dateUtils';
 import agentCaseCard from './agentCaseCard.vue'
 
 const store = useStore()
+const router = useRouter()
 const userOrders = ref([])
 const { t } = useI18n()
 
@@ -87,6 +102,7 @@ const statsHeaders = computed(() => [
   { title: 'Response Rate %', key: 'responseRate', sortable: true },
   { title: 'Completed Calls', key: 'completedCalls', sortable: true },
   { title: 'Quantity Completed', key: 'quantityCompleted', sortable: true },
+  { title: 'Actions', key: 'actions', sortable: false, width: '100px' },
 ])
 
 function formatNumber(n) {
@@ -170,6 +186,7 @@ const statsItems = computed(() => {
       responseRate: formatNumber(responseRate),
       completedCalls: log.completed_calls || 0,
       quantityCompleted: log.quantityCompleted || 0,
+      originalLog: log, // Store the complete log object for editing
     };
   }).sort((a, b) => new Date(b.originalDate) - new Date(a.originalDate));
 });
@@ -273,6 +290,15 @@ const getNextMonth = () => {
 const updateDateRange = (newRange) => {
   store.commit('setDateRange', newRange);
 }
+
+// Edit log function
+const editLog = (logData) => {
+  // Navigate to the daily log form with the log data for editing
+  router.push({ 
+    name: 'addDailyLog', 
+    query: { editLog: JSON.stringify(logData) }
+  });
+};
 
 onMounted(async () => {
   try {
