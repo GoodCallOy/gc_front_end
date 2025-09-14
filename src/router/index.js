@@ -55,6 +55,7 @@ const routes = [
       { path: 'add-case', name: 'addCase', component: AddCase },
       { path: 'add-case-form', name: 'addCaseForm', component: AddCaseform },
       { path: 'add-order', name: 'addOrderForm', component: addOrderForm },
+      { path: 'edit-order/:id', name: 'editOrderForm', component: addOrderForm, props: true },
       { path: 'cases', name: 'cases', component: Cases },
       { path: 'add-daily-log', name: 'addDailyLog', component: addDailyLog },
       { path: 'add-agent-goals', name: 'addAgentGoals', component: AddAgentGoals },
@@ -146,7 +147,7 @@ function getCurrentUserRole() {
 }
 
 function getHomeRouteNameForRole(role) {
-  if (role === 'admin' || role === 'manager') return 'home';           // /dashboard
+  if (role === 'admin' || role === 'manager') return 'orderDashboard'; // /order-dashboard
   if (role === 'caller') return 'agentDashboard';                      // /agent-dashboard
   return 'login';
 }

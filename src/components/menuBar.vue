@@ -19,6 +19,13 @@ const BASE_URL =
 const store = useStore() // Access Vuex store
 const user = computed(() => store.state.user)
 const agents = computed(() => store.state.users)
+
+// Check if caller is linked to an agent account
+const isCallerLinkedToAgent = computed(() => {
+  const currentUser = user.value?.user;
+  if (currentUser?.role !== 'caller') return true; // Not a caller, so no restriction
+  return !!currentUser?.linkedUserId; // Check if caller has linkedUserId
+})
 import urls from '@/js/config.js'
 
 const opened = ref([])
@@ -170,20 +177,17 @@ async function logout() {
           @click="navigateTo('agents')"
         ></v-list-item>  
       </v-list-group>
-      <v-list-item
-          v-if="user?.user?.role === 'caller'" 
-          prepend-icon="mdi-laptop"
-          :title="t('buttons.agentDashboard')"  
-          :active="route.name === 'agentDashboard'"
-          @click="navigateTo('agentDashboard')"
-        ></v-list-item>
       <!-- Orders -->
       <v-list-group
+        v-if="user?.user?.role === 'admin' || user?.user?.role === 'manager' || (user?.user?.role === 'caller' && isCallerLinkedToAgent)"
         v-model="ordersOpen"
         prepend-icon="mdi-clipboard-text-outline "
       >
         <template #activator="{ props }">
-          <v-list-item v-bind="props" title="Orders" />
+          <v-list-item 
+            v-bind="props" 
+            title="Orders"
+          />
         </template>
         <v-list-item
           v-if="user?.user?.role === 'admin' || user?.user?.role === 'manager'" 
@@ -215,12 +219,14 @@ async function logout() {
           @click="navigateTo('listGcAgents')" 
         ></v-list-item>
         <v-list-item
+          v-if="user?.user?.role === 'admin' || user?.user?.role === 'manager'"
           prepend-icon="mdi-account-plus"
           :title="t('buttons.addDailyLog')"  
           :active="route.name === 'addDailyLog'"
           @click="navigateTo('addDailyLog')"
         ></v-list-item>
         <v-list-item
+          v-if="user?.user?.role === 'admin' || user?.user?.role === 'manager'"
           prepend-icon="mdi-account-plus"
           :title="t('buttons.orderProgress')"  
           :active="route.name === 'orderProgress'"
@@ -229,9 +235,9 @@ async function logout() {
       </v-list-group>
       <!-- Old links Group -->
       <v-list-group
+       v-if="user?.user?.role === 'admin' || user?.user?.role === 'manager'"
         v-model="oldLinksOpen"
-        prepend-icon="mdi-form-textbox"
-        v-if="user?.user?.role === 'admin' || user?.user?.role === 'manager'"
+        prepend-icon="mdi-form-textbox"       
       >
         <template #activator="{ props }">
           <v-list-item v-bind="props" title="Old links" />

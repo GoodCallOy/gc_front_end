@@ -1,5 +1,7 @@
 <template>
-  <div class="d-flex flex-column align-center" style="height: 100vh; justify-content: center;">  
+  <div class="d-flex flex-column align-center" style="min-height: 100vh; padding: 20px;">  
+    <h1 class="mb-6">{{ isEditMode ? 'Edit Order' : 'Add New Order' }}</h1>
+    
     <v-form ref="formRef" @submit.prevent="submitForm">
       <v-select
         v-model="form.caseId"
@@ -7,6 +9,8 @@
         item-value="value"
         item-title="title"
         label="Select Case"
+        :rules="[v => !!v || 'Case selection is required']"
+        required
         clearable
       />
 
@@ -120,7 +124,15 @@
           </v-list-item-action>
         </v-list-item>
       </v-list>
-       <v-btn type="submit" color="primary" class="mt-4">Create Order</v-btn>
+       <v-btn 
+         type="submit" 
+         color="primary" 
+         class="mt-4"
+         :disabled="!isFormValid || isSubmitting"
+         :loading="isSubmitting"
+       >
+         {{ isEditMode ? 'Update Order' : 'Create Order' }}
+       </v-btn>
     </div>
      
     </v-form>
@@ -134,6 +146,32 @@ import { ref, onMounted, reactive, computed } from 'vue'
 import axios from 'axios'
 import urls from '../../js/config.js'
 import { watch } from 'vue'
+
+// Props for edit mode
+const props = defineProps({
+  orderId: {
+    type: String,
+    default: null
+  },
+  editMode: {
+    type: Boolean,
+    default: false
+  },
+  id: {
+    type: String,
+    default: null
+  }
+})
+
+// Computed property to determine if we're in edit mode
+const isEditMode = computed(() => {
+  // Check if we have an ID from route params or props
+  const orderId = props.id || props.orderId;
+  return (props.editMode || !!orderId) && orderId;
+})
+
+// Get the actual order ID to use
+const actualOrderId = computed(() => props.id || props.orderId)
 
 const form = reactive({
   caseId: '',
@@ -154,6 +192,7 @@ const agentGoals = reactive({});
 const cases = ref([])
 const agents = ref([])
 const formRef = ref(null)
+const isSubmitting = ref(false)
 
 watch(
   () => [form.pricePerUnit, form.totalQuantity],
@@ -181,12 +220,64 @@ const assignedGoalsCount = computed(() =>
   form.assignedCallers.reduce((sum, id) => sum + (Number(agentGoals[id]) || 0), 0)
 );
 
+// Check if all required fields are filled
+const isFormValid = computed(() => {
+  return !!(
+    form.caseId &&
+    form.caseUnit &&
+    form.pricePerUnit &&
+    form.totalQuantity &&
+    form.startDate &&
+    form.deadline &&
+    form.orderStatus &&
+    form.estimatedRevenue &&
+    form.manager &&
+    form.agentsPrice
+  );
+});
+
 const agentName = id => {
   const agent = agents.value.find(a => a._id === id);
   return agent ? agent.name : id;
 };
 
+// Method to load existing order data for editing
+const loadOrderData = async (orderId) => {
+  try {
+    console.log('Loading order data for ID:', orderId);
+    const response = await axios.get(`${urls.backEndURL}/orders/${orderId}`);
+    const orderData = response.data;
+    
+    console.log('Order data loaded:', orderData);
+    
+    // Populate form with existing data
+    form.caseId = orderData.caseId || '';
+    form.caseUnit = orderData.caseUnit || '';
+    form.pricePerUnit = orderData.pricePerUnit || '';
+    form.totalQuantity = orderData.totalQuantity || '';
+    form.startDate = orderData.startDate || '';
+    form.deadline = orderData.deadline || '';
+    form.orderStatus = orderData.orderStatus || '';
+    form.estimatedRevenue = orderData.estimatedRevenue || '';
+    form.manager = orderData.manager || '';
+    form.agentsPrice = orderData.agentsPrice || '';
+    form.assignedCallers = orderData.assignedCallers ? orderData.assignedCallers.map(caller => caller.id || caller) : [];
+    
+    // Load agent goals if they exist
+    if (orderData.agentGoals) {
+      Object.assign(agentGoals, orderData.agentGoals);
+    }
+    
+  } catch (error) {
+    console.error('Failed to load order data:', error);
+  }
+};
+
 const submitForm = async () => {
+  if (!isFormValid.value || isSubmitting.value) return;
+  
+  isSubmitting.value = true;
+  
   try {
     // Find the selected case object
     const selectedCase = cases.value.find(c => c._id === form.caseId);
@@ -200,35 +291,59 @@ const submitForm = async () => {
         return agent ? { id, name: agent.name } : { id, name: '' };
       })
     };
-    console.log('Order created:', payload);
-    await axios.post(`${urls.backEndURL}/orders/`, payload);
 
-    // Reset form fields
-    form.caseId = '';
-    form.caseUnit = '';
-    form.totalQuantity = '';
-    form.pricePerUnit = '';
-    form.startDate = '';
-    form.deadline = '';
-    form.orderStatus = '';
-    form.estimatedRevenue = '';
-    form.manager = '';
-    form.agentsPrice = '';
-    form.assignedCallers = [];
+    if (isEditMode.value) {
+      // Update existing order
+      console.log('Updating order:', payload);
+      await axios.put(`${urls.backEndURL}/orders/${actualOrderId.value}`, payload);
+      console.log('Order updated successfully');
+    } else {
+      // Create new order
+      console.log('Creating order:', payload);
+      await axios.post(`${urls.backEndURL}/orders/`, payload);
+      console.log('Order created successfully');
+      
+      // Reset form fields only for new orders
+      form.caseId = '';
+      form.caseUnit = '';
+      form.totalQuantity = '';
+      form.pricePerUnit = '';
+      form.startDate = '';
+      form.deadline = '';
+      form.orderStatus = '';
+      form.estimatedRevenue = '';
+      form.manager = '';
+      form.agentsPrice = '';
+      form.assignedCallers = [];
+    }
   } catch (err) {
-    console.error('Failed to create order:', err.response?.data || err.message);
+    console.error(`Failed to ${isEditMode.value ? 'update' : 'create'} order:`, err.response?.data || err.message);
+  } finally {
+    isSubmitting.value = false;
   }
 };
 
 onMounted(async () => {
   try {
+    console.log('Loading cases from:', `${urls.backEndURL}/gcCases/`)
     const caseData = await axios.get(`${urls.backEndURL}/gcCases/`)
     console.log('Cases loaded:', caseData.data)
-    cases.value = caseData.data
+    cases.value = caseData.data || []
+    console.log('Cases array after setting:', cases.value)
+    console.log('Case options computed:', caseOptions.value)
+    
+    console.log('Loading agents from:', `${urls.backEndURL}/gcAgents/`)
     const agentData = await axios.get(`${urls.backEndURL}/gcAgents/`)
     console.log('Agents loaded:', agentData.data)
-    agents.value = agentData.data
-     } catch (err) {
+    agents.value = agentData.data || []
+    console.log('Agents array after setting:', agents.value)
+    console.log('Agent options computed:', agentOptions.value)
+    
+    // Load order data if in edit mode
+    if (isEditMode.value) {
+      await loadOrderData(actualOrderId.value);
+    }
+  } catch (err) {
     console.error('Failed to load cases or agents:', err)
   }
 })

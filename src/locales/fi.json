@@ -10,13 +10,29 @@
       "dashboard2": "Kojelauta2",
       "agents": "Agentit",
       "cases": "Tapaus",
-      "addCase": "lisää tapaus",
+      "addCase": "Lisää tapaus",
       "addAgent": "Lisää agentti",
       "addAgentStats": "Lisää agenttitilastot",
       "addAgentGoals": "Lisää agenttitavoitteet",
       "addAgentCaseInfo": "Lisää agenttitapaustiedot",
+      "addCaseForm": "Lisää tapauslomake",
+      "addOrderForm": "Lisää tilauslomake",
+      "addGcAgent": "Lisää GC-agentti",
+      "listGcAgents": "Listaa GC-agentit",
+      "addDailyLog": "Lisää päiväkirja",
+      "orderProgress": "Tilauksen edistyminen",
+      "orderDashboard": "Tilauskojelauta",
+      "assignGoals": "Määritä tavoitteet",
       "language": "English",
-      "logout": "Kirjaudu ulos"
+      "logout": "Kirjaudu ulos",
+      "editAgent": "Muokkaa agenttia",
+      "agentDashboard": "Kojelauta",
+      "contactManagerForCases": "Ota yhteyttä esimieheesi saadaksesi tapauksia",
+      "accountNotLinked": "Tili ei ole linkitetty - ota yhteyttä esimieheesi"
+    },
+    "messages": {
+      "noCasesAssigned": "Sinua ei ole lisätty mihinkään tapaukseen",
+      "contactManagerForCases": "Ota yhteyttä esimieheesi saadaksesi tapauksia."
     },
     "agentWeeklyTable": {
       "case": "tapaus",

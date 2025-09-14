@@ -46,7 +46,7 @@ async function fetchAllData() {
 }
 
 function getHomeRouteNameForRole(role) {
-  if (role === 'admin' || role === 'manager') return 'home'
+  if (role === 'admin' || role === 'manager') return 'orderDashboard'
   if (role === 'caller') return 'agentDashboard'
   return 'login'
 }

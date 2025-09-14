@@ -380,13 +380,14 @@
 
 <script setup>
 import { ref, onMounted, computed, reactive, watch, toRaw } from 'vue'
-
+import { useRouter } from 'vue-router'
 import { useStore } from 'vuex'
 import { goToNextMonth, goToPreviousMonth, formattedDateRange, isCurrentMonth } from '@/js/dateUtils';
 import axios from 'axios'
 import urls from '@/js/config.js'
 
 const store = useStore()
+const router = useRouter()
 const formRef = ref(null)
 const agentGoals = reactive({});
 const agentForm = ref(null);
@@ -609,32 +610,9 @@ function openAddCaseModal() {
 
 function openEditOrderModal() {
   if (!selectedOrder.value) return
-
-  // reset form first
-  form.value = {
-    ...defaultForm(),
-    ...{
-      caseId: selectedOrder.value.caseId,
-      caseUnit: selectedOrder.value.caseUnit,
-      pricePerUnit: selectedOrder.value.pricePerUnit,
-      totalQuantity: selectedOrder.value.totalQuantity,
-      startDate: toDateInputString(selectedOrder.value.startDate),
-      deadline: toDateInputString(selectedOrder.value.deadline),
-      orderStatus: selectedOrder.value.orderStatus,
-      assignedCallers: [...(selectedOrder.value.assignedCallers || [])]
-    }
-  }
-
-  // reset agentGoals
-  Object.keys(agentGoals).forEach(k => agentGoals[k] = 0)
-  if (selectedOrder.value.agentGoals) {
-    for (const [agentId, value] of Object.entries(selectedOrder.value.agentGoals)) {
-      agentGoals[agentId] = value
-    }
-  }
-
-  isEditMode.value = true
-  showAddOrderModal.value = true
+  
+  // Navigate to the edit order form
+  router.push({ name: 'editOrderForm', params: { id: selectedOrder.value._id } });
 }
 
 function closeAddOrderModal() {

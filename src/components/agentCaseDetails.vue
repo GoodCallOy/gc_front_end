@@ -5,6 +5,9 @@
         <v-col>
           <h2>Case Details</h2>
         </v-col>
+        <v-col cols="auto">
+          <v-btn @click="editOrder" color="primary">Edit Order</v-btn>
+        </v-col>
       </v-row>
 
 
@@ -92,20 +95,19 @@
 <script setup>
   import { ref, onMounted } from 'vue'
   import axios from 'axios'
-  import { useRoute } from 'vue-router'
+  import { useRoute, useRouter } from 'vue-router'
   import urls from '@/js/config.js'
   import AgentStatCard from './agentStatCard.vue';
   import { computed } from 'vue';
 
 
   const route = useRoute()
+  const router = useRouter()
   const orderId = route.query.orderId
   console.log('Order ID:', orderId)
 
   const order = ref(null)
   const agents = ref([])
-  const isEditing = ref(false)
-  const editedOrder = ref({})
   const caseStats = ref([]);
   
   const goalTypes = ['hours', 'interviews', 'meetings']
@@ -137,7 +139,6 @@
     ])
     order.value = orderRes.data
     agents.value = agentRes.data
-    editedOrder.value = { ...orderRes.data, agentGoals: orderRes.data.agentGoals || {} }
 
     // Now fetch caseStats using the loaded order
     const year = new Date(order.value.deadline).getFullYear();
@@ -149,10 +150,9 @@
     console.log('Case Stats:', caseStats.value) 
   })
 
-  const saveChanges = async () => {
-    await axios.put(`${urls.backEndURL}/orders/${orderId}`, editedOrder.value)
-    order.value = { ...editedOrder.value }
-    isEditing.value = false
+  const editOrder = () => {
+    // Navigate to the edit order form
+    router.push({ name: 'editOrderForm', params: { id: orderId } });
   }
 
   const formatDate = dateStr => new Date(dateStr).toLocaleDateString()

@@ -39,7 +39,13 @@
       "language": "Finnish",
       "logout": "Logout",
       "editAgent": "Edit Agent",
-      "agentDashboard": "Dashboard"
+      "agentDashboard": "Dashboard",
+      "contactManagerForCases": "Contact your manager to be assigned to cases",
+      "accountNotLinked": "Account not linked - contact your manager"
+    },
+    "messages": {
+      "noCasesAssigned": "You have not been added to any cases",
+      "contactManagerForCases": "Please contact your manager to be assigned to cases."
     },
     "sections": {
       "dashboard": "Dashboard",

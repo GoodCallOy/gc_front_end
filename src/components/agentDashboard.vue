@@ -13,18 +13,30 @@
       </div>
     </v-card>
     
-    <h1 class="text-h4 mb-4" style="width: 75vw;"> Cases for {{ selectedGcAgent ? selectedGcAgent.name : '—' }}</h1>
-    <div class="grid-container ">
-      <agentCaseCard
-      v-for="(userOrder, index) in userOrders"
-      :key="index"
-      :order="userOrder"
-      :agents="gcAgents"
-      :dailyLogs="dailyLogs"
-      :currentUser="currentUser"
-      />
+    <!-- Show simple message if no cases assigned -->
+    <div v-if="userOrders.length === 0" class="text-center pa-8">
+      <v-icon size="64" color="grey-lighten-1" class="mb-4">mdi-clipboard-outline</v-icon>
+      <h2 class="text-h5 mb-2 text-grey-darken-1">{{ t('messages.noCasesAssigned') }}</h2>
+      <p class="text-body-1 text-grey">{{ t('messages.contactManagerForCases') }}</p>
     </div>
-    <v-card>
+
+    <!-- Show cases if assigned -->
+    <div v-else>
+      <h1 class="text-h4 mb-4" style="width: 75vw;"> Cases for {{ selectedGcAgent ? selectedGcAgent.name : '—' }}</h1>
+      <div class="grid-container ">
+        <agentCaseCard
+        v-for="(userOrder, index) in userOrders"
+        :key="index"
+        :order="userOrder"
+        :agents="gcAgents"
+        :dailyLogs="dailyLogs"
+        :currentUser="currentUser"
+        />
+      </div>
+    </div>
+    
+    <!-- Only show daily logs if user has cases -->
+    <v-card v-if="userOrders.length > 0">
     <v-card-title class="text-h6">Daily Logs - {{ getFormattedDateRange() }}</v-card-title>
 
     <v-data-table

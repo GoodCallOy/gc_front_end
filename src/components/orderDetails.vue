@@ -6,55 +6,12 @@
           <h2>Order Details</h2>
         </v-col>
         <v-col cols="auto">
-          <v-btn @click="isEditing = !isEditing">{{ isEditing ? 'Cancel' : 'Edit' }}</v-btn>
+          <v-btn @click="editOrder" color="primary">Edit Order</v-btn>
         </v-col>
       </v-row>
 
-      <v-form v-if="isEditing" @submit.prevent="saveChanges">
-        <v-text-field v-model="editedOrder.totalQuantity" label="Total Quantity" type="number" />
-        <v-text-field v-model="editedOrder.pricePerUnit" label="Price Per Unit" type="number" />
-        <v-select v-model="editedOrder.caseUnit" :items="goalTypes" label="Case Unit" />
-        <v-select v-model="editedOrder.orderStatus" :items="orderStatuses" label="Status" />
-        <v-text-field v-model="editedOrder.estimatedRevenue" label="Estimated Revenue" type="number" />
-        <v-text-field v-model="editedOrder.deadline" label="Deadline" type="date" />
-        <v-select
-          v-model="editedOrder.assignedCallers"
-          :items="agents"
-          item-title="name"
-          item-value="_id"
-          label="Assigned Callers"
-          multiple
-          chips
-        />
-        <div v-if="editedOrder.assignedCallers && editedOrder.agentGoals">
-          <strong>Edit Agent Goals:</strong>
-          <v-list>
-            <v-list-item
-              v-for="id in editedOrder.assignedCallers"
-              :key="id"
-            >
-              <v-list-item-content>
-                <v-list-item-title>
-                  {{ agentName(id) }}
-                </v-list-item-title>
-              </v-list-item-content>
-              <v-list-item-action>
-                <v-text-field
-                  v-model.number="editedOrder.agentGoals[id]"
-                  label="Goal"
-                  type="number"
-                  min="0"
-                  style="max-width: 100px"
-                />
-              </v-list-item-action>
-            </v-list-item>
-          </v-list>
-          <v-btn type="submit" color="primary" class="mt-4">Save</v-btn>
-        </div>
-        
-      </v-form>
 
-      <div v-else>
+      <div>
         <p><strong>Case:</strong> {{ order.caseName }}</p>
         <p><strong>case Unit:</strong> {{ order.caseUnit }}</p>
         <p><strong>Price per Unit:</strong> {{ order.pricePerUnit }}</p>
@@ -114,20 +71,19 @@
 <script setup>
   import { ref, onMounted } from 'vue'
   import axios from 'axios'
-  import { useRoute } from 'vue-router'
+  import { useRoute, useRouter } from 'vue-router'
   import urls from '@/js/config.js'
   import AgentStatCard from './agentStatCard.vue';
   import { computed } from 'vue';
 
 
   const route = useRoute()
+  const router = useRouter()
   const orderId = route.query.orderId
   console.log('Order ID:', orderId)
 
   const order = ref(null)
   const agents = ref([])
-  const isEditing = ref(false)
-  const editedOrder = ref({})
   const caseStats = ref([]);
   
   const goalTypes = ['hours', 'interviews', 'meetings']
@@ -159,7 +115,6 @@
     ])
     order.value = orderRes.data
     agents.value = agentRes.data
-    editedOrder.value = { ...orderRes.data, agentGoals: orderRes.data.agentGoals || {} }
 
     // Now fetch caseStats using the loaded order
     const year = new Date(order.value.deadline).getFullYear();
@@ -171,10 +126,9 @@
     console.log('Case Stats:', caseStats.value) 
   })
 
-  const saveChanges = async () => {
-    await axios.put(`${urls.backEndURL}/orders/${orderId}`, editedOrder.value)
-    order.value = { ...editedOrder.value }
-    isEditing.value = false
+  const editOrder = () => {
+    // Navigate to the edit order form
+    router.push({ name: 'editOrderForm', params: { id: orderId } });
   }
 
   const formatDate = dateStr => new Date(dateStr).toLocaleDateString()
