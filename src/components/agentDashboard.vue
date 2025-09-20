@@ -94,15 +94,15 @@ console.log('currentDate', currentDate.value)
 console.log('currentDateRange', currentDateRange.value)
 
 const statsHeaders = computed(() => [
-  { title: 'Date', key: 'date', sortable: true },
-  { title: 'Case Name', key: 'caseName', sortable: true },
-  { title: 'Call Time (hrs)', key: 'callTime', sortable: true },
-  { title: 'Outgoing Calls', key: 'outgoingCalls', sortable: true },
-  { title: 'Answered Calls', key: 'answeredCalls', sortable: true },
-  { title: 'Response Rate %', key: 'responseRate', sortable: true },
-  { title: 'Completed Calls', key: 'completedCalls', sortable: true },
-  { title: 'Quantity Completed', key: 'quantityCompleted', sortable: true },
-  { title: 'Actions', key: 'actions', sortable: false, width: '100px' },
+  { title: t('agentTables.date'), key: 'date', sortable: true },
+  { title: t('agentTables.case'), key: 'caseName', sortable: true },
+  { title: t('agentTables.callTime'), key: 'callTime', sortable: true },
+  { title: t('agentTables.outgoingCalls'), key: 'outgoingCalls', sortable: true },
+  { title: t('agentTables.answeredCalls'), key: 'answeredCalls', sortable: true },
+  { title: t('agentTables.responseRate'), key: 'responseRate', sortable: true },
+  { title: t('agentTables.completedCalls'), key: 'completedCalls', sortable: true },
+  { title: t('agentTables.results'), key: 'quantityCompleted', sortable: true },
+  { title: t('agentTables.edit'), key: 'actions', sortable: false, width: '100px' },
 ])
 
 function formatNumber(n) {
