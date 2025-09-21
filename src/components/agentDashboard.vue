@@ -110,7 +110,7 @@
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useStore } from 'vuex'
 import { useI18n } from 'vue-i18n';
-import { useRouter } from 'vue-router';
+import { useRouter, useRoute } from 'vue-router';
 import { goToNextMonth, goToPreviousMonth, formattedDateRange, isCurrentMonth } from '@/js/dateUtils';
 import agentCaseCard from './agentCaseCard.vue'
 import axios from 'axios'
@@ -118,6 +118,7 @@ import urls from '@/js/config.js'
 
 const store = useStore()
 const router = useRouter()
+const route = useRoute()
 const userOrders = ref([])
 const caseStats = ref([])
 const { t } = useI18n()
@@ -528,6 +529,17 @@ const currentUser = computed(() => {
 console.log('user', currentUser.value)
 
 const selectedGcAgent = computed(() => {
+  // First check if there's an agent query parameter (for admin viewing)
+  const agentFromQuery = route.query.agent;
+  
+  if (agentFromQuery) {
+    // Find agent by name from query parameter
+    return (gcAgents.value || []).find(a =>
+      a.name === agentFromQuery
+    ) || null;
+  }
+  
+  // Fall back to current user's linked agent
   const user = currentUser.value;
   const linkId = user?.linkedUserId ?? null;
   if (!linkId) return null;
