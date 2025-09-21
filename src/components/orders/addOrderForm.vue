@@ -75,8 +75,6 @@
         item-value="value"
         item-title="title"
         label="Select Manager"
-        :rules="[v => !!v || 'Manager is required']"
-        required
         clearable
       />
 
@@ -84,8 +82,6 @@
         v-model.number="form.agentsPrice"
         label="Agents Price (€)"
         type="number"
-        :rules="[v => !!v || 'Agents price is required']"
-        required
       />
 
       <v-select
@@ -230,9 +226,7 @@ const isFormValid = computed(() => {
     form.startDate &&
     form.deadline &&
     form.orderStatus &&
-    form.estimatedRevenue &&
-    form.manager &&
-    form.agentsPrice
+    form.estimatedRevenue
   );
 });
 
