@@ -26,35 +26,22 @@
         <v-row align="center" class="mt-2">
             <v-col cols="12">
                 <v-card-subtitle class="text-caption">
-                    My estimated revenue: €{{ myRevenue }}
-                </v-card-subtitle>
-            </v-col>
-        </v-row>
-        <v-row align="center" class="mt-2">
-          <v-col cols="12">
-                <v-card-subtitle class="text-caption">
-                    Case's estimated revenue: €{{ order.estimatedRevenue }}
-                </v-card-subtitle>
-            </v-col>
-        </v-row>
-        <v-row align="center" class="mt-2">
-            <v-col cols="12" class="d-flex text-align-left">
-                <v-card-subtitle class="text-caption">
-                    case status: {{ order.orderStatus }}
+                    My revenue goal: €{{ myRevenue }}
                 </v-card-subtitle>
             </v-col>
         </v-row>
     
       <div class="pt-5">
-        <div class="value">
-         €{{ totalAgentUnitsValue}}
-         <span :class="['percentage', percentageClass]"> {{ percentage }}%</span>
+        My current revenue:
+        <div class="value"> 
+         €{{ totalAgentUnitsValue || 0 }}
+         <span :class="['percentage', percentageClass]"> {{ percentage || 0 }}%</span>
         </div>
         
       </div>
-      <div class="chart">
+      <div class="chart" style="height: 128px; overflow: hidden;">
         <!-- Chart built with Chart.js 3 -->
-        <LineChart :data="chartData" width="389" height="128" />
+        <LineChart :data="chartData" width="100%" height="128" />
       </div>
         <div>
           <strong>{{ order.caseUnit }}: </strong>
@@ -98,72 +85,125 @@
       currentUser: { type: Object, required: true },
     },
     setup(props) {
-      const chartData = ref({
-        labels: [
-          '12-01-2022', '01-01-2023', '02-01-2023',
-          '03-01-2023', '04-01-2023', '05-01-2023',
-          '06-01-2023', '07-01-2023', '08-01-2023',
-          '09-01-2023', '10-01-2023', '11-01-2023',
-          '12-01-2023', '01-01-2024', '02-01-2024',
-          '03-01-2024', '04-01-2024', '05-01-2024',
-          '06-01-2024', '07-01-2024', '08-01-2024',
-          '09-01-2024', '10-01-2024', '11-01-2024',
-          '12-01-2024', '01-01-2025',
-        ],
-        datasets: [
-          // Indigo line
-          {
-            data: [
-              732, 610, 610, 504, 504, 504, 349,
-              349, 504, 342, 504, 610, 391, 192,
-              154, 273, 191, 191, 126, 263, 349,
-              252, 423, 622, 470, 532,
-            ],
-            fill: true,
-            backgroundColor: function(context) {
-              const chart = context.chart;
-              const {ctx, chartArea} = chart;
-              return chartAreaGradient(ctx, chartArea, [
-                { stop: 0, color: adjustColorOpacity('#8b5cf6', 0) },
-                { stop: 1, color: adjustColorOpacity('#8b5cf6', 0.2) }
-              ]);
-            },
-           borderColor: '#8b5cf6',
-            borderWidth: 2,
-            pointRadius: 0,
-            pointHoverRadius: 3,
-            pointBackgroundColor: '#8b5cf6',
-            pointHoverBackgroundColor: '#8b5cf6',
-            pointBorderWidth: 0,
-            pointHoverBorderWidth: 0,          
-            clip: 20,
-            tension: 0.2,
-          },
-          // Gray line
-          {
-            data: [
-              532, 532, 532, 404, 404, 314, 314,
-              314, 314, 314, 234, 314, 234, 234,
-              314, 314, 314, 388, 314, 202, 202,
-              202, 202, 314, 720, 642,
-            ],
-            borderColor: adjustColorOpacity('#8b5cf6', 0.25),
-            borderWidth: 2,
-            pointRadius: 0,
-            pointHoverRadius: 3,
-            pointBackgroundColor: adjustColorOpacity('#8b5cf6', 0.25),
-            pointHoverBackgroundColor: adjustColorOpacity('#8b5cf6', 0.25),
-            pointBorderWidth: 0,
-            pointHoverBorderWidth: 0,               
-            clip: 20,
-            tension: 0.2,
-          },
-        ],
+      // Daily progress chart data
+      const chartData = computed(() => {
+        console.log('Chart Debug - Props:', {
+          dailyLogs: props.dailyLogs,
+          orderId: orderId.value,
+          orderCaseName: props.order?.caseName,
+          totalLogs: props.dailyLogs?.length || 0,
+          sampleLog: props.dailyLogs?.[0]
+        })
+
+        // Get all logs for this case from all agents
+        const allLogs = (props.dailyLogs || []).filter(log => {
+          const logOrderId = log?.order?._id ?? log?.order ?? log?.orderId ?? ''
+          const logCaseName = log?.caseName ?? ''
+          const matchesOrderId = String(logOrderId) === orderId.value
+          const matchesCaseName = logCaseName === props.order?.caseName
+          console.log('Log filtering:', {
+            logOrderId,
+            logCaseName,
+            matchesOrderId,
+            matchesCaseName,
+            orderId: orderId.value,
+            caseName: props.order?.caseName
+          })
+          return matchesOrderId || matchesCaseName
+        })
+
+        console.log('Chart data - All logs for case:', allLogs)
+
+        // If no real data, show empty state
+        if (allLogs.length === 0) {
+          console.log('No data found, showing empty state')
+          return {
+            labels: ['No Data'],
+            datasets: [
+              {
+                label: 'No Data',
+                data: [0],
+                borderColor: '#8b5cf6',
+                backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                borderWidth: 2,
+                pointRadius: 4,
+                pointHoverRadius: 6,
+                fill: true,
+                tension: 0.2,
+              }
+            ]
+          }
+        }
+
+        // Sort logs by date
+        const sortedLogs = [...allLogs].sort((a, b) => new Date(a.date) - new Date(b.date))
+        
+        // Create chart data from daily log entries
+        const dailyData = []
+        const labels = []
+        
+        console.log('Processing logs for chart:', sortedLogs)
+        
+        sortedLogs.forEach((log, index) => {
+          // Use the exact same logic as the tables: log.quantityCompleted || 0
+          const completedAmount = log.quantityCompleted || 0
+          dailyData.push(completedAmount)
+          
+          // Format date for display
+          const logDate = new Date(log.date)
+          const dateLabel = logDate.toLocaleDateString('en-GB', { 
+            day: '2-digit', 
+            month: '2-digit' 
+          })
+          labels.push(dateLabel)
+          
+          console.log(`Log ${index + 1}:`, {
+            date: log.date,
+            formattedDate: dateLabel,
+            quantityCompleted: completedAmount,
+            rawQuantityCompleted: log.quantityCompleted
+          })
+        })
+
+        // Calculate average daily performance
+        const averageDaily = dailyData.length > 0 
+          ? dailyData.reduce((sum, val) => sum + val, 0) / dailyData.length 
+          : 0
+
+        console.log('Final chart data:', {
+          labels,
+          dailyData,
+          averageDaily,
+          hasData: dailyData.length > 0,
+          dataSum: dailyData.reduce((sum, val) => sum + val, 0)
+        })
+
+        const chartConfig = {
+          labels,
+          datasets: [
+            {
+              label: 'Units Completed',
+              data: dailyData,
+              borderColor: '#8b5cf6',
+              backgroundColor: 'rgba(139, 92, 246, 0.1)',
+              borderWidth: 2,
+              pointRadius: 4,
+              pointHoverRadius: 6,
+              pointBackgroundColor: '#8b5cf6',
+              pointHoverBackgroundColor: '#8b5cf6',
+              fill: true,
+              tension: 0.2,
+            }
+          ]
+        }
+
+        console.log('Chart config being passed to LineChart:', chartConfig)
+        return chartConfig
       })
 
       const percentage = computed(() => {
-        if (totalAgentUnitsValue.value === 0) return 0;
-        const ret_percentage = (totalAgentUnitsValue.value / myRevenue.value) * 100;
+        if (myGoal.value === 0) return 0;
+        const ret_percentage = (totalUnits.value / myGoal.value) * 100;
 
         return Number(ret_percentage.toFixed(1))
       });
@@ -186,9 +226,19 @@
         const myId = myAgentId.value
         if (!myId) return []
         const logs = Array.isArray(props.dailyLogs) ? props.dailyLogs : []
-        return logs.filter(l => String(l?.agent?._id ?? l?.agent ?? '') === myId)
+        const filtered = logs.filter(l => {
+          // Handle different data structures for agent ID
+          const logAgentId = l?.agent?._id ?? l?.agent ?? l?.agentId ?? ''
+          return String(logAgentId) === myId
+        })
+        console.log('Agent logs filtering:', {
+          myId,
+          totalLogs: logs.length,
+          filteredLogs: filtered.length,
+          sampleLog: logs[0]
+        })
+        return filtered
       })
-      console.log('agentLogs', agentLogs.value)
 
       // only this order’s logs for the current agent
       const myAgentOrderLogs = computed(() =>
@@ -197,11 +247,9 @@
         )
       )
 
-      // your goal from order.agentGoals
+      // case goal (total quantity for the case)
       const myGoal = computed(() => {
-        const map = props.order?.agentGoals ?? {}
-        const id = myAgentId.value
-        return id ? Number(map[id] ?? 0) : 0
+        return Number(props.order?.totalQuantity ?? 0)
       })
 
       const euro = new Intl.NumberFormat(undefined, { style: 'currency', currency: 'EUR' })
@@ -214,24 +262,43 @@
 
       // revenue completed for this agent on this order (from daily logs)
       const totalAgentUnitsValue = computed(() => {
-        const units = agentLogs.value.reduce(
+        const units = myAgentOrderLogs.value.reduce(
           (sum, l) => sum + (Number(l.quantityCompleted) || 0),
           0
         )
         return units * (Number(props.order?.pricePerUnit) || 0)
       })
 
-      // total units across all assigned (fix id normalization)
-      const totalUnits = computed(() =>
-        (agentLogs.value || []).reduce(
+      // total units for this specific case from all agents
+      const totalUnits = computed(() => {
+        // Get all logs for this case (not just current agent)
+        const allCaseLogs = (props.dailyLogs || []).filter(
+          l => {
+            // Handle different data structures for order/case matching
+            const logOrderId = l?.order?._id ?? l?.order ?? l?.orderId ?? ''
+            const logCaseName = l?.caseName ?? ''
+            return String(logOrderId) === orderId.value || logCaseName === props.order?.caseName
+          }
+        )
+        return allCaseLogs.reduce(
           (sum, log) => sum + (Number(log?.quantityCompleted) || 0),
           0
         )
-      )
+      })
 
       // helpful: see when things actually populate (runs on every change)
       watchEffect(() => {
         const units = myAgentOrderLogs.value.reduce((s,l)=>s+(Number(l?.quantityCompleted)||0),0)
+        console.log('Agent Case Card Debug:', {
+          myAgentId: myAgentId.value,
+          orderId: orderId.value,
+          agentLogs: agentLogs.value.length,
+          myAgentOrderLogs: myAgentOrderLogs.value.length,
+          totalUnits: totalUnits.value,
+          totalAgentUnitsValue: totalAgentUnitsValue.value,
+          percentage: percentage.value,
+          myGoal: myGoal.value
+        })
       })
 
       return {
@@ -282,7 +349,8 @@
     padding: 24px;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
     font-family: 'Inter', sans-serif;
-    width: 320px; /* optional, for consistent sizing */
+    width: 100%; /* Fill the grid container */
+    min-height: 300px; /* Ensure consistent height */
   }
 
   .case-card .menu {

@@ -59,7 +59,7 @@ export default {
   methods: {
     viewAgent() {
       this.$router.push({
-        name: 'singleAgent',
+        name: 'agentDashboard',
         query: { agent: this.agent.name },
       });
     },

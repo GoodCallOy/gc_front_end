@@ -17,6 +17,8 @@
         item-title="caseName"
         item-value="_id"
         label="Select Order"
+        :hint="filteredOrders.length === 0 && form.agent ? 'No cases assigned to this agent for the current month' : ''"
+        persistent-hint
         required
       />
 
@@ -115,8 +117,7 @@ export default {
     });
   },
   filteredOrders() {
-    // Filter orders to show only cases active in the current month
-    // Use the same logic as AgentDashboard for consistency
+    // Filter orders to show only cases the selected agent is assigned to for the current month
     const currentDate = new Date()
     const currentMonth = currentDate.getMonth()
     const currentYear = currentDate.getFullYear()
@@ -133,7 +134,17 @@ export default {
       const orderEnd = new Date(order.deadline)
       
       // Check if order overlaps with current month
-      return orderStart <= monthEnd && orderEnd >= monthStart
+      const isActiveThisMonth = orderStart <= monthEnd && orderEnd >= monthStart
+      
+      // Check if the selected agent is assigned to this order
+      const isAgentAssigned = this.form.agent && order.assignedCallers && 
+        order.assignedCallers.some(caller => {
+          // Handle both string IDs and object IDs
+          const callerId = typeof caller === 'string' ? caller : caller.id || caller._id;
+          return callerId === this.form.agent;
+        });
+      
+      return isActiveThisMonth && isAgentAssigned
     })
   },
   responseRateValue() {
@@ -149,6 +160,12 @@ export default {
     'form.order'(newOrderId) {
         const selectedOrder = this.filteredOrders.find(order => order._id === newOrderId);
         this.form.caseUnit = selectedOrder ? selectedOrder.caseUnit || '' : '';
+    },
+    'form.agent'(newAgentId) {
+        // Clear the selected order when agent changes since available orders will change
+        this.form.order = '';
+        this.form.caseUnit = '';
+        this.form.caseName = '';
     },
   },
 async mounted() {
@@ -235,9 +252,12 @@ async mounted() {
                 console.log('Log created successfully');
             }
 
-           // Clear form fields
-                this.form.agent = '';
-                this.form.agentName = '';
+           // Clear form fields but keep agent selection
+                const currentAgent = this.form.agent;
+                const currentAgentName = this.form.agentName;
+                
+                this.form.agent = currentAgent;
+                this.form.agentName = currentAgentName;
                 this.form.order = '';
                 this.form.caseName = '';
                 this.form.caseUnit = '';

@@ -43,7 +43,7 @@ const routes = [
       
       { path: 'dashboard', name: 'home', component: DashBoard, meta: { requiresAuth: true, roles: ['admin', 'manager'] }  },
       { path: 'dashboard2', name: 'dash2', component: DashBoard2, meta: { requiresAuth: true, roles: ['admin', 'manager'] }  },
-      { path: 'agentDashboard', name: 'agentDashboard', component: agentDashboard, meta: { requiresAuth: true, roles: ['caller'] }  },
+      { path: 'agentDashboard', name: 'agentDashboard', component: agentDashboard, meta: { requiresAuth: true, roles: ['caller', 'admin', 'manager'] }  },
       { path: 'listGcAgents', name: 'listGcAgents', component: listGcAgents, meta: { requiresAuth: true, roles: ['admin'] }  },  
       { path: 'editGcAgent', name: 'editGcAgent', component: editGcAgent, meta: { requiresAuth: true, roles: ['admin'] },
         props: route => ({ activeAgent: route.query.activeAgent || "" })  

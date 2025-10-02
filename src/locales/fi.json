@@ -35,7 +35,8 @@
       "noCasesAssigned": "Sinua ei ole lisätty mihinkään tapaukseen",
       "contactManagerForCases": "Ota yhteyttä esimieheesi saadaksesi tapauksia."
     },
-    "agentWeeklyTable": {
+    "agentTables": {
+      "date": "Päivämäärä",
       "case": "tapaus",
       "weekGoal": "Viikko tavoite",
       "currentResults": "Tulos nyt",
@@ -45,7 +46,16 @@
       "hourPerMeeting": "h/tapaaminen",
       "callsPerMeeting": "puhelua/tapaaminen",
       "turnoverPerMeeting": "Liikevaihto/tapaaminen",
-      "turnoverNow": "Liikevaihto Now"
+      "turnoverNow": "Liikevaihto Now",
+      "edit": "Muokkaa",
+      "callTime": "Puheluaika (t)",
+      "outgoingCalls": "Lähtevät puhelut",
+      "answeredCalls": "Vastatut puhelut",
+      "responseRate": "Vastausprosentti %",
+      "completedCalls": "Valmiit puhelut",
+      "results": "Tulokset",
+      "unit": "Yksikkö",
+      "amountMade": "Tulot"
     }
 
   }

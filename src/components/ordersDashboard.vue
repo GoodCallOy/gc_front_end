@@ -13,7 +13,7 @@
       </div>
     </v-card>
     
-    <h1 class="text-h4 mb-4" style="width: 75vw;">All Orders - {{ getFormattedDateRange() }}</h1>
+    <h1 class="text-h4 mb-4" style="width: 75vw;">All Cases - {{ getFormattedDateRange() }}</h1>
     <div class="grid-container ">
       <DashboardCard01
       v-for="(order, index) in filteredOrders"

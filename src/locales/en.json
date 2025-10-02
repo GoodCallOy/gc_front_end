@@ -52,7 +52,8 @@
       "dashboard": "Dashboard",
       "management": "Management"
     },
-    "agentWeeklyTable": {
+    "agentTables": {
+      "date": "Date",
       "case": "Case",
       "weekGoal": "Week Goal",
       "currentResults": "Current Results",
@@ -62,7 +63,18 @@
       "hourPerMeeting": "h/meeting",
       "callsPerMeeting": "calls/meeting",
       "turnoverPerMeeting": "Turnover/meeting",
-      "turnoverNow": "Turnover Now"
+      "turnoverNow": "Turnover Now",
+      "edit": "Edit",
+      "callTime": "Call Time (hrs)",
+      "outgoingCalls": "Outgoing Calls",
+      "answeredCalls": "Answered Calls",
+      "responseRate": "Response Rate %",
+      "completedCalls": "Completed Calls",
+      "results": "Results",
+      "unit": "Unit",
+      "amountMade": "Amount Made"
+
+
     }
   }
   
