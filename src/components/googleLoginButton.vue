@@ -11,7 +11,15 @@
 import urls from "@/js/config.js";
 const loginWithGoogle = () => {
   console.log("Logging in with Google...")
-  window.open(`${urls.backEndURL}/auth/google`, "_self"); // Redirects to backend authentication
+  const target = `${urls.backEndURL}/auth/google`;
+  const ua = navigator.userAgent || '';
+  const isFirefox = /Firefox\/\d+/.test(ua) && !/Seamonkey\/\d+/.test(ua);
+  if (isFirefox) {
+    // Use top-level navigation for Firefox to avoid cookie/popup restrictions
+    window.location.assign(target);
+  } else {
+    window.open(target, "_self");
+  }
 };
 </script>
 
