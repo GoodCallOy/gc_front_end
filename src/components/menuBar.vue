@@ -6,6 +6,7 @@ import { useRouter, useRoute } from 'vue-router';
 import axios from 'axios';
 
 const isDrawerOpen = ref(true);
+const isMobile = ref(false);
 
 const { t, locale } = useI18n();
 const router = useRouter();
@@ -53,6 +54,17 @@ watch(isDrawerOpen, (open) => {
     closeAllGroups();
   }
 });
+
+function updateIsMobile() {
+  if (typeof window !== 'undefined') {
+    isMobile.value = window.matchMedia('(max-width: 600px)').matches;
+  }
+}
+
+updateIsMobile();
+if (typeof window !== 'undefined') {
+  window.addEventListener('resize', updateIsMobile);
+}
 
 const currentUser = computed(() => {
   const fromStore = store.state.user?.user || null
@@ -130,10 +142,23 @@ async function logout() {
 </script>
 
 <template>
+  <v-app-bar
+    app
+    color="primary"
+    density="comfortable"
+    elevation="2"
+    class="d-sm-none"
+  >
+    <v-app-bar-nav-icon @click="isDrawerOpen = !isDrawerOpen" />
+    <v-toolbar-title>Menu</v-toolbar-title>
+  </v-app-bar>
+
   <v-navigation-drawer
     v-model="isDrawerOpen"
     app
-    rail
+    :temporary="isMobile"
+    :scrim="isMobile"
+    :rail="!isMobile"
     width="256"
     rail-width="72"
     expand-on-hover 
@@ -153,7 +178,7 @@ async function logout() {
       </template>
     </v-list>
     
-    <v-list v-model:opened="opened" density="compact" nav>
+    <v-list v-model:opened="opened" :density="isMobile ? 'comfortable' : 'compact'" nav>
       
       <!-- Home Button -->
       <v-list-item

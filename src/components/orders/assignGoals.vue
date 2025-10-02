@@ -1,7 +1,7 @@
 <template>
-  <v-container fluid style="width: 90%;">
+  <v-container fluid style="width: 90%;" class="assign-goals">
     <v-card elevation="1" class="mb-4">
-        <div class="d-flex align-center justify-space-around">
+        <div class="d-flex align-center justify-space-around responsive-toolbar">
 
             <v-btn color="primary" @click="openAddAgentModal">
                 Add Agent
@@ -38,17 +38,29 @@
 
     <v-row>
       <!-- Orders Table -->
-      <v-col cols="7">
+      <v-col cols="12" md="7">
         <v-data-table
           v-if="orders && orders.length"
           :headers="orderHeaders"
           :items="filteredSortedOrders"
           item-value="_id"
-          class="elevation-1"
+          class="elevation-1 mobile-scroll"
           :items-per-page="20"
+          density="comfortable"
           :item-class="({ item }) => item._id === selectedOrderId ? 'selected-row' : ''"
           @click:row="selectOrder"
         >
+          <template #item.copy="{ item }">
+            <v-icon
+              style="cursor: pointer;"
+              color="grey"
+              class="mr-2"
+              @click.stop="copyOrder(item)"
+            >
+              mdi-content-copy
+            </v-icon>
+          </template>
+
           <template #item.goalsDistributed="{ item }">
             {{ getDistributedGoals(item) }}
           </template>
@@ -80,7 +92,7 @@
 
       <!-- Agent Assignment -->
      <!-- Agent Assignment -->
-<v-col cols="5" class="pa-4">
+<v-col cols="12" md="5" class="pa-4">
   <h3 class="text-h6 mb-2">
     Assign Goals for ({{ selectedOrder && selectedOrder.caseName || 'No order selected' }})
   </h3>
@@ -96,7 +108,7 @@
         <v-card outlined>
           <v-row no-gutters>
             <!-- Left: name + input -->
-            <v-col cols="5" class="pa-4">
+            <v-col cols="12" md="5" class="pa-4">
               <div class="text-subtitle-1 font-weight-medium mb-2">
                 {{ agent.name }}
               </div>
@@ -111,7 +123,7 @@
             </v-col>
 
             <!-- Right: monthly/other orders -->
-            <v-col cols="7" class="pa-4">
+            <v-col cols="12" md="7" class="pa-4">
               <div class="text-caption mb-1 text-grey">This month:</div>
               <div class="mb-2">
                 {{ agent.goalForThisOrder }} total goals
@@ -422,6 +434,7 @@ const orderHeaders = ([
   { title: 'Total Goals', key: 'totalQuantity' },
   { title: 'Goals Distributed', key: 'goalsDistributed', sortable: false },
   { title: 'Price Unit', key: 'caseUnit' },
+  { title: 'Copy', key: 'copy', sortable: false },
   { title: 'Edit', key: 'edit', sortable: false },
   { title: 'Delete', key: 'actions', sortable: false }
 ])
@@ -594,8 +607,42 @@ function toDateInputString(dateStr) {
 function openAddOrderModal() {
   form.value = defaultForm()
   Object.keys(agentGoals).forEach(k => agentGoals[k] = 0)
+  const [startOfMonth, endOfMonth] = getCurrentMonthDateRange()
+  form.value.startDate = startOfMonth
+  form.value.deadline = endOfMonth
   isEditMode.value = false
   showAddOrderModal.value = true
+}
+
+function copyOrder(item) {
+  if (!item) return;
+
+  // reset form and local goals
+  form.value = defaultForm();
+  Object.keys(agentGoals).forEach(k => agentGoals[k] = 0);
+
+  const assignedIds = [...new Set(
+    (item.assignedCallers || []).map(x => String(x?._id ?? x?.id ?? x))
+  )];
+
+  form.value.caseId = item.caseId || null;
+  form.value.caseUnit = item.caseUnit || null;
+  form.value.pricePerUnit = Number(item.pricePerUnit) || 0;
+  form.value.totalQuantity = Number(item.totalQuantity) || 0;
+  const [startOfMonth, endOfMonth] = getCurrentMonthDateRange();
+  form.value.startDate = startOfMonth;
+  form.value.deadline = endOfMonth;
+  form.value.orderStatus = item.orderStatus || 'pending';
+  form.value.assignedCallers = assignedIds;
+
+  // hydrate agent goals for assigned agents
+  const goals = item.agentGoals || {};
+  assignedIds.forEach(id => {
+    agentGoals[id] = Number(goals[id]) || 0;
+  });
+
+  isEditMode.value = false; // ensure we're creating a new order
+  showAddOrderModal.value = true;
 }
 
 function openAddAgentModal() {
@@ -939,5 +986,19 @@ onMounted(async () => {
 <style>
   ::v-deep(.selected-row) {
     background-color: #e0f7fa !important; /* light blue */
+  }
+  /* Mobile styles for Assign Goals */
+  .assign-goals .responsive-toolbar {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .assign-goals .mobile-scroll {
+    overflow-x: auto;
+  }
+  @media (max-width: 600px) {
+    .assign-goals {
+      width: 100% !important;
+      padding: 0 8px;
+    }
   }
 </style>
