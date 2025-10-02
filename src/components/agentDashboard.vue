@@ -733,8 +733,18 @@ onUnmounted(() => {
     display: none; /* Chrome, Safari, and Opera */
   }
 
-  /* Enable scrolling when hovering */
-  .grid-container:hover {
-    overflow-x: auto; /* Ensure scrolling works on hover */
+  /* Responsive grid */
+  @media (max-width: 960px) {
+    .grid-container {
+      grid-template-columns: repeat(2, 1fr);
+      width: 100% !important;
+    }
+  }
+
+  @media (max-width: 600px) {
+    .grid-container {
+      grid-template-columns: 1fr; /* single column vertical list */
+      width: 100% !important;
+    }
   }
 </style>

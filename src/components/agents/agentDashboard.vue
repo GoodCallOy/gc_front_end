@@ -70,9 +70,9 @@ onMounted(() => {
   
   .grid-container {
     display: grid;
-    grid-template-columns: repeat(3, 1fr); /* 3 columns */
+    grid-template-columns: 1fr; /* single column vertical list */
     gap: 16px;
-    width: 75vw;
+    width: 100%;
     margin-bottom: 1rem;
     flex-shrink: 0; /* ✅ Prevent it from collapsing or overlapping */
 
@@ -101,8 +101,5 @@ onMounted(() => {
     display: none; /* Chrome, Safari, and Opera */
   }
 
-  /* Enable scrolling when hovering */
-  .grid-container:hover {
-    overflow-x: auto; /* Ensure scrolling works on hover */
-  }
+  /* Remove horizontal hover scrolling; list should flow vertically */
 </style>

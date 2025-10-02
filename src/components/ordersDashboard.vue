@@ -13,7 +13,7 @@
       </div>
     </v-card>
     
-    <h1 class="text-h4 mb-4" style="width: 75vw;">All Cases - {{ getFormattedDateRange() }}</h1>
+    <h1 class="text-h4 mb-4" style="width: 100%;">All Cases - {{ getFormattedDateRange() }}</h1>
     <div class="grid-container ">
       <DashboardCard01
       v-for="(order, index) in filteredOrders"
@@ -143,7 +143,7 @@ onUnmounted(() => {
     display: grid;
     grid-template-columns: repeat(3, 1fr); /* 3 columns */
     gap: 16px;
-    width: 75vw;
+    width: 100%;
     margin-bottom: 1rem;
     flex-shrink: 0; /* ✅ Prevent it from collapsing or overlapping */
 
@@ -172,8 +172,5 @@ onUnmounted(() => {
     display: none; /* Chrome, Safari, and Opera */
   }
 
-  /* Enable scrolling when hovering */
-  .grid-container:hover {
-    overflow-x: auto; /* Ensure scrolling works on hover */
-  }
+  /* Remove horizontal hover scroll to avoid cut-off */
 </style>

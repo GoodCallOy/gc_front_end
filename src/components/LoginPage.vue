@@ -88,7 +88,7 @@
 
   .title-box {
     height: 24vh;
-    background: linear-gradient(135deg, rgba(33, 150, 243, 0.2), rgba(3, 169, 244, 0.2));
+    background-image: url("@/assets/Back_v1.jpg");
     background-position: center;
     background-size: cover;
   }
