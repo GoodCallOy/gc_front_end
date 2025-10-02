@@ -40,12 +40,7 @@ console.log('agents from store in menuBar:', agents.value);
 
 function closeAllGroups() {
   console.log('Closing all groups in menuBar')
-   opened.value = []
-  dashboardOpen.value = false
-  agentsOpen.value = false
-  formsOpen.value = false
-  ordersOpen.value = false
-  oldLinksOpen.value = false
+  opened.value = []
 }
 
 watch(user, (newVal) => {
@@ -174,7 +169,6 @@ async function logout() {
       <!-- Dashboard Group -->
       <v-list-group
         v-if="user?.user?.role === 'admin' || user?.user?.role === 'manager'" 
-        v-model="dashboardOpen"
         value="dashboard"
         prepend-icon="mdi-view-dashboard"
       >
