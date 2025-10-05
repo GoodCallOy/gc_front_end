@@ -15,14 +15,36 @@
 
       <h1 class="mb-3 mt-5">Agents Stats - {{ getFormattedDateRange() }}</h1>
   
-      <!-- List of Agent Cards -->
-      <div class="d-flex flex-wrap justify-center">   
-        <AgentCard
-        v-for="(agent, index) in agentsWithStats"
-        :key="index"
-        :agent="agent"
-      />
-      </div>
+      <!-- List of Agent Cards styled like listGcAgents.vue -->
+      <v-container class="py-2" style="width: 80%;">
+        <v-row dense>
+          <v-col
+            v-for="(agent, index) in agentsWithStats"
+            :key="index"
+            cols="12"
+            sm="6"
+            md="4"
+            lg="3"
+          >
+            <v-card class="h-100 d-flex flex-column">
+              <v-card-title class="text-truncate">
+                {{ agent.name || 'Unknown Agent' }}
+              </v-card-title>
+              <v-card-subtitle class="text-truncate">
+                {{ agent.case || '—' }}
+              </v-card-subtitle>
+
+              <v-spacer />
+
+              <v-card-actions>
+                <v-btn size="small" color="primary" @click="viewAgent(agent)">View</v-btn>
+                <v-spacer />
+                <v-btn size="small" color="grey" @click="editAgent(agent)">Edit</v-btn>
+              </v-card-actions>
+            </v-card>
+          </v-col>
+        </v-row>
+      </v-container>
     </div>
 </template>
   
@@ -148,7 +170,15 @@ import AgentCard from './agentCard.vue';
 
       printDebug() {
        console.log('Debugging info:', this.agentsWithStats);
-      } 
+      },
+      viewAgent(agent) {
+        // Match original AgentCard behavior
+        this.$router.push({ name: 'agentDashboard', query: { agent: agent.name } })
+      },
+      editAgent(agent) {
+        // Restore original behavior
+        this.$router.push({ name: 'editAgent', query: { activeAgent: agent.name } })
+      }
     },
   };
 

@@ -51,7 +51,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, reactive, watchEffect } from 'vue'
+import { ref, computed, onMounted, reactive, watch, watchEffect } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { toRaw } from 'vue'
 import axios from 'axios'
@@ -138,7 +138,8 @@ const message = ref('')
 const alertType = ref('success')
 
 
-const isEditMode = computed(() => !!editUser.value)
+// Not used for loading currently; keep for future if needed
+const isEditMode = computed(() => !!(selectedUserId.value))
 
 // Users from store → options for "Link to Google User"
 onMounted(async () => {
@@ -148,11 +149,21 @@ onMounted(async () => {
   if (!store.getters['gcAgents']?.length) {
     try { await store.dispatch('fetchgcAgents', true) } catch {}
   }
-  if (isEditMode.value) {
-    await loadAgent(EditAgent.value)
-  }
-
   if (selectedUser.value) loadFormData(selectedUser.value)
+  // Fallback: fetch the user by ID if not found in store
+  if (!selectedUser.value && selectedUserId.value) {
+    try {
+      const { data } = await axios.get(`${urls.backEndURL}/user/${selectedUserId.value}`, { withCredentials: true })
+      if (data) loadFormData(data)
+    } catch (e) {
+      console.warn('Failed to fetch user by id:', selectedUserId.value, e?.response?.status || e?.message)
+    }
+  }
+})
+
+// Ensure the form populates when navigating from other pages once users load
+watch(selectedUser, (u) => {
+  if (u) loadFormData(u)
 })
 
 
