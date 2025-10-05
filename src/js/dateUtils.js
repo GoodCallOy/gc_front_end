@@ -7,6 +7,151 @@ export function getMonthKey (date_start){
     return monthKey;
 }
 
+// Week configuration cache
+let weekConfigCache = new Map();
+
+// Fetch week configuration for a specific month/year
+export async function fetchWeekConfiguration(year, month) {
+  const cacheKey = `${year}-${month}`;
+  
+  if (weekConfigCache.has(cacheKey)) {
+    return weekConfigCache.get(cacheKey);
+  }
+  
+  try {
+    const response = await fetch(`${import.meta.env.VITE_BACKEND_URL || 'https://localhost:3030/api/v1'}/week-config/${year}/${month}`, {
+      credentials: 'include'
+    });
+    
+    if (response.ok) {
+      const config = await response.json();
+      weekConfigCache.set(cacheKey, config);
+      return config;
+    }
+  } catch (error) {
+    console.warn('Failed to fetch week configuration, using default:', error);
+  }
+  
+  // Return default configuration if fetch fails
+  return generateDefaultWeekConfig(year, month);
+}
+
+// Generate default week configuration (Monday-Sunday)
+export function generateDefaultWeekConfig(year, month) {
+  const weeks = [];
+  const monthStart = new Date(year, month - 1, 1);
+  const monthEnd = new Date(year, month, 0);
+  
+  let currentDate = new Date(monthStart);
+  let weekNumber = 1;
+  
+  while (currentDate <= monthEnd) {
+    // Find Monday of current week
+    const dayOfWeek = currentDate.getDay();
+    const monday = new Date(currentDate);
+    monday.setDate(currentDate.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1));
+    
+    // Find Sunday of current week
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    
+    // Adjust to month boundaries
+    const weekStart = monday < monthStart ? monthStart : monday;
+    const weekEnd = sunday > monthEnd ? monthEnd : sunday;
+    
+    weeks.push({
+      weekNumber,
+      startDate: weekStart,
+      endDate: weekEnd,
+      isActive: true
+    });
+    
+    // Move to next week
+    currentDate.setDate(currentDate.getDate() + 7);
+    weekNumber++;
+  }
+  
+  return {
+    year,
+    month,
+    weeks,
+    isDefault: true
+  };
+}
+
+// Get custom week range for a given date
+export async function getCustomWeekRange(date) {
+  const dateObj = new Date(date);
+  const year = dateObj.getFullYear();
+  const month = dateObj.getMonth() + 1;
+  
+  const config = await fetchWeekConfiguration(year, month);
+  
+  // Find which week this date belongs to
+  for (const week of config.weeks) {
+    const weekStart = new Date(week.startDate);
+    const weekEnd = new Date(week.endDate);
+    
+    if (dateObj >= weekStart && dateObj <= weekEnd) {
+      return {
+        start: weekStart,
+        end: weekEnd,
+        weekNumber: week.weekNumber,
+        year: year,
+        isCustom: !config.isDefault
+      };
+    }
+  }
+  
+  // Fallback to default week calculation if not found in custom config
+  return getDefaultWeekRange(date);
+}
+
+// Get default week range (Monday-Sunday)
+export function getDefaultWeekRange(date) {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Adjust when day is Sunday
+  const monday = new Date(d.setDate(diff));
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  
+  return {
+    start: monday,
+    end: sunday,
+    weekNumber: getWeekNumber(date),
+    year: d.getFullYear(),
+    isCustom: false
+  };
+}
+
+// Get week number for a date (ISO week numbering)
+export function getWeekNumber(date) {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + 3 - (d.getDay() + 6) % 7);
+  const week1 = new Date(d.getFullYear(), 0, 4);
+  return Math.ceil((((d - week1) / 86400000) + week1.getDay() + 1) / 7);
+}
+
+// Get all weeks for a month using custom configuration
+export async function getMonthWeeks(year, month) {
+  const config = await fetchWeekConfiguration(year, month);
+  return config.weeks.map(week => ({
+    weekNumber: week.weekNumber,
+    start: new Date(week.startDate),
+    end: new Date(week.endDate),
+    isActive: week.isActive,
+    notes: week.notes || '',
+    isCustom: !config.isDefault
+  }));
+}
+
+// Clear week configuration cache (useful when configurations are updated)
+export function clearWeekConfigCache() {
+  weekConfigCache.clear();
+}
+
 export function formattedDateRange(currentDateRange) {
     if (!currentDateRange || currentDateRange.length < 2) {
       return '';

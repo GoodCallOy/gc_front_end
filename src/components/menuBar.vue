@@ -274,6 +274,13 @@ async function logout() {
           @click="navigateTo('listGcAgents')" 
         ></v-list-item>
         <v-list-item
+          v-if="user?.user?.role === 'admin' || user?.user?.role === 'manager'"
+          prepend-icon="mdi-calendar-week"
+          title="Week Configuration"  
+          :active="route.name === 'weekConfig'"
+          @click="navigateTo('weekConfig')" 
+        ></v-list-item>
+        <v-list-item
           v-if="user?.user?.role === 'admin' || user?.user?.role === 'manager' || (user?.user?.role === 'caller' && isCallerLinkedToAgent)"
           prepend-icon="mdi-account-plus"
           :title="t('buttons.addDailyLog')"  
