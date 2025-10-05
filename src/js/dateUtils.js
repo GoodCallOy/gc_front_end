@@ -11,6 +11,8 @@ export function getMonthKey (date_start){
 let weekConfigCache = new Map();
 
 // Fetch week configuration for a specific month/year
+import urls from '@/js/config.js'
+
 export async function fetchWeekConfiguration(year, month) {
   const cacheKey = `${year}-${month}`;
   
@@ -19,7 +21,7 @@ export async function fetchWeekConfiguration(year, month) {
   }
   
   try {
-    const response = await fetch(`${import.meta.env.VITE_BACKEND_URL || 'https://localhost:3030/api/v1'}/week-config/${year}/${month}`, {
+    const response = await fetch(`${urls.backEndURL}/week-config/${year}/${month}`, {
       credentials: 'include'
     });
     

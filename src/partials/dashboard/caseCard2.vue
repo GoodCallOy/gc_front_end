@@ -90,70 +90,71 @@
         type: Object,
         required: true,
         },
+        monthWeeks: {
+        type: Object,
+        required: false,
+        default: () => ([])
+        },
     },
     setup(props) {
-      const chartData = ref({
-        labels: [
-          '12-01-2022', '01-01-2023', '02-01-2023',
-          '03-01-2023', '04-01-2023', '05-01-2023',
-          '06-01-2023', '07-01-2023', '08-01-2023',
-          '09-01-2023', '10-01-2023', '11-01-2023',
-          '12-01-2023', '01-01-2024', '02-01-2024',
-          '03-01-2024', '04-01-2024', '05-01-2024',
-          '06-01-2024', '07-01-2024', '08-01-2024',
-          '09-01-2024', '10-01-2024', '11-01-2024',
-          '12-01-2024', '01-01-2025',
-        ],
-        datasets: [
-          // Indigo line
-          {
-            data: [
-              732, 610, 610, 504, 504, 504, 349,
-              349, 504, 342, 504, 610, 391, 192,
-              154, 273, 191, 191, 126, 263, 349,
-              252, 423, 622, 470, 532,
-            ],
-            fill: true,
-            backgroundColor: function(context) {
-              const chart = context.chart;
-              const {ctx, chartArea} = chart;
-              return chartAreaGradient(ctx, chartArea, [
-                { stop: 0, color: adjustColorOpacity('#8b5cf6', 0) },
-                { stop: 1, color: adjustColorOpacity('#8b5cf6', 0.2) }
-              ]);
-            },
-           borderColor: '#8b5cf6',
-            borderWidth: 2,
-            pointRadius: 0,
-            pointHoverRadius: 3,
-            pointBackgroundColor: '#8b5cf6',
-            pointHoverBackgroundColor: '#8b5cf6',
-            pointBorderWidth: 0,
-            pointHoverBorderWidth: 0,          
-            clip: 20,
-            tension: 0.2,
-          },
-          // Gray line
-          {
-            data: [
-              532, 532, 532, 404, 404, 314, 314,
-              314, 314, 314, 234, 314, 234, 234,
-              314, 314, 314, 388, 314, 202, 202,
-              202, 202, 314, 720, 642,
-            ],
-            borderColor: adjustColorOpacity('#8b5cf6', 0.25),
-            borderWidth: 2,
-            pointRadius: 0,
-            pointHoverRadius: 3,
-            pointBackgroundColor: adjustColorOpacity('#8b5cf6', 0.25),
-            pointHoverBackgroundColor: adjustColorOpacity('#8b5cf6', 0.25),
-            pointBorderWidth: 0,
-            pointHoverBorderWidth: 0,               
-            clip: 20,
-            tension: 0.2,
-          },
-        ],
-      })
+      const chartData = ref({ labels: [], datasets: [] })
+
+      // Build chart data based on custom weeks and order logs
+      const buildChartFromWeeks = () => {
+        const assignedIds = props.order?.assignedCallers || []
+        const weeks = Array.isArray(props.monthWeeks) ? props.monthWeeks : []
+        if (!weeks.length || !Array.isArray(props.dailyLogs)) {
+          chartData.value = { labels: [], datasets: [] }
+          return
+        }
+
+        const labels = weeks.map(w => {
+          const s = new Date(w.start)
+          const e = new Date(w.end)
+          return `${s.toLocaleDateString()} - ${e.toLocaleDateString()}`
+        })
+
+        const values = weeks.map(w => {
+          const start = new Date(w.start)
+          const end = new Date(w.end)
+          return props.dailyLogs
+            .filter(log =>
+              assignedIds.includes(log.agent._id) &&
+              log.order._id === props.order._id &&
+              new Date(log.date) >= start && new Date(log.date) <= end &&
+              typeof log.quantityCompleted === 'number'
+            )
+            .reduce((sum, log) => sum + log.quantityCompleted, 0)
+        })
+
+        chartData.value = {
+          labels,
+          datasets: [
+            {
+              data: values,
+              fill: true,
+              backgroundColor: function(context) {
+                const chart = context.chart;
+                const {ctx, chartArea} = chart;
+                return chartAreaGradient(ctx, chartArea, [
+                  { stop: 0, color: adjustColorOpacity('#8b5cf6', 0) },
+                  { stop: 1, color: adjustColorOpacity('#8b5cf6', 0.2) }
+                ]);
+              },
+              borderColor: '#8b5cf6',
+              borderWidth: 2,
+              pointRadius: 0,
+              pointHoverRadius: 3,
+              pointBackgroundColor: '#8b5cf6',
+              pointHoverBackgroundColor: '#8b5cf6',
+              pointBorderWidth: 0,
+              pointHoverBorderWidth: 0,          
+              clip: 20,
+              tension: 0.2,
+            }
+          ]
+        }
+      }
       const totalAgentUnitsValue = computed(() => {
         if (
           !props.order ||
@@ -162,20 +163,34 @@
         )
           return 0;
 
-        // Get all agent IDs assigned to this order
         const assignedIds = props.order.assignedCallers;
-        console.log('Assigned Agent IDs:', assignedIds);
-
-        // Sum quantityCompleted for all dailyLogs where agent is assigned to this order
-        const totalUnits = props.dailyLogs
-          .filter(
-            log =>
-              assignedIds.includes(log.agent._id) &&
-              log.order._id === props.order._id &&
-              typeof log.quantityCompleted === 'number'
-          )
-          .reduce((sum, log) => sum + log.quantityCompleted, 0);
-          console.log('Total Units:', totalUnits);
+        // If we have custom weeks, base total on current month weeks; otherwise fallback to all logs
+        const weeks = Array.isArray(props.monthWeeks) ? props.monthWeeks : []
+        let totalUnits = 0
+        if (weeks.length) {
+          for (const w of weeks) {
+            const start = new Date(w.start)
+            const end = new Date(w.end)
+            const weekUnits = props.dailyLogs
+              .filter(log =>
+                assignedIds.includes(log.agent._id) &&
+                log.order._id === props.order._id &&
+                new Date(log.date) >= start && new Date(log.date) <= end &&
+                typeof log.quantityCompleted === 'number'
+              )
+              .reduce((sum, log) => sum + log.quantityCompleted, 0)
+            totalUnits += weekUnits
+          }
+        } else {
+          totalUnits = props.dailyLogs
+            .filter(
+              log =>
+                assignedIds.includes(log.agent._id) &&
+                log.order._id === props.order._id &&
+                typeof log.quantityCompleted === 'number'
+            )
+            .reduce((sum, log) => sum + log.quantityCompleted, 0)
+        }
 
         return totalUnits * (props.order.pricePerUnit || 0);
       });

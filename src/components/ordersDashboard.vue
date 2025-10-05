@@ -1,17 +1,13 @@
 <template>
   <v-container  style="width: 80%;" >
     <!-- Date Navigation Header -->
-    <v-card elevation="1" class="mb-4">
-      <div class="d-flex align-center justify-center pa-4">
-        <v-btn icon flat class="pa-0 ma-0" @click="getPreviousMonth">
-          <v-icon>mdi-chevron-left</v-icon>
-        </v-btn>
-        <div class="text-h6 font-weight-medium mx-3">{{ getFormattedDateRange() }}</div>
-        <v-btn icon flat @click="getNextMonth">
-          <v-icon>mdi-chevron-right</v-icon>
-        </v-btn>
-      </div>
-    </v-card>
+    <DateHeader 
+      :currentDateRange="currentDateRange"
+      :monthWeeks="monthWeeks"
+      :showMonthOnly="true"
+      @prev="getPreviousMonth"
+      @next="getNextMonth"
+    />
     
     <h1 class="text-h4 mb-4" style="width: 100%;">All Cases - {{ getFormattedDateRange() }}</h1>
     <div class="grid-container ">
@@ -21,6 +17,7 @@
       :order="order"
       :agents="gcAgents"
       :dailyLogs="dailyLogs"
+      :monthWeeks="monthWeeks"
       />
     </div>
   </v-container>
@@ -29,8 +26,9 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useStore } from 'vuex'
-import { goToNextMonth, goToPreviousMonth, formattedDateRange, isCurrentMonth } from '@/js/dateUtils';
+import { goToNextMonth, goToPreviousMonth, formattedDateRange, isCurrentMonth, getMonthWeeks } from '@/js/dateUtils';
 import DashboardCard01 from '@/partials/dashboard/caseCard2.vue'
+import DateHeader from '@/components/DateHeader.vue'
 
 const store = useStore()
 
@@ -38,6 +36,8 @@ const orders = computed(() => store.getters['orders'])
 const gcAgents = computed(() => store.getters['gcAgents'])
 const dailyLogs = computed(() => store.getters['dailyLogs'])
 const currentDateRange = computed(() => store.getters['currentDateRange'])
+// Custom weeks for current month
+const monthWeeks = ref([])
 
 // Filter orders by the selected month
 const filteredOrders = computed(() => {
@@ -60,6 +60,23 @@ const filteredOrders = computed(() => {
 
 // Date navigation functions
 const getFormattedDateRange = () => {
+  // Prefer custom weeks if available: show overall month start and end from custom weeks
+  if (Array.isArray(monthWeeks.value) && monthWeeks.value.length > 0) {
+    const starts = monthWeeks.value.map(w => new Date(w.start))
+    const ends = monthWeeks.value.map(w => new Date(w.end))
+    const minStart = new Date(Math.min.apply(null, starts))
+    const maxEnd = new Date(Math.max.apply(null, ends))
+
+    const fmt = (d) => {
+      const mm = String(d.getMonth() + 1).padStart(2, '0')
+      const dd = String(d.getDate()) // no leading zero per example "09-1"
+      return `${mm}-${dd}`
+    }
+
+    return `${fmt(minStart)} through ${fmt(maxEnd)}`
+  }
+
+  // Fallback to existing formatted month range
   return formattedDateRange(currentDateRange.value);
 }
 
@@ -109,6 +126,8 @@ onMounted(async () => {
       const newRange = [format(firstDay), format(lastDay)]
       updateDateRange(newRange)
     }
+    // Load custom weeks for the current month
+    await loadMonthWeeks()
   } catch (error) {
     console.error('Error fetching data on mount:', error)
   }
@@ -118,6 +137,27 @@ onUnmounted(() => {
   // Unregister this component when it's destroyed
   store.commit('removeActiveComponent', 'ordersDashboard');
 })
+
+// Reload custom weeks when date range (month) changes
+watch(currentDateRange, async (newRange) => {
+  if (newRange && newRange.length >= 2) {
+    await loadMonthWeeks()
+  }
+})
+
+async function loadMonthWeeks() {
+  try {
+    if (!currentDateRange.value || currentDateRange.value.length < 2) return
+    const [startDate] = currentDateRange.value
+    const d = new Date(startDate)
+    const year = d.getFullYear()
+    const month = d.getMonth() + 1
+    monthWeeks.value = await getMonthWeeks(year, month)
+  } catch (e) {
+    console.warn('Failed to load month weeks:', e)
+    monthWeeks.value = []
+  }
+}
 </script>
 
 <style scoped>

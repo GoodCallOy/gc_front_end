@@ -1,17 +1,13 @@
 <template>
   <v-container>
     <!-- Date Navigation Header -->
-    <v-card elevation="1" class="mb-4">
-      <div class="d-flex align-center justify-center pa-4">
-        <v-btn icon flat class="pa-0 ma-0" @click="getPreviousMonth">
-          <v-icon>mdi-chevron-left</v-icon>
-        </v-btn>
-        <div class="text-h6 font-weight-medium mx-3">{{ getFormattedDateRange() }}</div>
-        <v-btn icon flat @click="getNextMonth">
-          <v-icon>mdi-chevron-right</v-icon>
-        </v-btn>
-      </div>
-    </v-card>
+    <DateHeader 
+      :currentDateRange="currentDateRange"
+      :monthWeeks="monthWeeks"
+      :showMonthOnly="true"
+      @prev="getPreviousMonth"
+      @next="getNextMonth"
+    />
 
     <v-card v-if="order" class="pa-4"   >
       <v-row justify="space-between">
@@ -148,8 +144,9 @@
   import { useRoute, useRouter } from 'vue-router'
   import { useI18n } from 'vue-i18n';
   import { useStore } from 'vuex'
-  import { goToNextMonth, goToPreviousMonth, formattedDateRange, isCurrentMonth, getCustomWeekRange } from '@/js/dateUtils';
+  import { goToNextMonth, goToPreviousMonth, formattedDateRange, isCurrentMonth, getCustomWeekRange, getMonthWeeks } from '@/js/dateUtils';
   import urls from '@/js/config.js'
+  import DateHeader from '@/components/DateHeader.vue'
 
 
   const route = useRoute()
@@ -165,6 +162,7 @@
   
   // Date range functionality
   const currentDateRange = computed(() => store.getters['currentDateRange'])
+  const monthWeeks = ref([])
   const orders = computed(() => store.getters['orders'])
   const gcCases = computed(() => store.getters['gcCases'])
   
@@ -373,55 +371,67 @@ const calculateWeeklyTotals = async () => {
     }
   });
 
-  // Group logs by week using deduplicated logs (now with custom week configuration)
-  const weeklyGroups = {};
-  
-  // Process logs asynchronously to get custom week ranges
-  for (const log of uniqueLogs) {
-    try {
-      const weekInfo = await getWeekRange(log.date);
-      const weekKey = `${weekInfo.year}-W${weekInfo.weekNumber}`;
-      
-      if (!weeklyGroups[weekKey]) {
-        weeklyGroups[weekKey] = {
-          weekKey,
-          weekInfo,
-          logs: [],
-          cases: new Set(), // Track unique cases for this week
-          totals: {
-            callTime: 0,
-            outgoingCalls: 0,
-            answeredCalls: 0,
-            completedCalls: 0,
-            quantityCompleted: 0,
-            amountMade: 0
-          }
-        };
+  // Group logs by the currently loaded custom month weeks
+  const weeks = Array.isArray(monthWeeks.value) ? monthWeeks.value : []
+  const weeklyGroups = {}
+
+  // Initialize groups from custom weeks to keep ordering consistent
+  weeks.forEach((w, idx) => {
+    const start = new Date(w.start)
+    const end = new Date(w.end)
+    const weekNumber = w.weekNumber || (idx + 1)
+    const year = start.getFullYear()
+    const weekKey = `${year}-W${weekNumber}`
+    weeklyGroups[weekKey] = {
+      weekKey,
+      weekInfo: { start, end, weekNumber, year, isCustom: true },
+      logs: [],
+      cases: new Set(),
+      totals: {
+        callTime: 0,
+        outgoingCalls: 0,
+        answeredCalls: 0,
+        completedCalls: 0,
+        quantityCompleted: 0,
+        amountMade: 0
       }
-      
-      weeklyGroups[weekKey].logs.push(log);
-      weeklyGroups[weekKey].cases.add(log.caseName); // Add case to the set
-      
-      // Add to totals
-      const logCallTime = log.call_time || 0;
-      const logOutgoingCalls = log.outgoing_calls || 0;
-      const logAnsweredCalls = log.answered_calls || 0;
-      const logCompletedCalls = log.completed_calls || 0;
-      const logQuantityCompleted = log.quantityCompleted || 0;
-      
-      // Use the current order's price per unit since we're only showing current case data
-      const pricePerUnit = order.value?.pricePerUnit || 0;
-      const logAmountMade = logQuantityCompleted * pricePerUnit;
-      
-      weeklyGroups[weekKey].totals.callTime += logCallTime;
-      weeklyGroups[weekKey].totals.outgoingCalls += logOutgoingCalls;
-      weeklyGroups[weekKey].totals.answeredCalls += logAnsweredCalls;
-      weeklyGroups[weekKey].totals.completedCalls += logCompletedCalls;
-      weeklyGroups[weekKey].totals.quantityCompleted += logQuantityCompleted;
-      weeklyGroups[weekKey].totals.amountMade += logAmountMade;
-    } catch (error) {
-      console.warn('Error processing log for week grouping:', error);
     }
+  })
+
+  // Assign logs to their custom week bucket
+  for (const log of uniqueLogs) {
+    const logDate = new Date(log.date)
+    const targetWeekKey = weeks.reduce((found, w, idx) => {
+      if (found) return found
+      const start = new Date(w.start)
+      const end = new Date(w.end)
+      if (logDate >= start && logDate <= end) {
+        const wn = w.weekNumber || (idx + 1)
+        const y = start.getFullYear()
+        return `${y}-W${wn}`
+      }
+      return null
+    }, null)
+
+    if (!targetWeekKey || !weeklyGroups[targetWeekKey]) continue
+
+    weeklyGroups[targetWeekKey].logs.push(log)
+    weeklyGroups[targetWeekKey].cases.add(log.caseName)
+
+    const logCallTime = log.call_time || 0
+    const logOutgoingCalls = log.outgoing_calls || 0
+    const logAnsweredCalls = log.answered_calls || 0
+    const logCompletedCalls = log.completed_calls || 0
+    const logQuantityCompleted = log.quantityCompleted || 0
+    const pricePerUnit = order.value?.pricePerUnit || 0
+    const logAmountMade = logQuantityCompleted * pricePerUnit
+
+    weeklyGroups[targetWeekKey].totals.callTime += logCallTime
+    weeklyGroups[targetWeekKey].totals.outgoingCalls += logOutgoingCalls
+    weeklyGroups[targetWeekKey].totals.answeredCalls += logAnsweredCalls
+    weeklyGroups[targetWeekKey].totals.completedCalls += logCompletedCalls
+    weeklyGroups[targetWeekKey].totals.quantityCompleted += logQuantityCompleted
+    weeklyGroups[targetWeekKey].totals.amountMade += logAmountMade
   }
 
   // Convert to array for weekly totals
@@ -437,8 +447,12 @@ const calculateWeeklyTotals = async () => {
     const casesList = Array.from(group.cases).sort();
     const casesDisplay = casesList.length > 0 ? casesList.join(', ') : 'No cases';
     
+    // Show date range for clarity
+    const s = new Date(group.weekInfo.start)
+    const e = new Date(group.weekInfo.end)
+    const fmt = (d) => `${String(d.getMonth()+1).padStart(2,'0')}-${d.getDate()}`
     result.push({
-      date: `Week ${group.weekInfo.weekNumber}, ${group.weekInfo.year}`,
+      date: `Week ${group.weekInfo.weekNumber}, ${fmt(s)} to ${fmt(e)}`,
       cases: casesDisplay,
       caseUnit: 'All Cases',
       callTime: formatNumber(group.totals.callTime),
@@ -461,10 +475,7 @@ watch([caseStats, currentDateRange, order], () => {
   calculateWeeklyTotals();
 }, { deep: true });
 
-// Watch for changes in individual logs that affect weekly log groups
-watch(individualLogs, () => {
-  calculateWeeklyLogGroups();
-}, { deep: true });
+// (moved below, after individualLogs and calculateWeeklyLogGroups are defined)
 
 // Individual logs computed property - for all agents assigned to the current case
 const individualLogs = computed(() => {
@@ -577,28 +588,39 @@ const calculateWeeklyLogGroups = async () => {
   console.log('Weekly log groups - Individual logs:', logs);
   console.log('Weekly log groups - Number of logs:', logs.length);
 
-  const weekGroups = {};
-  
-  // Process logs asynchronously to get custom week ranges
-  for (const log of logs) {
-    try {
-      const logDate = new Date(log.originalLog.date);
-      const weekInfo = await getWeekRange(logDate);
-      const weekKey = `${weekInfo.year}-W${weekInfo.weekNumber}`;
-      
-      if (!weekGroups[weekKey]) {
-        weekGroups[weekKey] = {
-          weekKey,
-          weekInfo,
-          weekTitle: `Week ${weekInfo.weekNumber}, ${weekInfo.year}`,
-          logs: []
-        };
-      }
-      
-      weekGroups[weekKey].logs.push(log);
-    } catch (error) {
-      console.warn('Error processing log for weekly log groups:', error);
+  const weeks = Array.isArray(monthWeeks.value) ? monthWeeks.value : []
+  const weekGroups = {}
+
+  // Initialize groups for titles/stable order
+  weeks.forEach((w, idx) => {
+    const start = new Date(w.start)
+    const end = new Date(w.end)
+    const wn = w.weekNumber || (idx + 1)
+    const y = start.getFullYear()
+    const key = `${y}-W${wn}`
+    weekGroups[key] = {
+      weekKey: key,
+      weekInfo: { start, end, weekNumber: wn, year: y, isCustom: true },
+      weekTitle: `${start.toLocaleDateString()} - ${end.toLocaleDateString()}`,
+      logs: []
     }
+  })
+
+  // Assign logs
+  for (const log of logs) {
+    const d = new Date(log.originalLog.date)
+    const key = weeks.reduce((found, w, idx) => {
+      if (found) return found
+      const s = new Date(w.start)
+      const e = new Date(w.end)
+      if (d >= s && d <= e) {
+        const wn = w.weekNumber || (idx + 1)
+        const y = s.getFullYear()
+        return `${y}-W${wn}`
+      }
+      return null
+    }, null)
+    if (key && weekGroups[key]) weekGroups[key].logs.push(log)
   }
 
   // Convert to array and sort by week (newest first)
@@ -611,6 +633,11 @@ const calculateWeeklyLogGroups = async () => {
   
   weeklyLogGroups.value = result;
 };
+
+// Watch for changes in individual logs that affect weekly log groups
+watch(individualLogs, () => {
+  calculateWeeklyLogGroups();
+}, { deep: true });
 
   function getCallerNames(order, agents) {
       const agentNames = order.assignedCallers
@@ -626,15 +653,17 @@ const calculateWeeklyLogGroups = async () => {
   }
 
   function getPreviousMonth() {
-    goToPreviousMonth(store)
+    const prevMonth = goToPreviousMonth(currentDateRange.value)
+    updateDateRange(prevMonth)
   }
 
   function getNextMonth() {
-    goToNextMonth(store)
+    const nextMonth = goToNextMonth(currentDateRange.value)
+    updateDateRange(nextMonth)
   }
 
   function updateDateRange(newRange) {
-    store.commit('setCurrentDateRange', newRange)
+    store.commit('setDateRange', newRange)
   }
 
   // Fetch case stats for all cases the agent is assigned to
@@ -700,12 +729,54 @@ const calculateWeeklyLogGroups = async () => {
       store.commit('setOrders', ordersRes.data)
       store.commit('setGcCases', casesRes.data)
 
+      // Load custom weeks for current month
+      await loadMonthWeeks()
+
       // Fetch case stats for all cases the agent is assigned to
       await fetchCaseStats();
     } catch (error) {
       console.error('Error in onMounted:', error);
     }
   })
+
+  // Reload custom weeks when date range (month) changes
+  watch(currentDateRange, async (newRange) => {
+    if (newRange && newRange.length >= 2) {
+      await loadMonthWeeks()
+      console.log('[orderDetails] month changed -> custom weeks:', (monthWeeks.value || []).map((w, i) => ({
+        weekNumber: w.weekNumber || (i + 1),
+        start: new Date(w.start).toISOString().split('T')[0],
+        end: new Date(w.end).toISOString().split('T')[0]
+      })))
+      await calculateWeeklyTotals()
+      await calculateWeeklyLogGroups()
+    }
+  })
+
+  // Recalculate when custom weeks change
+  watch(monthWeeks, async () => {
+    await calculateWeeklyTotals()
+    await calculateWeeklyLogGroups()
+  }, { deep: true })
+
+  async function loadMonthWeeks() {
+    try {
+      if (!currentDateRange.value || currentDateRange.value.length < 2) return
+      const [startDate] = currentDateRange.value
+      const d = new Date(startDate)
+      const year = d.getFullYear()
+      const month = d.getMonth() + 1
+      monthWeeks.value = await getMonthWeeks(year, month)
+      console.log('[orderDetails] loaded custom weeks:', (monthWeeks.value || []).map((w, i) => ({
+        weekNumber: w.weekNumber || (i + 1),
+        start: new Date(w.start).toISOString().split('T')[0],
+        end: new Date(w.end).toISOString().split('T')[0]
+      })))
+    } catch (e) {
+      console.warn('Failed to load month weeks:', e)
+      monthWeeks.value = []
+    }
+  }
 
   const editOrder = () => {
     // Navigate to the edit order form
