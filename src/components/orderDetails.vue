@@ -37,6 +37,11 @@
         </v-row>
         <v-row>
             <v-col cols="3">
+                <strong>Case Type:</strong> {{ order.caseType || 'N/A' }}
+            </v-col>
+        </v-row>
+        <v-row>
+            <v-col cols="3">
                <strong>Deadline:</strong> {{ formatDate(order.deadline) }}
             </v-col>
             <v-col cols="3">
@@ -804,11 +809,17 @@ watch(individualLogs, () => {
 }
 
 /* Ensure tables take full width */
-:deep(.v-data-table) {
+::deep(.v-data-table) {
   width: 100% !important;
 }
 
-:deep(.v-data-table__wrapper) {
+::deep(.v-data-table__wrapper) {
   width: 100% !important;
+  overflow-x: auto; /* allow horizontal scroll when columns exceed viewport */
+}
+
+/* Ensure the internal table can extend beyond the container if needed */
+::deep(.v-data-table table) {
+  min-width: 1100px; /* adjust as needed so all columns fit; enables horizontal scroll */
 }
 </style>

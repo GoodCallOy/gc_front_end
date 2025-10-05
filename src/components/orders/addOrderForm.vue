@@ -61,6 +61,14 @@
         required
       />
 
+      <v-select
+        v-model="form.caseType"
+        :items="caseTypes"
+        label="Case Type"
+        :rules="[v => !!v || 'Case type is required']"
+        required
+      />
+
       <v-text-field
         v-model.number="form.estimatedRevenue"
         label="Estimated Revenue (€)"
@@ -70,17 +78,26 @@
       />
 
       <v-select
-        v-model="form.manager"
+        v-model="form.managers"
         :items="agentOptions"
         item-value="value"
         item-title="title"
-        label="Select Manager"
+        label="Select Managers"
+        multiple
+        chips
+        closable-chips
         clearable
       />
 
       <v-text-field
-        v-model.number="form.agentsPrice"
-        label="Agents Price (€)"
+        v-model.number="form.ProjectStartFee"
+        label="Project Start Fee (€)"
+        type="number"
+      />
+
+      <v-text-field
+        v-model.number="form.ProjectManagmentFee"
+        label="Project Managment Fee (€)"
         type="number"
       />
 
@@ -129,6 +146,7 @@
        >
          {{ isEditMode ? 'Update Order' : 'Create Order' }}
        </v-btn>
+       <span class="ml-3" v-if="saveMessage">{{ saveMessage }}</span>
     </div>
      
     </v-form>
@@ -177,9 +195,11 @@ const form = reactive({
   startDate: '',
   deadline: '',
   orderStatus: '',
+  caseType: '',
   estimatedRevenue: '',
-  manager: '',
-  agentsPrice: '',
+  managers: [],
+  ProjectStartFee: '',
+  ProjectManagmentFee: '',
   assignedCallers: []
 })
 
@@ -189,6 +209,7 @@ const cases = ref([])
 const agents = ref([])
 const formRef = ref(null)
 const isSubmitting = ref(false)
+const saveMessage = ref('')
 
 watch(
   () => [form.pricePerUnit, form.totalQuantity],
@@ -211,6 +232,7 @@ const caseOptions = computed(() => cases.value.map(c => ({
 
 const caseUnits = ['hours', 'interviews', 'meetings']
 const orderStatuses = ['pending', 'in-progress', 'completed', 'cancelled', 'on-hold']
+const caseTypes = ['Customer Order', 'Special Invoincing', 'Pilot', 'Interviews', 'Kukki']
 
 const assignedGoalsCount = computed(() =>
   form.assignedCallers.reduce((sum, id) => sum + (Number(agentGoals[id]) || 0), 0)
@@ -226,6 +248,7 @@ const isFormValid = computed(() => {
     form.startDate &&
     form.deadline &&
     form.orderStatus &&
+    form.caseType &&
     form.estimatedRevenue
   );
 });
@@ -252,9 +275,18 @@ const loadOrderData = async (orderId) => {
     form.startDate = orderData.startDate || '';
     form.deadline = orderData.deadline || '';
     form.orderStatus = orderData.orderStatus || '';
+    form.caseType = orderData.caseType || '';
     form.estimatedRevenue = orderData.estimatedRevenue || '';
-    form.manager = orderData.manager || '';
-    form.agentsPrice = orderData.agentsPrice || '';
+    // managers can be array of ids or objects
+    if (Array.isArray(orderData.managers)) {
+      form.managers = orderData.managers.map(m => m.id || m._id || m)
+    } else if (orderData.manager) {
+      form.managers = [orderData.manager._id || orderData.manager.id || orderData.manager]
+    } else {
+      form.managers = []
+    }
+    form.ProjectStartFee = orderData.ProjectStartFee || orderData.projectStartFee || orderData.projectManagementFee || '';
+    form.ProjectManagmentFee = orderData.ProjectManagmentFee || orderData.projectManagementFee || orderData.projectStartFee || '';
     form.assignedCallers = orderData.assignedCallers ? orderData.assignedCallers.map(caller => caller.id || caller) : [];
     
     // Load agent goals if they exist
@@ -276,14 +308,18 @@ const submitForm = async () => {
     // Find the selected case object
     const selectedCase = cases.value.find(c => c._id === form.caseId);
     // Add caseName to the payload
-    const payload = {
+      const payload = {
       ...form,
       caseName: selectedCase ? selectedCase.name : '',
       agentGoals: { ...agentGoals },
-      assignedCallers: form.assignedCallers.map(id => {
+        assignedCallers: form.assignedCallers.map(id => {
         const agent = agents.value.find(a => a._id === id);
         return agent ? { id, name: agent.name } : { id, name: '' };
-      })
+        }),
+        managers: (form.managers || []).map(id => {
+          const agent = agents.value.find(a => a._id === id);
+          return agent ? { id, name: agent.name } : { id, name: '' };
+        })
     };
 
     if (isEditMode.value) {
@@ -291,11 +327,13 @@ const submitForm = async () => {
       console.log('Updating order:', payload);
       await axios.put(`${urls.backEndURL}/orders/${actualOrderId.value}`, payload);
       console.log('Order updated successfully');
+      saveMessage.value = 'Order updated successfully.'
     } else {
       // Create new order
       console.log('Creating order:', payload);
       await axios.post(`${urls.backEndURL}/orders/`, payload);
       console.log('Order created successfully');
+      saveMessage.value = 'Order created successfully.'
       
       // Reset form fields only for new orders
       form.caseId = '';
@@ -305,13 +343,16 @@ const submitForm = async () => {
       form.startDate = '';
       form.deadline = '';
       form.orderStatus = '';
+      form.caseType = '';
       form.estimatedRevenue = '';
-      form.manager = '';
-      form.agentsPrice = '';
+      form.managers = [];
+      form.ProjectStartFee = '';
+      form.ProjectManagmentFee = '';
       form.assignedCallers = [];
     }
   } catch (err) {
     console.error(`Failed to ${isEditMode.value ? 'update' : 'create'} order:`, err.response?.data || err.message);
+    saveMessage.value = `Failed to ${isEditMode.value ? 'update' : 'create'} order.`
   } finally {
     isSubmitting.value = false;
   }

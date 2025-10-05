@@ -214,6 +214,13 @@ async function logout() {
           @click="navigateTo('home')"
         ></v-list-item>
         <v-list-item
+          v-if="user?.user?.role === 'admin' || user?.user?.role === 'manager'"
+          prepend-icon="mdi-table"
+          title="Cases Progress"  
+          :active="route.name === 'casesProgress'"
+          @click="navigateTo('casesProgress')"
+        ></v-list-item>
+        <v-list-item
           prepend-icon="mdi-account-plus"
           :title="t('buttons.assignGoals')"  
           :active="route.name === 'assignGoals'"

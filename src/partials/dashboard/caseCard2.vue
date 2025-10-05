@@ -10,6 +10,14 @@
                     Show order
                 </a>
             </li>
+            <li>
+                <a
+                    class="font-medium text-sm text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-200 flex py-1 px-3"
+                    @click="editCase"
+                >
+                    Edit case
+                </a>
+            </li>
         </EditMenu>
       </div>
         <header>
@@ -262,6 +270,13 @@
             this.$router.push({
                 name: 'orderDetails',
                 query: { orderId: this.order._id },
+            });
+        },
+        editCase() {
+            console.log('Navigating to edit order for order:', this.order._id);
+            this.$router.push({
+                name: 'editOrderForm',
+                params: { id: this.order._id },
             });
         }
     },
