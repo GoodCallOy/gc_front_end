@@ -85,6 +85,14 @@
       currentUser: { type: Object, required: true },
     },
     setup(props) {
+      // Debug props
+      console.log('AgentCaseCard Props:', {
+        order: props.order,
+        agents: props.agents?.length,
+        dailyLogs: props.dailyLogs?.length,
+        currentUser: props.currentUser
+      });
+
       // Daily progress chart data
       const chartData = computed(() => {
         console.log('Chart Debug - Props:', {
@@ -217,9 +225,14 @@
         return 'percentage-green';
       });
 
-      const myAgentId = computed(() =>
-        String(props.currentUser?.linkedUserId ?? props.currentUser?.id ?? '')
-      )
+      const myAgentId = computed(() => {
+        // If currentUser is the selected agent (from agentDashboard), use its ID
+        if (props.currentUser?._id) {
+          return String(props.currentUser._id);
+        }
+        // Otherwise, use linkedUserId (for regular user dashboard)
+        return String(props.currentUser?.linkedUserId ?? props.currentUser?.id ?? '');
+      });
       const orderId = computed(() => String(props.order?._id ?? ''))
 
       // all logs that belong to the current agent (reactive)

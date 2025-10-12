@@ -45,7 +45,7 @@
         :order="userOrder"
         :agents="gcAgents"
         :dailyLogs="caseStats"
-        :currentUser="currentUser"
+        :currentUser="selectedGcAgent"
         />
       </div>
     </div>
@@ -551,14 +551,22 @@ const selectedGcAgent = computed(() => {
 
 // Function to fetch all case stats for the agent across all cases
 const fetchCaseStats = async () => {
-  if (!selectedGcAgent.value || !orders.value) return;
+  if (!selectedGcAgent.value || !orders.value) {
+    console.log('AgentDashboard: Missing selectedGcAgent or orders');
+    return;
+  }
   
   try {
     // Get all cases the agent is assigned to
     const agentId = String(selectedGcAgent.value._id ?? selectedGcAgent.value.id);
+    console.log('AgentDashboard: Fetching stats for agent:', agentId, selectedGcAgent.value.name);
+    
     const agentCases = orders.value.filter(order => 
       order.assignedCallers && order.assignedCallers.includes(agentId)
     );
+
+    console.log('AgentDashboard: Agent cases found:', agentCases.length);
+    console.log('AgentDashboard: Agent cases:', agentCases.map(c => c.caseName));
 
     // Fetch data for all cases the agent is assigned to
     const caseNames = agentCases.map(c => c.caseName);
@@ -566,19 +574,21 @@ const fetchCaseStats = async () => {
 
     for (const caseName of caseNames) {
       try {
+        console.log(`AgentDashboard: Fetching stats for case: ${caseName}`);
         const response = await axios.get(
           `${urls.backEndURL}/dailyLogs/${caseName}`
         );
+        console.log(`AgentDashboard: Got ${response.data.length} logs for case: ${caseName}`);
         allStats.push(...response.data);
       } catch (error) {
-        console.warn(`Error fetching stats for case ${caseName}:`, error);
+        console.warn(`AgentDashboard: Error fetching stats for case ${caseName}:`, error);
       }
     }
     
     caseStats.value = allStats;
-    console.log('All Agent Case Stats loaded:', caseStats.value);
+    console.log('AgentDashboard: All Agent Case Stats loaded:', caseStats.value.length, 'total logs');
   } catch (error) {
-    console.error('Error fetching case stats:', error);
+    console.error('AgentDashboard: Error fetching case stats:', error);
     caseStats.value = [];
   }
 }
