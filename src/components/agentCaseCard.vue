@@ -261,10 +261,28 @@
         )
       )
 
-      // case goal (total quantity for the case)
+      // agent's specific goal for this case (from agentGoals)
       const myGoal = computed(() => {
-        return Number(props.order?.totalQuantity ?? 0)
-      })
+        const agentId = myAgentId.value;
+        if (!agentId || !props.order?.agentGoals) {
+          return 0;
+        }
+        
+        // Get the agent's specific goal for this case
+        const agentGoal = props.order.agentGoals[agentId];
+        console.log('Agent goal lookup:', {
+          agentId,
+          agentGoals: props.order.agentGoals,
+          agentGoal
+        });
+        
+        return Number(agentGoal ?? 0);
+      });
+
+      // Total project goal (for reference)
+      const totalProjectGoal = computed(() => {
+        return Number(props.order?.totalQuantity ?? 0);
+      });
 
       const euro = new Intl.NumberFormat(undefined, { style: 'currency', currency: 'EUR' })
       const displayMyGoal = computed(() => (myAgentId.value ? `${myGoal.value}` : 'N/A'))
@@ -330,6 +348,7 @@
         totalAgentUnitsValue,
         totalUnits,
         myAgentUnits,            // <-- return for template use
+        totalProjectGoal,        // <-- return for template use
       }
 
       const agentNames = getCallerNames(order, agents); 
