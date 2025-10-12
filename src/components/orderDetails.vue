@@ -76,7 +76,18 @@
         <h2 class="text-h5">Case Statistics - {{ getFormattedDateRange() }}</h2>
       </v-col>
       <v-col cols="4">
-        <h2 class="text-h6">Revenue Generate: €{{ revenueGenerated.revenue }}</h2>
+        <h2 class="text-h6">
+          Current Revenue: 
+          <v-progress-circular
+            v-if="isCalculatingRevenue"
+            indeterminate
+            size="20"
+            width="2"
+            color="primary"
+            class="ml-2"
+          ></v-progress-circular>
+          <span v-else>€{{ revenueGenerated.revenue }}</span>
+        </h2>
       </v-col>
       <v-col cols="4">
         <h2 class="text-h6">Total Units: {{ revenueGenerated.totalUnits }}</h2>
@@ -104,25 +115,48 @@
       </div>
 
       <!-- Individual Logs Tables by Week -->
-      <div v-if="weeklyLogGroups.length > 0">
-        <h3 class="text-h6 mb-3">Daily Entries by Week</h3>
-        <div v-for="weekGroup in weeklyLogGroups" :key="weekGroup.weekKey" class="mb-6">
-          <h4 class="text-subtitle-1 mb-2">{{ weekGroup.weekTitle }}</h4>
-          <v-data-table
-            :headers="individualHeaders"
-            :items="weekGroup.logs"
-            class="elevation-1"
-            density="comfortable"
-            :items-per-page="10"
-            style="width: 100%"
-          >
+      <div>
+        <h3 class="text-h6 mb-3 d-flex align-center">
+          Daily Entries by Week
+          <v-progress-circular
+            v-if="isCalculatingWeeklyLogs"
+            indeterminate
+            size="20"
+            width="2"
+            color="primary"
+            class="ml-2"
+          ></v-progress-circular>
+        </h3>
+        
+        <div v-if="isCalculatingWeeklyLogs" class="text-center pa-4">
+          <v-progress-circular
+            indeterminate
+            size="40"
+            width="3"
+            color="primary"
+            class="mb-2"
+          ></v-progress-circular>
+          <p class="text-caption text-grey">Loading daily entries...</p>
+        </div>
+        
+        <div v-else-if="weeklyLogGroups.length > 0">
+          <div v-for="weekGroup in weeklyLogGroups" :key="weekGroup.weekKey" class="mb-6">
+            <h4 class="text-subtitle-1 mb-2">{{ weekGroup.weekTitle }}</h4>
+            <v-data-table
+              :headers="individualHeaders"
+              :items="weekGroup.logs"
+              class="elevation-1"
+              density="comfortable"
+              :items-per-page="10"
+              style="width: 100%"
+            >
             <!-- Response Rate formatting -->
             <template #item.responseRate="{ value }">
               {{ value }}%
             </template>
             
-            <!-- Actions column for individual logs -->
-            <template #item.actions="{ item }">
+            <!-- Edit column for individual logs -->
+            <template #item.edit="{ item }">
               <v-btn
                 icon
                 size="small"
@@ -133,7 +167,25 @@
                 <v-icon>mdi-pencil</v-icon>
               </v-btn>
             </template>
+            
+            <!-- Delete column for individual logs -->
+            <template #item.delete="{ item }">
+              <v-btn
+                v-if="canDeleteLog || true"
+                icon
+                size="small"
+                color="error"
+                title="Delete Log"
+                @click="deleteLog(item.originalLog)"
+              >
+                <v-icon>mdi-delete</v-icon>
+              </v-btn>
+              <span v-else-if="!canDeleteLog" class="text-caption text-grey">
+                No permission
+              </span>
+            </template>
           </v-data-table>
+        </div>
         </div>
       </div>
     </div>
@@ -144,7 +196,7 @@
 </template>
 
 <script setup>
-  import { ref, onMounted, computed, watch } from 'vue'
+  import { ref, onMounted, computed, watch, nextTick } from 'vue'
   import axios from 'axios'
   import { useRoute, useRouter } from 'vue-router'
   import { useI18n } from 'vue-i18n';
@@ -164,6 +216,8 @@
   const order = ref(null)
   const agents = ref([])
   const caseStats = ref([]);
+  const isCalculatingRevenue = ref(false);
+  const isCalculatingWeeklyLogs = ref(false);
   
   // Date range functionality
   const currentDateRange = computed(() => store.getters['currentDateRange'])
@@ -174,6 +228,25 @@
   const goalTypes = ['hours', 'interviews', 'meetings']
   const orderStatuses = ['pending', 'in-progress', 'completed', 'cancelled', 'on-hold']
   const agentName = id => agents.value.find(a => a._id === id)?.name || id;
+
+  // Check if current user can delete logs (managers and admins only)
+  const canDeleteLog = computed(() => {
+    const currentUser = store.state.user?.user || JSON.parse(localStorage.getItem('auth_user') || 'null');
+    console.log('Current user for delete permission:', currentUser);
+    console.log('User roles:', currentUser?.roles);
+    
+    if (!currentUser) {
+      console.log('No current user found');
+      return false;
+    }
+    
+    const userRoles = currentUser.roles || [];
+    const canDelete = userRoles.includes('admin') || userRoles.includes('manager');
+    console.log('Can delete logs:', canDelete);
+    console.log('User roles array:', userRoles);
+    
+    return canDelete;
+  });
 
   const revenueGenerated = computed(() => {
   // Make this reactive to both caseStats and currentDateRange
@@ -259,7 +332,8 @@ const individualHeaders = computed(() => [
   { title: t('agentTables.completedCalls'), key: 'completedCalls', sortable: true },
   { title: t('agentTables.results'), key: 'quantityCompleted', sortable: true },
   { title: t('agentTables.amountMade'), key: 'amountMade', sortable: true },
-  { title: t('agentTables.edit'), key: 'actions', sortable: false, width: '100px' },
+  { title: 'Edit', key: 'edit', sortable: false, width: '60px' },
+  { title: 'Delete', key: 'delete', sortable: false, width: '60px' },
 ])
 
 // Format number helper function
@@ -480,6 +554,15 @@ watch([caseStats, currentDateRange, order], () => {
   calculateWeeklyTotals();
 }, { deep: true });
 
+// Watch for changes that affect revenue calculation
+watch([caseStats, currentDateRange, order], () => {
+  isCalculatingRevenue.value = true;
+  // Use nextTick to ensure the computed property has updated
+  nextTick(() => {
+    isCalculatingRevenue.value = false;
+  });
+}, { deep: true });
+
 // (moved below, after individualLogs and calculateWeeklyLogGroups are defined)
 
 // Individual logs computed property - for all agents assigned to the current case
@@ -585,8 +668,15 @@ const weeklyLogGroups = ref([]);
 
 const calculateWeeklyLogGroups = async () => {
   const logs = individualLogs.value;
+  
+  // Set loading state
+  console.log('Setting isCalculatingWeeklyLogs to true');
+  isCalculatingWeeklyLogs.value = true;
+  
   if (!logs || logs.length === 0) {
+    console.log('No logs found, setting loading to false');
     weeklyLogGroups.value = [];
+    isCalculatingWeeklyLogs.value = false;
     return;
   }
 
@@ -637,6 +727,10 @@ const calculateWeeklyLogGroups = async () => {
   console.log('Weekly log groups - Number of week groups:', result.length);
   
   weeklyLogGroups.value = result;
+  
+  // Clear loading state
+  console.log('Setting isCalculatingWeeklyLogs to false');
+  isCalculatingWeeklyLogs.value = false;
 };
 
 // Watch for changes in individual logs that affect weekly log groups
@@ -676,34 +770,60 @@ watch(individualLogs, () => {
     if (!order.value || !orders.value) return;
     
     try {
+      // Set loading state when starting to fetch case stats
+      isCalculatingWeeklyLogs.value = true;
+      console.log('Starting to fetch case stats, setting loading to true');
+      
       const agentId = order.value.assignedCallers?.[0];
-      if (!agentId) return;
+      if (!agentId) {
+        console.log('No agent ID found, clearing loading state');
+        isCalculatingWeeklyLogs.value = false;
+        return;
+      }
 
       // Get all cases the agent is assigned to
       const agentCases = orders.value.filter(order => 
         order.assignedCallers && order.assignedCallers.includes(agentId)
       );
 
+      console.log('Agent cases found:', agentCases.length);
       const caseNames = agentCases.map(c => c.caseName);
       const allStats = [];
 
+      // Add timeout to prevent infinite loading
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Timeout after 10 seconds')), 10000)
+      );
+
       // Fetch stats for all cases the agent is assigned to
-      for (const caseName of caseNames) {
+      console.log('Fetching stats for cases:', caseNames);
+      const fetchPromise = Promise.all(caseNames.map(async (caseName) => {
         try {
+          console.log(`Fetching stats for case: ${caseName}`);
           const response = await axios.get(
             `${urls.backEndURL}/dailyLogs/${caseName}`
           );
-          allStats.push(...response.data);
+          console.log(`Got ${response.data.length} logs for case: ${caseName}`);
+          return response.data;
         } catch (error) {
           console.warn(`Error fetching stats for case ${caseName}:`, error);
+          return [];
         }
-      }
+      }));
+
+      const results = await Promise.race([fetchPromise, timeoutPromise]);
+      allStats.push(...results.flat());
       
       caseStats.value = allStats;
       console.log('All Agent Case Stats loaded:', caseStats.value);
+      
+      // Clear loading state after case stats are loaded
+      isCalculatingWeeklyLogs.value = false;
+      console.log('Case stats loaded, setting loading to false');
     } catch (error) {
       console.error('Error fetching case stats:', error);
       caseStats.value = [];
+      isCalculatingWeeklyLogs.value = false;
     }
   }
 
@@ -747,6 +867,7 @@ watch(individualLogs, () => {
   // Reload custom weeks when date range (month) changes
   watch(currentDateRange, async (newRange) => {
     if (newRange && newRange.length >= 2) {
+      isCalculatingWeeklyLogs.value = true;
       await loadMonthWeeks()
       console.log('[orderDetails] month changed -> custom weeks:', (monthWeeks.value || []).map((w, i) => ({
         weekNumber: w.weekNumber || (i + 1),
@@ -760,6 +881,7 @@ watch(individualLogs, () => {
 
   // Recalculate when custom weeks change
   watch(monthWeeks, async () => {
+    isCalculatingWeeklyLogs.value = true;
     await calculateWeeklyTotals()
     await calculateWeeklyLogGroups()
   }, { deep: true })
@@ -796,6 +918,44 @@ watch(individualLogs, () => {
     });
   }
 
+  const deleteLog = async (logData) => {
+    if (!canDeleteLog.value) {
+      console.warn('User does not have permission to delete logs');
+      return;
+    }
+
+    // Confirm deletion
+    if (!confirm('Are you sure you want to delete this log entry? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      const response = await axios.delete(`${urls.backEndURL}/dailyLogs/${logData._id}`, {
+        withCredentials: true
+      });
+
+      if (response.status === 200) {
+        console.log('Log deleted successfully');
+        
+        // Remove the log from local state
+        const logIndex = caseStats.value.findIndex(log => log._id === logData._id);
+        if (logIndex !== -1) {
+          caseStats.value.splice(logIndex, 1);
+        }
+
+        // Recalculate weekly totals and log groups
+        await calculateWeeklyTotals();
+        await calculateWeeklyLogGroups();
+        
+        // Show success message (you could add a toast notification here)
+        alert('Log entry deleted successfully');
+      }
+    } catch (error) {
+      console.error('Error deleting log:', error);
+      alert('Failed to delete log entry. Please try again.');
+    }
+  }
+
   const formatDate = dateStr => new Date(dateStr).toLocaleDateString()
 </script>
 <style scoped>
@@ -822,4 +982,5 @@ watch(individualLogs, () => {
 ::deep(.v-data-table table) {
   min-width: 1100px; /* adjust as needed so all columns fit; enables horizontal scroll */
 }
+
 </style>

@@ -234,12 +234,32 @@
             required
         />
 
+        <v-select
+            v-model="form.caseType"
+            :items="caseTypes"
+            label="Case Type"
+            :rules="[v => !!v || 'Case type is required']"
+            required
+        />
+
         <v-text-field
             :model-value="estimatedRevenue"
             label="Estimated Revenue (€)"
             type="number"
             :rules="[v => !!v || 'Estimated revenue is required']"
             required
+        />
+
+        <v-select
+            v-model="form.managers"
+            :items="agentOptions"
+            item-value="value"
+            item-title="title"
+            label="Select Managers"
+            multiple
+            chips
+            closable-chips
+            clearable
         />
 
         <v-select
@@ -252,6 +272,18 @@
             chips
             closable-chips
             clearable
+        />
+
+        <v-text-field
+            v-model.number="form.ProjectStartFee"
+            label="Project Start Fee (€)"
+            type="number"
+        />
+
+        <v-text-field
+            v-model.number="form.ProjectManagmentFee"
+            label="Project Managment Fee (€)"
+            type="number"
         />
         <div v-if="form.assignedCallers.length" class="mt-4">
         <v-list>
@@ -428,6 +460,7 @@ const cases = computed(() => store.getters['cases'])
 const roles = ['admin', 'caller', 'manager']
 const message = ref('')
 const alertType = ref('success') // 'success' or 'error'
+const caseTypes = ['Customer Order', 'Special Invoincing', 'Pilot', 'Interviews', 'Kukki']
 
 const orderHeaders = ([
   { title: 'Case Name', key: 'caseName' },
@@ -463,6 +496,10 @@ const defaultForm = () => ({
   startDate: '',
   deadline: '',
   orderStatus: null,
+  caseType: null,
+  ProjectStartFee: 0,
+  ProjectManagmentFee: 0,
+  managers: [],
   assignedCallers: []
 })
 
@@ -899,7 +936,11 @@ const submitOredrForm = async () => {
       ...toRaw(form.value), // remove Vue reactivity
       estimatedRevenue: estimatedRevenue.value, // ensure computed is included
       caseName: selectedCase ? selectedCase.name : '',
-      agentGoals: { ...agentGoals }
+      agentGoals: { ...agentGoals },
+      managers: (form.value.managers || []).map(id => {
+        const agent = gcAgents.value.find(a => a._id === id)
+        return agent ? { id, name: agent.name } : { id, name: '' }
+      })
     }
 
     if (isEditMode.value && selectedOrder.value) {

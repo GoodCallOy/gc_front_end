@@ -9,6 +9,23 @@
       @next="getNextMonth"
     />
     
+    <!-- Revenue Summary Row -->
+    <v-card class="mb-4 pa-4 revenue-summary" elevation="2">
+      <v-row align="center" justify="center">
+        <v-col cols="4" class="text-center">
+          <div class="text-h6 font-weight-bold text-primary">Estimated Revenue</div>
+          <div class="text-h5 font-weight-bold">€{{ estimatedRevenueTotal.toFixed(2) }}</div>
+        </v-col>
+        <v-col cols="4" class="text-center">
+          <div class="text-h6 font-weight-bold text-success">Current Revenue</div>
+          <div class="text-h5 font-weight-bold">€{{ currentRevenueTotal.toFixed(2) }}</div>
+        </v-col>
+        <v-col cols="4" class="text-center">
+          <!-- Empty column for future use -->
+        </v-col>
+      </v-row>
+    </v-card>
+    
     <h1 class="text-h4 mb-4" style="width: 100%;">All Cases - {{ getFormattedDateRange() }}</h1>
     <div class="grid-container ">
       <DashboardCard01
@@ -55,6 +72,81 @@ const filteredOrders = computed(() => {
     
     // Check if order overlaps with the selected month
     return orderStart <= monthEnd && orderEnd >= monthStart;
+  });
+});
+
+// Calculate estimated revenue total from all orders for the month
+const estimatedRevenueTotal = computed(() => {
+  if (!filteredOrders.value || filteredOrders.value.length === 0) {
+    return 0;
+  }
+  
+  return filteredOrders.value.reduce((total, order) => {
+    return total + (Number(order.estimatedRevenue) || 0);
+  }, 0);
+});
+
+// Calculate current revenue from daily logs for all orders in the month using custom weeks
+const currentRevenueTotal = computed(() => {
+  if (!dailyLogs.value || !filteredOrders.value || !monthWeeks.value) {
+    return 0;
+  }
+
+  // Get date range from custom weeks
+  if (monthWeeks.value.length === 0) {
+    return 0;
+  }
+
+  const starts = monthWeeks.value.map(w => new Date(w.start));
+  const ends = monthWeeks.value.map(w => new Date(w.end));
+  const monthStart = new Date(Math.min.apply(null, starts));
+  const monthEnd = new Date(Math.max.apply(null, ends));
+  monthEnd.setHours(23, 59, 59, 999);
+
+  // Filter daily logs within the custom week date range, excluding "case good call"
+  const logsInMonth = dailyLogs.value.filter(log => {
+    const logDate = new Date(log.date);
+    const isInDateRange = logDate >= monthStart && logDate <= monthEnd;
+    const isNotCaseGoodCall = log.caseName !== 'case good call';
+    return isInDateRange && isNotCaseGoodCall;
+  });
+
+  // Calculate revenue from quantity completed
+  let totalRevenue = 0;
+  
+  logsInMonth.forEach(log => {
+    const quantityCompleted = Number(log.quantityCompleted) || 0;
+    
+    // Find the order for this log to get price per unit
+    const order = filteredOrders.value.find(o => 
+      o.caseName === log.caseName || 
+      String(o._id) === String(log.order?._id || log.order || log.orderId)
+    );
+    
+    if (order) {
+      const pricePerUnit = Number(order.pricePerUnit) || 0;
+      totalRevenue += quantityCompleted * pricePerUnit;
+    }
+  });
+
+  return totalRevenue;
+});
+
+// Debug logging for revenue calculations
+watch([estimatedRevenueTotal, currentRevenueTotal, monthWeeks], ([estimated, current, weeks]) => {
+  // Count logs excluding "case good call" for debugging
+  const totalLogs = dailyLogs.value?.length || 0;
+  const caseGoodCallLogs = dailyLogs.value?.filter(log => log.caseName === 'case good call').length || 0;
+  const logsExcluded = caseGoodCallLogs;
+  
+  console.log('Orders Dashboard Revenue Debug:', {
+    estimatedRevenue: estimated,
+    currentRevenue: current,
+    monthWeeksCount: weeks?.length || 0,
+    filteredOrdersCount: filteredOrders.value?.length || 0,
+    totalDailyLogsCount: totalLogs,
+    caseGoodCallLogsExcluded: logsExcluded,
+    logsUsedInCalculation: totalLogs - logsExcluded
   });
 });
 
@@ -213,4 +305,18 @@ async function loadMonthWeeks() {
   }
 
   /* Remove horizontal hover scroll to avoid cut-off */
+  
+  /* Revenue summary card styling */
+  .revenue-summary {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border: 1px solid #dee2e6;
+  }
+  
+  .revenue-summary .text-primary {
+    color: #0d6efd !important;
+  }
+  
+  .revenue-summary .text-success {
+    color: #198754 !important;
+  }
 </style>

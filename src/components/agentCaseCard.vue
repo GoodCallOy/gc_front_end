@@ -18,7 +18,7 @@
         <v-row align="center" class="mt-2">
             <v-col cols="12">
                 <v-card-subtitle class="text-caption">
-                    My goal: {{ totalUnits }}/{{ displayMyGoal }}
+                    My goal: {{ myAgentUnits }}/{{ displayMyGoal }}
                 </v-card-subtitle>
             </v-col>
 
@@ -203,7 +203,8 @@
 
       const percentage = computed(() => {
         if (myGoal.value === 0) return 0;
-        const ret_percentage = (totalUnits.value / myGoal.value) * 100;
+        // Use current agent's progress, not total case progress
+        const ret_percentage = (myAgentUnits.value / myGoal.value) * 100;
 
         return Number(ret_percentage.toFixed(1))
       });
@@ -260,13 +261,17 @@
         myGoal.value * (Number(props.order?.pricePerUnit) || 0)
       )
 
-      // revenue completed for this agent on this order (from daily logs)
-      const totalAgentUnitsValue = computed(() => {
-        const units = myAgentOrderLogs.value.reduce(
+      // current agent's units completed for this order
+      const myAgentUnits = computed(() => {
+        return myAgentOrderLogs.value.reduce(
           (sum, l) => sum + (Number(l.quantityCompleted) || 0),
           0
         )
-        return units * (Number(props.order?.pricePerUnit) || 0)
+      })
+
+      // revenue completed for this agent on this order (from daily logs)
+      const totalAgentUnitsValue = computed(() => {
+        return myAgentUnits.value * (Number(props.order?.pricePerUnit) || 0)
       })
 
       // total units for this specific case from all agents
@@ -288,12 +293,12 @@
 
       // helpful: see when things actually populate (runs on every change)
       watchEffect(() => {
-        const units = myAgentOrderLogs.value.reduce((s,l)=>s+(Number(l?.quantityCompleted)||0),0)
         console.log('Agent Case Card Debug:', {
           myAgentId: myAgentId.value,
           orderId: orderId.value,
           agentLogs: agentLogs.value.length,
           myAgentOrderLogs: myAgentOrderLogs.value.length,
+          myAgentUnits: myAgentUnits.value,
           totalUnits: totalUnits.value,
           totalAgentUnitsValue: totalAgentUnitsValue.value,
           percentage: percentage.value,
@@ -311,6 +316,7 @@
         myRevenue,              // <-- return so template can use it
         totalAgentUnitsValue,
         totalUnits,
+        myAgentUnits,            // <-- return for template use
       }
 
       const agentNames = getCallerNames(order, agents); 
