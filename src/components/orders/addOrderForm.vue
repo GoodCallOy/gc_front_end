@@ -1,6 +1,6 @@
 <template>
   <div class="d-flex flex-column align-center" style="min-height: 100vh; padding: 20px;">  
-    <h1 class="mb-6">{{ isEditMode ? 'Edit Order' : 'Add New Order' }}</h1>
+    <h1 class="mb-6">{{ isEditMode ? 'Edit Case' : 'Add New Case' }}</h1>
     
     <v-form ref="formRef" @submit.prevent="submitForm">
       <v-select
@@ -56,8 +56,8 @@
       <v-select
         v-model="form.orderStatus"
         :items="orderStatuses"
-        label="Order Status"
-        :rules="[v => !!v || 'Order status is required']"
+        label="Case Status"
+        :rules="[v => !!v || 'Case status is required']"
         required
       />
 
@@ -68,6 +68,12 @@
         :rules="[v => !!v || 'Case type is required']"
         required
       />
+
+      <div class="d-flex align-center mb-2">
+        <h3 class="text-subtitle-1 mr-4" style="margin: 0;">Enable Searched Phone Numbers</h3>
+        <v-checkbox v-model="form.enableSearchedPhoneNumbers" hide-details density="comfortable" />
+      </div>
+
 
       <v-text-field
         v-model.number="form.estimatedRevenue"
@@ -144,7 +150,7 @@
          :disabled="!isFormValid || isSubmitting"
          :loading="isSubmitting"
        >
-         {{ isEditMode ? 'Update Order' : 'Create Order' }}
+         {{ isEditMode ? 'Update Case' : 'Create Case' }}
        </v-btn>
        <span class="ml-3" v-if="saveMessage">{{ saveMessage }}</span>
     </div>
@@ -157,6 +163,7 @@
 
 <script setup>
 import { ref, onMounted, reactive, computed } from 'vue'
+import { useStore } from 'vuex'
 import axios from 'axios'
 import urls from '../../js/config.js'
 import { watch } from 'vue'
@@ -196,6 +203,7 @@ const form = reactive({
   deadline: '',
   orderStatus: '',
   caseType: '',
+  enableSearchedPhoneNumbers: false,
   estimatedRevenue: '',
   managers: [],
   ProjectStartFee: '',
@@ -210,6 +218,7 @@ const agents = ref([])
 const formRef = ref(null)
 const isSubmitting = ref(false)
 const saveMessage = ref('')
+const store = useStore()
 
 watch(
   () => [form.pricePerUnit, form.totalQuantity],
@@ -232,7 +241,12 @@ const caseOptions = computed(() => cases.value.map(c => ({
 
 const caseUnits = ['hours', 'interviews', 'meetings']
 const orderStatuses = ['pending', 'in-progress', 'completed', 'cancelled', 'on-hold']
-const caseTypes = ['Customer Order', 'Special Invoincing', 'Pilot', 'Interviews', 'Kukki']
+const caseTypes = computed(() => {
+  const list = store.getters.caseTypes || []
+  try { console.log('addOrderForm caseTypes computed:', list) } catch {}
+  return list
+})
+
 
 const assignedGoalsCount = computed(() =>
   form.assignedCallers.reduce((sum, id) => sum + (Number(agentGoals[id]) || 0), 0)
@@ -272,10 +286,11 @@ const loadOrderData = async (orderId) => {
     form.caseUnit = orderData.caseUnit || '';
     form.pricePerUnit = orderData.pricePerUnit || '';
     form.totalQuantity = orderData.totalQuantity || '';
-    form.startDate = orderData.startDate || '';
-    form.deadline = orderData.deadline || '';
+    form.startDate = orderData.startDate ? orderData.startDate.split('T')[0] : '';
+    form.deadline = orderData.deadline ? orderData.deadline.split('T')[0] : '';
     form.orderStatus = orderData.orderStatus || '';
     form.caseType = orderData.caseType || '';
+    form.enableSearchedPhoneNumbers = orderData.enableSearchedPhoneNumbers || false;
     form.estimatedRevenue = orderData.estimatedRevenue || '';
     // managers can be array of ids or objects
     if (Array.isArray(orderData.managers)) {
@@ -344,6 +359,7 @@ const submitForm = async () => {
       form.deadline = '';
       form.orderStatus = '';
       form.caseType = '';
+      form.enableSearchedPhoneNumbers = false;
       form.estimatedRevenue = '';
       form.managers = [];
       form.ProjectStartFee = '';
@@ -374,6 +390,15 @@ onMounted(async () => {
     console.log('Agents array after setting:', agents.value)
     console.log('Agent options computed:', agentOptions.value)
     
+    // Load case types from backend/local storage
+    try { 
+      console.log('Fetching case types from backend...')
+      await store.dispatch('fetchCaseTypes') 
+      console.log('Case types after fetch:', store.getters.caseTypes)
+    } catch (e) {
+      console.warn('Failed to fetch case types:', e)
+    }
+
     // Load order data if in edit mode
     if (isEditMode.value) {
       await loadOrderData(actualOrderId.value);

@@ -267,6 +267,13 @@ async function logout() {
    
         ></v-list-item>
         <v-list-item
+          v-if="user?.user?.role === 'admin' || user?.user?.role === 'manager'" 
+          prepend-icon="mdi-format-list-bulleted"
+          title="Case Types"
+          :active="route.name === 'caseTypesManager'"
+          @click="navigateTo('caseTypesManager')"
+        ></v-list-item>
+        <v-list-item
           v-if="user?.user?.role === 'admin'"
           prepend-icon="mdi-account-plus"
           :title="t('buttons.addGcAgent')"  

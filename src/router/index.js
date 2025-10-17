@@ -25,6 +25,7 @@ import OrderProgressTable from '@/components/OrderProgressTable.vue';
 import orderDashboard from '@/components/ordersDashboard.vue';
 import orderDetails from '@/components/orderDetails.vue';
 import assignGoals from '@/components/orders/assignGoals.vue';
+import CaseTypesManager from '@/components/orders/CaseTypesManager.vue';
 import agentDashboard from '@/components/agentDashboard.vue';
 import agentCaseDetails from '@/components/agentCaseDetails.vue';
 import listGcAgents from '@/components/agents/listGcAgents.vue';
@@ -67,6 +68,7 @@ const routes = [
       { path: 'order-progress-chart', name: 'OrderProgressTable', component: OrderProgressTable },
       { path: 'order-dashboard', name: 'orderDashboard', component: orderDashboard, meta: { requiresAuth: true, roles: ['admin', 'manager'] } },
       { path: 'order-details', name: 'orderDetails', component: orderDetails, meta: { requiresAuth: true, roles: ['admin', 'manager'] } },
+      { path: 'case-types', name: 'caseTypesManager', component: CaseTypesManager, meta: { requiresAuth: true, roles: ['admin', 'manager'] } },
       { path: 'agent-case-details', name: 'agentCaseDetails', component: agentCaseDetails },
       { path: 'assign-goals', name: 'assignGoals', component: assignGoals, meta: { requiresAuth: true, roles: ['admin', 'manager'] } },
       { 

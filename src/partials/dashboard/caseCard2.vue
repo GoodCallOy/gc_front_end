@@ -35,41 +35,30 @@
                 </v-card-subtitle>
             </v-col>
         </v-row>
-    
-      <div class="pt-5">
+      <div class="pt-3">
         <div class="value">
-         €{{ totalAgentUnitsValue}}
-         <span :class="['percentage', percentageClass]"> {{ percentage }}%</span>
+          €{{ Number(totalAgentUnitsValue || 0).toFixed(2) }}
+          <span :class="['percentage', percentageClass]">{{ percentage }}%</span>
+          <span class="units">{{ order.caseUnit }}: {{ totalUnits }} / {{ order.totalQuantity }}</span>
         </div>
-        
       </div>
-      <div class="chart">
-        <!-- Chart built with Chart.js 3 -->
-        <LineChart :data="chartData" width="389" height="128" />
+
+      <div>
+        <strong>Deadline:</strong> {{ formatDate(order.deadline) }}
       </div>
-        <div>
-          <strong>{{ order.caseUnit }}: </strong>
-          <span v-if="order.assignedCallers.length">
-           {{ totalUnits }} / {{ order.totalQuantity }}
-          </span>
-          <span v-else>None</span>
-        </div>
-        <div>
-          <strong>Callers: </strong>
-          <span v-if="order.assignedCallers.length">
-            {{ getCallerNames(order, agents) }}
-          </span>
-          <span v-else>None</span>
-        </div>
-        <div><strong>Deadline:</strong> {{ formatDate(order.deadline) }}</div>
+      <div>
+        <strong>Callers: </strong>
+        <span v-if="order.assignedCallers.length">
+          {{ getCallerNames(order, agents) }}
+        </span>
+        <span v-else>None</span>
+      </div>
     </div>
   </template>
   
   
   <script>
-  import { ref, computed } from 'vue'
-  import { chartAreaGradient } from '../../charts/ChartjsConfig'
-  import LineChart from '../../charts/LineChart01.vue'
+  import { computed } from 'vue'
   import EditMenu from '../../components/DropdownEditMenu.vue'
   import { useRouter, useRoute } from 'vue-router';
 
@@ -82,7 +71,6 @@
   export default {
     name: 'DashboardCard01',
     components: {
-      LineChart,
       EditMenu,
     },
     props: {
@@ -105,64 +93,6 @@
         },
     },
     setup(props) {
-      const chartData = ref({ labels: [], datasets: [] })
-
-      // Build chart data based on custom weeks and order logs
-      const buildChartFromWeeks = () => {
-        const assignedIds = props.order?.assignedCallers || []
-        const weeks = Array.isArray(props.monthWeeks) ? props.monthWeeks : []
-        if (!weeks.length || !Array.isArray(props.dailyLogs)) {
-          chartData.value = { labels: [], datasets: [] }
-          return
-        }
-
-        const labels = weeks.map(w => {
-          const s = new Date(w.start)
-          const e = new Date(w.end)
-          return `${s.toLocaleDateString()} - ${e.toLocaleDateString()}`
-        })
-
-        const values = weeks.map(w => {
-          const start = new Date(w.start)
-          const end = new Date(w.end)
-          return props.dailyLogs
-            .filter(log =>
-              assignedIds.includes(log.agent._id) &&
-              log.order._id === props.order._id &&
-              new Date(log.date) >= start && new Date(log.date) <= end &&
-              typeof log.quantityCompleted === 'number'
-            )
-            .reduce((sum, log) => sum + log.quantityCompleted, 0)
-        })
-
-        chartData.value = {
-          labels,
-          datasets: [
-            {
-              data: values,
-              fill: true,
-              backgroundColor: function(context) {
-                const chart = context.chart;
-                const {ctx, chartArea} = chart;
-                return chartAreaGradient(ctx, chartArea, [
-                  { stop: 0, color: adjustColorOpacity('#8b5cf6', 0) },
-                  { stop: 1, color: adjustColorOpacity('#8b5cf6', 0.2) }
-                ]);
-              },
-              borderColor: '#8b5cf6',
-              borderWidth: 2,
-              pointRadius: 0,
-              pointHoverRadius: 3,
-              pointBackgroundColor: '#8b5cf6',
-              pointHoverBackgroundColor: '#8b5cf6',
-              pointBorderWidth: 0,
-              pointHoverBorderWidth: 0,          
-              clip: 20,
-              tension: 0.2,
-            }
-          ]
-        }
-      }
       const totalAgentUnitsValue = computed(() => {
         if (
           !props.order ||
@@ -241,7 +171,6 @@
 
   
       return {
-        chartData,
         totalAgentUnitsValue,
         percentage,
         percentageClass,
@@ -287,10 +216,10 @@
     position: relative;
     background-color: #eeeff1;
     border-radius: 12px;
-    padding: 24px;
+    padding: 16px;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
     font-family: 'Inter', sans-serif;
-    width: 320px; /* optional, for consistent sizing */
+    width: 340px; /* widened to fit unit count */
   }
 
   .case-card .menu {
@@ -326,6 +255,18 @@
     align-items: center;
     gap: 8px;
   }
+  .case-card .value .units {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #374151;
+    margin-left: 6px;
+  }
+  .sep {
+    margin: 0 8px;
+    color: #9ca3af;
+  }
+
+  /* compact layout; metrics/progress bar removed */
 
   .case-card .percentage {
     display: inline-block;
@@ -336,9 +277,7 @@
     border-radius: 9999px;
   }
 
-  .case-card .chart {
-    margin-top: 16px;
-  }
+  /* chart removed */
 
   .percentage-red {
     background-color: #f35555;

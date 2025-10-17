@@ -16,7 +16,7 @@
         :items="filteredOrders"
         item-title="caseName"
         item-value="_id"
-        label="Select Order"
+        label="Select Case"
         :hint="filteredOrders.length === 0 && form.agent ? 'No cases assigned to this agent for the current month' : ''"
         persistent-hint
         required
@@ -25,7 +25,7 @@
       <v-text-field v-model="form.caseUnit" label="Case Unit" required />
       <v-text-field v-model.number="form.call_time" label="Call Time" type="number" required />
       <v-text-field v-model.number="form.completed_calls" label="Completed Calls" type="number" required />
-      <v-text-field v-model.number="form.outgoing_calls" label="Outgoing Calls" type="number" required />
+      <v-text-field v-model.number="form.outgoing_calls" label="Outbound Calls" type="number" required />
       <v-text-field v-model.number="form.answered_calls" label="Answered Calls" type="number" required />
 
       <v-text-field
@@ -34,12 +34,38 @@
         readonly
         persistent-placeholder
       />
+
+      <!-- Conditional Kuuki / Hourly / Daily fields -->
+      <template v-if="showLeadFields">
+        <v-text-field v-model.number="form.aLeads" label="A-leads" type="number" min="0" />
+        <v-text-field v-model.number="form.bLeads" label="B-leads" type="number" min="0" />
+        <v-text-field v-model.number="form.cLeads" label="C-leads" type="number" min="0" />
+        <v-text-field v-model.number="form.dLeads" label="D-leads" type="number" min="0" />
+        <v-text-field v-model.number="form.noPotential" label="No potential" type="number" min="0" />
+      </template>
+
+      <!-- Conditional Interviews fields -->
+      <template v-if="showInterviewFields">
+        <v-text-field v-model.number="form.interviews" label="Interviews" type="number" min="0" />
+        <v-text-field v-model.number="form.hours" label="Hours" type="number" min="0" />
+        <v-text-field v-model.number="form.bookedInterviews" label="Booked Interviews" type="number" min="0" />
+        <v-text-field v-model.number="form.completedInterviews" label="Completed Interviews" type="number" min="0" />
+        <v-text-field v-model.number="form.resultAnalysis" label="Result Analysis" type="number" min="0" />
+      </template>
      
       <v-text-field
         v-model.number="form.quantityCompleted"
-        label="Quantity Completed"
+        label="Results"
         type="number"
         required
+      />
+
+      <v-textarea
+        v-model="form.comments"
+        label="Comments"
+        auto-grow
+        rows="2"
+        max-rows="5"
       />
 
       <v-text-field
@@ -88,6 +114,19 @@ export default {
       response_rate: this.logToEdit?.response_rate || 0,
       date: this.logToEdit?.date?.substring(0, 10) || new Date().toISOString().substring(0, 10),
       quantityCompleted: this.logToEdit?.quantityCompleted || 0,
+      comments: this.logToEdit?.comments || '',
+      // Conditional lead fields (always included in payload, default 0)
+      aLeads: this.logToEdit?.aLeads || 0,
+      bLeads: this.logToEdit?.bLeads || 0,
+      cLeads: this.logToEdit?.cLeads || 0,
+      dLeads: this.logToEdit?.dLeads || 0,
+      noPotential: this.logToEdit?.noPotential || 0,
+      // Conditional interview fields (always included in payload, default 0)
+      interviews: this.logToEdit?.interviews || 0,
+      hours: this.logToEdit?.hours || 0,
+      bookedInterviews: this.logToEdit?.bookedInterviews || 0,
+      completedInterviews: this.logToEdit?.completedInterviews || 0,
+      resultAnalysis: this.logToEdit?.resultAnalysis || 0,
     },
     formValid: true,
     originalLogId: null // Store the ID of the log being edited
@@ -147,6 +186,18 @@ export default {
       return isActiveThisMonth && isAgentAssigned
     })
   },
+  selectedOrder() {
+    if (!this.form.order) return null
+    return this.ordersWithCaseName.find(o => o._id === this.form.order) || null
+  },
+  showLeadFields() {
+    const t = String(this.selectedOrder?.caseType || '').toLowerCase()
+    return t.includes('kuuki') || t.includes('hour') || t.includes('daily')
+  },
+  showInterviewFields() {
+    const t = String(this.selectedOrder?.caseType || '').toLowerCase()
+    return t.includes('interview')
+  },
   responseRateValue() {
     const outgoing = Number(this.form.outgoing_calls) || 0;
     const answered = Number(this.form.answered_calls) || 0;
@@ -201,6 +252,17 @@ async mounted() {
         this.form.response_rate = logData.response_rate || 0;
         this.form.date = logData.date ? logData.date.substring(0, 10) : new Date().toISOString().substring(0, 10);
         this.form.quantityCompleted = logData.quantityCompleted || 0;
+        this.form.comments = logData.comments || '';
+        this.form.aLeads = logData.aLeads || 0;
+        this.form.bLeads = logData.bLeads || 0;
+        this.form.cLeads = logData.cLeads || 0;
+        this.form.dLeads = logData.dLeads || 0;
+        this.form.noPotential = logData.noPotential || 0;
+        this.form.interviews = logData.interviews || 0;
+        this.form.hours = logData.hours || 0;
+        this.form.bookedInterviews = logData.bookedInterviews || 0;
+        this.form.completedInterviews = logData.completedInterviews || 0;
+        this.form.resultAnalysis = logData.resultAnalysis || 0;
         
         // Store the original log ID for updating
         this.originalLogId = logData._id;
@@ -268,6 +330,17 @@ async mounted() {
                 this.form.response_rate = 0;
                 this.form.date = new Date().toISOString().substring(0, 10);
                 this.form.quantityCompleted = 0;
+                this.form.comments = '';
+                this.form.aLeads = 0;
+                this.form.bLeads = 0;
+                this.form.cLeads = 0;
+                this.form.dLeads = 0;
+                this.form.noPotential = 0;
+                this.form.interviews = 0;
+                this.form.hours = 0;
+                this.form.bookedInterviews = 0;
+                this.form.completedInterviews = 0;
+                this.form.resultAnalysis = 0;
                 this.originalLogId = null;
                 this.$emit('saved');
         } catch (err) {

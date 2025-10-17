@@ -24,6 +24,20 @@ const store = createStore({
       gcAgents: null,
       dailyLogs: null,
     },
+    // Editable case types persisted in localStorage
+    caseTypes: (() => {
+      try {
+        const saved = localStorage.getItem('caseTypes');
+        if (saved) return JSON.parse(saved);
+      } catch {}
+      return [
+        'Continuous case',
+        'daily rate',
+        'Pilot',
+        'Interviews',
+        'Kuuki',
+      ];
+    })(),
     // Track which components are currently active
     activeComponents: new Set(),
     dateRange: (() => {
@@ -61,6 +75,7 @@ const store = createStore({
     dailyLogs: state => state.dailyLogs || [],
     lastFetch: state => state.lastFetch,
     activeComponents: state => state.activeComponents,
+    caseTypes: state => state.caseTypes,
   },
 
   actions: {
@@ -296,6 +311,100 @@ const store = createStore({
       } catch (error) {
         console.error('❌ Error fetching dailyLogs:', error)
       }
+    },
+
+    // Case types (frontend-managed)
+    async fetchCaseTypes({ commit, dispatch, state }) {
+      // Try backend first
+      try {
+        const res = await axios.get(`${urls.backEndURL}/case-types`, { withCredentials: true })
+        if (Array.isArray(res.data)) {
+          commit('setCaseTypes', res.data)
+          // sync to local for offline fallback
+          dispatch('saveCaseTypes')
+          return
+        }
+      } catch (e) {
+        console.warn('GET /case-types failed, falling back to localStorage:', e?.response?.status || e?.message)
+      }
+      // Fallback to local
+      dispatch('loadCaseTypesLocal')
+    },
+    loadCaseTypesLocal({ commit, state }) {
+      try {
+        const saved = localStorage.getItem('caseTypes');
+        if (saved) {
+          commit('setCaseTypes', JSON.parse(saved));
+        } else {
+          // ensure defaults are saved
+          localStorage.setItem('caseTypes', JSON.stringify(state.caseTypes));
+        }
+      } catch (e) {
+        console.warn('Failed to load caseTypes from storage:', e);
+      }
+    },
+    saveCaseTypes({ state }) {
+      try {
+        localStorage.setItem('caseTypes', JSON.stringify(state.caseTypes));
+      } catch (e) {
+        console.warn('Failed to save caseTypes to storage:', e);
+      }
+    },
+    async addCaseType({ commit, dispatch }, label) {
+      const trimmed = String(label || '').trim()
+      if (!trimmed) return
+      try {
+        const res = await axios.post(`${urls.backEndURL}/case-types`, { label: trimmed }, { withCredentials: true })
+        // prefer server source of truth
+        if (Array.isArray(res.data)) {
+          commit('setCaseTypes', res.data)
+          dispatch('saveCaseTypes')
+        } else {
+          commit('addCaseType', trimmed)
+          dispatch('saveCaseTypes')
+        }
+      } catch (e) {
+        console.warn('POST /case-types failed, updating locally:', e?.response?.status || e?.message)
+        commit('addCaseType', trimmed)
+        dispatch('saveCaseTypes')
+      }
+    },
+    async removeCaseType({ commit, dispatch, state }, label) {
+      const target = String(label || '').trim()
+      try {
+        // If backend exposes by id, you would map label->id. Here we assume label endpoint for simplicity
+        const res = await axios.delete(`${urls.backEndURL}/case-types`, { data: { label: target }, withCredentials: true })
+        if (Array.isArray(res.data)) {
+          commit('setCaseTypes', res.data)
+          dispatch('saveCaseTypes')
+        } else {
+          commit('removeCaseType', target)
+          dispatch('saveCaseTypes')
+        }
+      } catch (e) {
+        console.warn('DELETE /case-types failed, updating locally:', e?.response?.status || e?.message)
+        commit('removeCaseType', target)
+        dispatch('saveCaseTypes')
+      }
+    },
+    async updateCaseType({ commit, dispatch }, { oldLabel, newLabel }) {
+      const oldL = String(oldLabel || '').trim()
+      const newL = String(newLabel || '').trim()
+      if (!newL) return
+      try {
+        const res = await axios.put(`${urls.backEndURL}/case-types`, { oldLabel: oldL, newLabel: newL }, { withCredentials: true })
+        if (Array.isArray(res.data)) {
+          commit('setCaseTypes', res.data)
+          dispatch('saveCaseTypes')
+        } else {
+          commit('updateCaseType', { oldLabel: oldL, newLabel: newL })
+          dispatch('saveCaseTypes')
+        }
+      } catch (e) {
+        console.warn('PUT /case-types failed, updating locally:', e?.response?.status || e?.message)
+        commit('updateCaseType', { oldLabel: oldL, newLabel: newL })
+        dispatch('saveCaseTypes')
+      }
     }
   },
 
@@ -346,6 +455,31 @@ const store = createStore({
     LOGOUT(state) {
       state.user = null
       localStorage.removeItem('user')
+    },
+    // Case types mutations
+    setCaseTypes(state, caseTypes) {
+      state.caseTypes = Array.isArray(caseTypes) ? caseTypes : []
+    },
+    addCaseType(state, label) {
+      const trimmed = String(label || '').trim();
+      if (!trimmed) return;
+      if (!state.caseTypes.includes(trimmed)) {
+        state.caseTypes = [...state.caseTypes, trimmed]
+      }
+    },
+    removeCaseType(state, label) {
+      const target = String(label || '').trim();
+      state.caseTypes = state.caseTypes.filter(l => l !== target)
+    },
+    updateCaseType(state, { oldLabel, newLabel }) {
+      const oldL = String(oldLabel || '').trim();
+      const newL = String(newLabel || '').trim();
+      const idx = state.caseTypes.findIndex(l => l === oldL);
+      if (idx >= 0 && newL) {
+        const next = [...state.caseTypes];
+        next[idx] = newL;
+        state.caseTypes = Array.from(new Set(next));
+      }
     }
   },
 })

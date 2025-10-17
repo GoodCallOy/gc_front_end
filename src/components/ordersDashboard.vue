@@ -1,5 +1,5 @@
 <template>
-  <v-container  style="width: 80%;" >
+  <v-container  style="width: 90%;" >
     <!-- Date Navigation Header -->
     <DateHeader 
       :currentDateRange="currentDateRange"
@@ -273,7 +273,7 @@ async function loadMonthWeeks() {
   
   .grid-container {
     display: grid;
-    grid-template-columns: repeat(3, 1fr); /* 3 columns */
+    grid-template-columns: repeat(4, 1fr); /* 4 columns on desktop */
     gap: 16px;
     width: 100%;
     margin-bottom: 1rem;
@@ -285,6 +285,7 @@ async function loadMonthWeeks() {
   }
 
   /* Responsive grid */
+  /* Keep at 4 columns on ultra-wide as well to match 90% width */
   @media (max-width: 960px) {
     .grid-container {
       grid-template-columns: repeat(2, 1fr);

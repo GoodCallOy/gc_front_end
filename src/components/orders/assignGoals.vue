@@ -460,7 +460,12 @@ const cases = computed(() => store.getters['cases'])
 const roles = ['admin', 'caller', 'manager']
 const message = ref('')
 const alertType = ref('success') // 'success' or 'error'
-const caseTypes = ['Customer Order', 'Special Invoincing', 'Pilot', 'Interviews', 'Kukki']
+const caseTypes = computed(() => {
+  const list = store.getters.caseTypes || []
+  // debug
+  try { console.log('assignGoals caseTypes computed:', list) } catch {}
+  return list
+})
 
 const orderHeaders = ([
   { title: 'Case Name', key: 'caseName' },
@@ -1006,6 +1011,7 @@ const submitCaseForm = async () => {
 onMounted(async () => {
 
   await fetchAllData()
+  try { await store.dispatch('fetchCaseTypes') } catch {}
   console.log('orders:', orders.value);
 
   if (!currentDateRange || currentDateRange.length < 2) {
