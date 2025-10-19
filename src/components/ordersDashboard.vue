@@ -260,7 +260,7 @@ async function loadMonthWeeks() {
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
   }
   .small-card {
-      max-width: 450px;
+      max-width: 338px; /* Reduced by 25% from 450px */
       max-height: 300px;
       overflow: auto;
   }
@@ -286,9 +286,16 @@ async function loadMonthWeeks() {
 
   /* Responsive grid */
   /* Keep at 4 columns on ultra-wide as well to match 90% width */
+  @media (max-width: 1400px) {
+    .grid-container {
+      grid-template-columns: repeat(5, 1fr) !important; /* 3 columns for medium screens like Surface Pro 6 */
+      width: 100% !important;
+    }
+  }
+
   @media (max-width: 960px) {
     .grid-container {
-      grid-template-columns: repeat(2, 1fr);
+      grid-template-columns: repeat(3, 1fr);
       width: 100% !important;
     }
   }

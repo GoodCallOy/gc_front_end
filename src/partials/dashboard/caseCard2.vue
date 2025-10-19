@@ -23,26 +23,18 @@
         <header>
             <h2 class="text-h6">{{ order.caseName }}</h2>
         </header>
-        <v-row align="center" class="mt-2">
-            <v-col cols="7">
-                <v-card-subtitle class="text-caption">
-                    Goal: €{{ order.estimatedRevenue }}
-                </v-card-subtitle>
-            </v-col>
-            <v-col cols="5" class="d-flex text-align-left">
-                <v-card-subtitle class="text-caption">
-                    {{ order.orderStatus }}
-                </v-card-subtitle>
-            </v-col>
-        </v-row>
+        <div>
+          <strong> Goal: €{{ order.estimatedRevenue }}</strong>
+        </div>
       <div class="pt-3">
         <div class="value">
           €{{ Number(totalAgentUnitsValue || 0).toFixed(2) }}
           <span :class="['percentage', percentageClass]">{{ percentage }}%</span>
-          <span class="units">{{ order.caseUnit }}: {{ totalUnits }} / {{ order.totalQuantity }}</span>
         </div>
       </div>
-
+      <div>
+       <strong>{{ order.caseUnit }}:</strong> {{ totalUnits }} / {{ order.totalQuantity }}
+      </div>
       <div>
         <strong>Deadline:</strong> {{ formatDate(order.deadline) }}
       </div>
@@ -219,7 +211,7 @@
     padding: 16px;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
     font-family: 'Inter', sans-serif;
-    width: 340px; /* widened to fit unit count */
+    width: 210px; /* widened to fit unit count */
   }
 
   .case-card .menu {
