@@ -10,18 +10,15 @@
     />
     
     <!-- Revenue Summary Row -->
-    <v-card class="mb-4 pa-4 revenue-summary" elevation="2">
+    <v-card class="mb-4 pa-2 revenue-summary" elevation="2">
       <v-row align="center" justify="center">
-        <v-col cols="4" class="text-center">
-          <div class="text-h6 font-weight-bold text-primary">Estimated Revenue</div>
-          <div class="text-h5 font-weight-bold">€{{ estimatedRevenueTotal.toFixed(2) }}</div>
+        <v-col cols="6" class="text-center">
+          <div class="text-subtitle-2 font-weight-bold text-primary">Estimated Revenue</div>
+          <div class="text-h6 font-weight-bold">€{{ estimatedRevenueTotal.toFixed(2) }}</div>
         </v-col>
-        <v-col cols="4" class="text-center">
-          <div class="text-h6 font-weight-bold text-success">Current Revenue</div>
-          <div class="text-h5 font-weight-bold">€{{ currentRevenueTotal.toFixed(2) }}</div>
-        </v-col>
-        <v-col cols="4" class="text-center">
-          <!-- Empty column for future use -->
+        <v-col cols="6" class="text-center">
+          <div class="text-subtitle-2 font-weight-bold text-success">Current Revenue</div>
+          <div class="text-h6 font-weight-bold">€{{ currentRevenueTotal.toFixed(2) }}</div>
         </v-col>
       </v-row>
     </v-card>
@@ -295,15 +292,27 @@ async function loadMonthWeeks() {
 
   @media (max-width: 960px) {
     .grid-container {
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(2, 1fr); /* 2 cards for tablets */
       width: 100% !important;
     }
   }
 
-  @media (max-width: 600px) {
+  @media (max-width: 768px) {
     .grid-container {
-      grid-template-columns: 1fr;
+      grid-template-columns: 1fr !important; /* 1 card for phones *
       width: 100% !important;
+      gap: 8px; /* Reduce gap for mobile */
+    }
+    
+    .small-card {
+      max-width: 100% !important; /* Full width on mobile */
+      width: 100% !important;
+    }
+    
+    /* Override the case-card width for mobile */
+    .case-card {
+      width: 100% !important;
+      max-width: 100% !important;
     }
   }
 
