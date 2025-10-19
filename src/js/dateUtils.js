@@ -158,16 +158,12 @@ export function formattedDateRange(currentDateRange) {
     if (!currentDateRange || currentDateRange.length < 2) {
       return '';
     }
-    console.log('currentDateRange 1 in utils', currentDateRange);
-    console.log('currentDateRange 2 in utils', currentDateRange[0]);
     const [startDate] = currentDateRange;
     const date = new Date(startDate);
 
     // Format to MM-YYYY
     const month = String(date.getMonth() + 1).padStart(2, '0'); // Add leading zero
     const year = date.getFullYear();
-    console.log('formattedDateRange in utils', `${month}-${year}`);
-
     return `${month}-${year}`;
     }
 

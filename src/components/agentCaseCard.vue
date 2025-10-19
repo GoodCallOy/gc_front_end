@@ -39,10 +39,6 @@
         </div>
         
       </div>
-      <div class="chart" style="height: 128px; overflow: hidden;">
-        <!-- Chart built with Chart.js 3 -->
-        <LineChart :data="chartData" width="100%" height="128" />
-      </div>
         <div>
           <strong>{{ order.caseUnit }}: </strong>
           <span v-if="order.assignedCallers.length">
@@ -64,8 +60,6 @@
   
   <script>
   import { ref, computed, watchEffect } from 'vue'
-  import { chartAreaGradient } from '../charts/ChartjsConfig'
-  import LineChart from '../charts/LineChart01.vue'
   import EditMenu from '../components/DropdownEditMenu.vue'
   
   
@@ -75,7 +69,6 @@
   export default {
     name: 'agentCaseCard',
     components: {
-      LineChart,
       EditMenu,
     },
     props: {
@@ -85,129 +78,6 @@
       currentUser: { type: Object, required: true },
     },
     setup(props) {
-      // Debug props
-      console.log('AgentCaseCard Props:', {
-        order: props.order,
-        agents: props.agents?.length,
-        dailyLogs: props.dailyLogs?.length,
-        currentUser: props.currentUser
-      });
-
-      // Daily progress chart data
-      const chartData = computed(() => {
-        console.log('Chart Debug - Props:', {
-          dailyLogs: props.dailyLogs,
-          orderId: orderId.value,
-          orderCaseName: props.order?.caseName,
-          totalLogs: props.dailyLogs?.length || 0,
-          sampleLog: props.dailyLogs?.[0]
-        })
-
-        // Get all logs for this case from all agents
-        const allLogs = (props.dailyLogs || []).filter(log => {
-          const logOrderId = log?.order?._id ?? log?.order ?? log?.orderId ?? ''
-          const logCaseName = log?.caseName ?? ''
-          const matchesOrderId = String(logOrderId) === orderId.value
-          const matchesCaseName = logCaseName === props.order?.caseName
-          console.log('Log filtering:', {
-            logOrderId,
-            logCaseName,
-            matchesOrderId,
-            matchesCaseName,
-            orderId: orderId.value,
-            caseName: props.order?.caseName
-          })
-          return matchesOrderId || matchesCaseName
-        })
-
-        console.log('Chart data - All logs for case:', allLogs)
-
-        // If no real data, show empty state
-        if (allLogs.length === 0) {
-          console.log('No data found, showing empty state')
-          return {
-            labels: ['No Data'],
-            datasets: [
-              {
-                label: 'No Data',
-                data: [0],
-                borderColor: '#8b5cf6',
-                backgroundColor: 'rgba(139, 92, 246, 0.1)',
-                borderWidth: 2,
-                pointRadius: 4,
-                pointHoverRadius: 6,
-                fill: true,
-                tension: 0.2,
-              }
-            ]
-          }
-        }
-
-        // Sort logs by date
-        const sortedLogs = [...allLogs].sort((a, b) => new Date(a.date) - new Date(b.date))
-        
-        // Create chart data from daily log entries
-        const dailyData = []
-        const labels = []
-        
-        console.log('Processing logs for chart:', sortedLogs)
-        
-        sortedLogs.forEach((log, index) => {
-          // Use the exact same logic as the tables: log.quantityCompleted || 0
-          const completedAmount = log.quantityCompleted || 0
-          dailyData.push(completedAmount)
-          
-          // Format date for display
-          const logDate = new Date(log.date)
-          const dateLabel = logDate.toLocaleDateString('en-GB', { 
-            day: '2-digit', 
-            month: '2-digit' 
-          })
-          labels.push(dateLabel)
-          
-          console.log(`Log ${index + 1}:`, {
-            date: log.date,
-            formattedDate: dateLabel,
-            quantityCompleted: completedAmount,
-            rawQuantityCompleted: log.quantityCompleted
-          })
-        })
-
-        // Calculate average daily performance
-        const averageDaily = dailyData.length > 0 
-          ? dailyData.reduce((sum, val) => sum + val, 0) / dailyData.length 
-          : 0
-
-        console.log('Final chart data:', {
-          labels,
-          dailyData,
-          averageDaily,
-          hasData: dailyData.length > 0,
-          dataSum: dailyData.reduce((sum, val) => sum + val, 0)
-        })
-
-        const chartConfig = {
-          labels,
-          datasets: [
-            {
-              label: 'Units Completed',
-              data: dailyData,
-              borderColor: '#8b5cf6',
-              backgroundColor: 'rgba(139, 92, 246, 0.1)',
-              borderWidth: 2,
-              pointRadius: 4,
-              pointHoverRadius: 6,
-              pointBackgroundColor: '#8b5cf6',
-              pointHoverBackgroundColor: '#8b5cf6',
-              fill: true,
-              tension: 0.2,
-            }
-          ]
-        }
-
-        console.log('Chart config being passed to LineChart:', chartConfig)
-        return chartConfig
-      })
 
       const percentage = computed(() => {
         if (myGoal.value === 0) return 0;
@@ -245,12 +115,7 @@
           const logAgentId = l?.agent?._id ?? l?.agent ?? l?.agentId ?? ''
           return String(logAgentId) === myId
         })
-        console.log('Agent logs filtering:', {
-          myId,
-          totalLogs: logs.length,
-          filteredLogs: filtered.length,
-          sampleLog: logs[0]
-        })
+        
         return filtered
       })
 
@@ -270,11 +135,7 @@
         
         // Get the agent's specific goal for this case
         const agentGoal = props.order.agentGoals[agentId];
-        console.log('Agent goal lookup:', {
-          agentId,
-          agentGoals: props.order.agentGoals,
-          agentGoal
-        });
+        
         
         return Number(agentGoal ?? 0);
       });
@@ -324,22 +185,9 @@
 
       // helpful: see when things actually populate (runs on every change)
       watchEffect(() => {
-        console.log('Agent Case Card Debug:', {
-          myAgentId: myAgentId.value,
-          orderId: orderId.value,
-          agentLogs: agentLogs.value.length,
-          myAgentOrderLogs: myAgentOrderLogs.value.length,
-          myAgentUnits: myAgentUnits.value,
-          totalUnits: totalUnits.value,
-          totalProjectGoal: totalProjectGoal.value,
-          totalAgentUnitsValue: totalAgentUnitsValue.value,
-          percentage: percentage.value,
-          myGoal: myGoal.value
-        })
       })
 
       return {
-        chartData,
         percentage,
         percentageClass,
         myAgentId,
@@ -385,11 +233,11 @@
     position: relative;
     background-color: #eeeff1;
     border-radius: 12px;
-    padding: 24px;
+    padding: 16px;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
     font-family: 'Inter', sans-serif;
-    width: 100%; /* Fill the grid container */
-    min-height: 300px; /* Ensure consistent height */
+    width: 100%; /* Fill the full container width */
+    min-height: 250px; /* Ensure consistent height */
   }
 
   .case-card .menu {
@@ -435,9 +283,6 @@
     border-radius: 9999px;
   }
 
-  .case-card .chart {
-    margin-top: 16px;
-  }
 
   .percentage-red {
     background-color: #f35555;
@@ -449,5 +294,14 @@
     background-color: #eaea08;  }
   .percentage-green {
     background-color: #10b981;
+  }
+
+  /* Mobile optimizations */
+  @media (max-width: 600px) {
+    .case-card {
+      width: 100% !important;
+      max-width: none !important;
+      margin: 8px 0 !important;
+    }
   }
 </style>
