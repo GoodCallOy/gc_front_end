@@ -46,7 +46,7 @@
         <div>
           <strong>{{ order.caseUnit }}: </strong>
           <span v-if="order.assignedCallers.length">
-           {{ totalUnits }} / {{ order.totalQuantity }}
+           {{ myAgentUnits }} / {{ totalProjectGoal }}
           </span>
           <span v-else>None</span>
         </div>
@@ -331,6 +331,7 @@
           myAgentOrderLogs: myAgentOrderLogs.value.length,
           myAgentUnits: myAgentUnits.value,
           totalUnits: totalUnits.value,
+          totalProjectGoal: totalProjectGoal.value,
           totalAgentUnitsValue: totalAgentUnitsValue.value,
           percentage: percentage.value,
           myGoal: myGoal.value

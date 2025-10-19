@@ -234,7 +234,6 @@
 // Headers for weekly totals table
 const weeklyHeaders = computed(() => [
   { title: 'Week', key: 'date', sortable: true },
-  { title: 'Cases', key: 'cases', sortable: true },
   { title: t('agentTables.callTime'), key: 'callTime', sortable: true },
   { title: t('agentTables.outgoingCalls'), key: 'outgoingCalls', sortable: true },
   { title: t('agentTables.answeredCalls'), key: 'answeredCalls', sortable: true },
@@ -247,7 +246,6 @@ const weeklyHeaders = computed(() => [
 // Headers for individual logs table
 const individualHeaders = computed(() => [
   { title: t('agentTables.date'), key: 'date', sortable: true },
-  { title: 'Case', key: 'caseName', sortable: true },
   { title: t('agentTables.unit'), key: 'caseUnit', sortable: true },
   { title: t('agentTables.callTime'), key: 'callTime', sortable: true },
   { title: t('agentTables.outgoingCalls'), key: 'outgoingCalls', sortable: true },
