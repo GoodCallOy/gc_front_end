@@ -1,5 +1,5 @@
 <template>
-  <v-container  style="width: 80%;" >
+  <v-container  style="width: 90%;" >
     <!-- Date Navigation Header -->
     <v-card elevation="1" class="mb-4">
       <div class="d-flex align-center justify-center pa-4">
@@ -37,7 +37,7 @@
 
     <!-- Show cases if assigned -->
     <div v-else>
-      <h1 class="text-h4 mb-4" style="width: 75vw;"> Cases for {{ selectedGcAgent ? selectedGcAgent.name : '—' }}</h1>
+      <h1 class="text-h4 mb-4" style="width: 90vw;"> Cases for {{ selectedGcAgent ? selectedGcAgent.name : '—' }}</h1>
       <div class="grid-container ">
         <agentCaseCard
         v-for="(userOrder, index) in userOrders"
@@ -89,15 +89,27 @@
         
         <!-- Actions column for individual logs -->
         <template #item.actions="{ item }">
-          <v-icon
-            icon
-            size="small"
-            color="grey"
-            title="Edit Log"
-            @click="editLog(item.originalLog)"
-          >
-            <v-icon>mdi-pencil</v-icon>
-          </v-icon>
+          <div class="d-flex align-center">
+            <v-icon
+              icon
+              size="small"
+              color="grey"
+              title="Edit Log"
+              @click="editLog(item.originalLog)"
+              class="mr-2"
+            >
+              <v-icon>mdi-pencil</v-icon>
+            </v-icon>
+            <v-icon
+              icon
+              size="small"
+              color="red"
+              title="Delete Log"
+              @click="deleteLog(item.originalLog)"
+            >
+              <v-icon>mdi-delete</v-icon>
+            </v-icon>
+          </div>
         </template>
       </v-data-table>
     </div>
@@ -111,7 +123,7 @@ import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useStore } from 'vuex'
 import { useI18n } from 'vue-i18n';
 import { useRouter, useRoute } from 'vue-router';
-import { goToNextMonth, goToPreviousMonth, formattedDateRange, isCurrentMonth } from '@/js/dateUtils';
+import { goToNextMonth, goToPreviousMonth, formattedDateRange, isCurrentMonth, getMonthWeeks } from '@/js/dateUtils';
 import agentCaseCard from './agentCaseCard.vue'
 import axios from 'axios'
 import urls from '@/js/config.js'
@@ -121,16 +133,13 @@ const router = useRouter()
 const route = useRoute()
 const userOrders = ref([])
 const caseStats = ref([])
+const monthWeeks = ref([])
 const { t } = useI18n()
 
 const orders = computed(() => store.getters['orders'])
-console.log('dashOrders', orders.value)
 const gcAgents = computed(() => store.getters['gcAgents'])
-console.log('gcAgents', gcAgents.value)
 const currentDate = computed(() => store.getters['currentDate'])
 const currentDateRange = computed(() => store.getters['currentDateRange'])
-console.log('currentDate', currentDate.value)
-console.log('currentDateRange', currentDateRange.value)
 
 
 function formatNumber(n) {
@@ -304,51 +313,66 @@ const weeklyTotals = computed(() => {
     }
   });
 
-  // Group logs by week using deduplicated logs
+  // Group logs by custom week using deduplicated logs
   const weeklyGroups = {};
   
+  // If no custom weeks available, return empty array
+  if (!monthWeeks.value || monthWeeks.value.length === 0) {
+    return [];
+  }
+  
   uniqueLogs.forEach(log => {
-    const weekInfo = getWeekRange(log.date);
-    const weekKey = `${weekInfo.year}-W${weekInfo.weekNumber}`;
+    const logDate = new Date(log.date);
     
-    if (!weeklyGroups[weekKey]) {
-      weeklyGroups[weekKey] = {
-        weekKey,
-        weekInfo,
-        logs: [],
-        cases: new Set(), // Track unique cases for this week
-        totals: {
-          callTime: 0,
-          outgoingCalls: 0,
-          answeredCalls: 0,
-          completedCalls: 0,
-          quantityCompleted: 0,
-          amountMade: 0
-        }
-      };
+    // Find which custom week this log belongs to
+    const customWeek = monthWeeks.value.find(week => {
+      const weekStart = new Date(week.start);
+      const weekEnd = new Date(week.end);
+      return logDate >= weekStart && logDate <= weekEnd;
+    });
+    
+    if (customWeek) {
+      const weekKey = `W${customWeek.weekNumber}`;
+      
+      if (!weeklyGroups[weekKey]) {
+        weeklyGroups[weekKey] = {
+          weekKey,
+          weekInfo: customWeek,
+          logs: [],
+          cases: new Set(), // Track unique cases for this week
+          totals: {
+            callTime: 0,
+            outgoingCalls: 0,
+            answeredCalls: 0,
+            completedCalls: 0,
+            quantityCompleted: 0,
+            amountMade: 0
+          }
+        };
+      }
+      
+      weeklyGroups[weekKey].logs.push(log);
+      weeklyGroups[weekKey].cases.add(log.caseName); // Add case to the set
+      
+      // Add to totals
+      const logCallTime = log.call_time || 0;
+      const logOutgoingCalls = log.outgoing_calls || 0;
+      const logAnsweredCalls = log.answered_calls || 0;
+      const logCompletedCalls = log.completed_calls || 0;
+      const logQuantityCompleted = log.quantityCompleted || 0;
+      
+      // Find the case for this log to get the correct price per unit
+      const logCase = agentCases.find(c => c.caseName === log.caseName);
+      const pricePerUnit = logCase?.pricePerUnit || 0;
+      const logAmountMade = logQuantityCompleted * pricePerUnit;
+      
+      weeklyGroups[weekKey].totals.callTime += logCallTime;
+      weeklyGroups[weekKey].totals.outgoingCalls += logOutgoingCalls;
+      weeklyGroups[weekKey].totals.answeredCalls += logAnsweredCalls;
+      weeklyGroups[weekKey].totals.completedCalls += logCompletedCalls;
+      weeklyGroups[weekKey].totals.quantityCompleted += logQuantityCompleted;
+      weeklyGroups[weekKey].totals.amountMade += logAmountMade;
     }
-    
-    weeklyGroups[weekKey].logs.push(log);
-    weeklyGroups[weekKey].cases.add(log.caseName); // Add case to the set
-    
-    // Add to totals
-    const logCallTime = log.call_time || 0;
-    const logOutgoingCalls = log.outgoing_calls || 0;
-    const logAnsweredCalls = log.answered_calls || 0;
-    const logCompletedCalls = log.completed_calls || 0;
-    const logQuantityCompleted = log.quantityCompleted || 0;
-    
-    // Find the case for this log to get the correct price per unit
-    const logCase = agentCases.find(c => c.caseName === log.caseName);
-    const pricePerUnit = logCase?.pricePerUnit || 0;
-    const logAmountMade = logQuantityCompleted * pricePerUnit;
-    
-    weeklyGroups[weekKey].totals.callTime += logCallTime;
-    weeklyGroups[weekKey].totals.outgoingCalls += logOutgoingCalls;
-    weeklyGroups[weekKey].totals.answeredCalls += logAnsweredCalls;
-    weeklyGroups[weekKey].totals.completedCalls += logCompletedCalls;
-    weeklyGroups[weekKey].totals.quantityCompleted += logQuantityCompleted;
-    weeklyGroups[weekKey].totals.amountMade += logAmountMade;
   });
 
   // Convert to array for weekly totals
@@ -364,8 +388,14 @@ const weeklyTotals = computed(() => {
     const casesList = Array.from(group.cases).sort();
     const casesDisplay = casesList.length > 0 ? casesList.join(', ') : 'No cases';
 
+    // Format custom week dates for display
+    const startDate = new Date(group.weekInfo.start);
+    const endDate = new Date(group.weekInfo.end);
+    const startStr = startDate.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit' });
+    const endStr = endDate.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit' });
+    
     result.push({
-      date: `Week ${group.weekInfo.weekNumber}, ${group.weekInfo.year}`,
+      date: `Week ${group.weekInfo.weekNumber} (${startStr} - ${endStr})`,
       cases: casesDisplay,
       caseUnit: 'All Cases',
       callTime: formatNumber(group.totals.callTime),
@@ -461,33 +491,47 @@ const individualLogs = computed(() => {
     });
 });
 
-// Group individual logs by week
+// Group individual logs by custom week
 const weeklyLogGroups = computed(() => {
   const logs = individualLogs.value;
-  if (!logs || logs.length === 0) return [];
+  if (!logs || logs.length === 0 || !monthWeeks.value || monthWeeks.value.length === 0) return [];
 
   const weekGroups = {};
   
   logs.forEach(log => {
     const logDate = new Date(log.originalLog.date);
-    const weekInfo = getWeekRange(logDate);
-    const weekKey = `${weekInfo.year}-W${weekInfo.weekNumber}`;
     
-    if (!weekGroups[weekKey]) {
-      weekGroups[weekKey] = {
-        weekKey,
-        weekInfo,
-        weekTitle: `Week ${weekInfo.weekNumber}, ${weekInfo.year}`,
-        logs: []
-      };
+    // Find which custom week this log belongs to
+    const customWeek = monthWeeks.value.find(week => {
+      const weekStart = new Date(week.start);
+      const weekEnd = new Date(week.end);
+      return logDate >= weekStart && logDate <= weekEnd;
+    });
+    
+    if (customWeek) {
+      const weekKey = `W${customWeek.weekNumber}`;
+      
+      if (!weekGroups[weekKey]) {
+        const startDate = new Date(customWeek.start);
+        const endDate = new Date(customWeek.end);
+        const startStr = startDate.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit' });
+        const endStr = endDate.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit' });
+        
+        weekGroups[weekKey] = {
+          weekKey,
+          weekInfo: customWeek,
+          weekTitle: `Week ${customWeek.weekNumber} (${startStr} - ${endStr})`,
+          logs: []
+        };
+      }
+      
+      weekGroups[weekKey].logs.push(log);
     }
-    
-    weekGroups[weekKey].logs.push(log);
   });
 
-  // Convert to array and sort by week (oldest first)
+  // Convert to array and sort by week number
   const result = Object.values(weekGroups)
-    .sort((a, b) => new Date(a.weekInfo.start) - new Date(b.weekInfo.start))
+    .sort((a, b) => a.weekInfo.weekNumber - b.weekInfo.weekNumber)
     .slice(0, 4); // Limit to 4 weeks
   
   return result;
@@ -497,11 +541,11 @@ const weeklyLogGroups = computed(() => {
 const weeklyHeaders = computed(() => [
   { title: 'Week', key: 'date', sortable: true },
   { title: 'Cases', key: 'cases', sortable: true },
-  { title: t('agentTables.callTime'), key: 'callTime', sortable: true },
-  { title: t('agentTables.outgoingCalls'), key: 'outgoingCalls', sortable: true },
-  { title: t('agentTables.answeredCalls'), key: 'answeredCalls', sortable: true },
-  { title: t('agentTables.responseRate'), key: 'responseRate', sortable: true },
-  { title: t('agentTables.completedCalls'), key: 'completedCalls', sortable: true },
+  { title: t('agentTables.callTime'), key: 'callTime', sortable: true, class: 'd-none d-md-table-cell' },
+  { title: t('agentTables.outgoingCalls'), key: 'outgoingCalls', sortable: true, class: 'd-none d-lg-table-cell' },
+  { title: t('agentTables.answeredCalls'), key: 'answeredCalls', sortable: true, class: 'd-none d-lg-table-cell' },
+  { title: t('agentTables.responseRate'), key: 'responseRate', sortable: true, class: 'd-none d-md-table-cell' },
+  { title: t('agentTables.completedCalls'), key: 'completedCalls', sortable: true, class: 'd-none d-xl-table-cell' },
   { title: t('agentTables.results'), key: 'quantityCompleted', sortable: true },
   { title: t('agentTables.amountMade'), key: 'amountMade', sortable: true },
 ])
@@ -510,12 +554,12 @@ const weeklyHeaders = computed(() => [
 const individualHeaders = computed(() => [
   { title: t('agentTables.date'), key: 'date', sortable: true },
   { title: 'Case', key: 'caseName', sortable: true },
-  { title: t('agentTables.unit'), key: 'caseUnit', sortable: true },
-  { title: t('agentTables.callTime'), key: 'callTime', sortable: true },
-  { title: t('agentTables.outgoingCalls'), key: 'outgoingCalls', sortable: true },
-  { title: t('agentTables.answeredCalls'), key: 'answeredCalls', sortable: true },
-  { title: t('agentTables.responseRate'), key: 'responseRate', sortable: true },
-  { title: t('agentTables.completedCalls'), key: 'completedCalls', sortable: true },
+  { title: t('agentTables.unit'), key: 'caseUnit', sortable: true, class: 'd-none d-md-table-cell' },
+  { title: t('agentTables.callTime'), key: 'callTime', sortable: true, class: 'd-none d-lg-table-cell' },
+  { title: t('agentTables.outgoingCalls'), key: 'outgoingCalls', sortable: true, class: 'd-none d-xl-table-cell' },
+  { title: t('agentTables.answeredCalls'), key: 'answeredCalls', sortable: true, class: 'd-none d-xl-table-cell' },
+  { title: t('agentTables.responseRate'), key: 'responseRate', sortable: true, class: 'd-none d-lg-table-cell' },
+  { title: t('agentTables.completedCalls'), key: 'completedCalls', sortable: true, class: 'd-none d-xl-table-cell' },
   { title: t('agentTables.results'), key: 'quantityCompleted', sortable: true },
   { title: t('agentTables.amountMade'), key: 'amountMade', sortable: true },
   { title: t('agentTables.edit'), key: 'actions', sortable: false, width: '100px' },
@@ -526,7 +570,6 @@ const currentUser = computed(() => {
       ?? JSON.parse(localStorage.getItem('auth_user') || 'null')
       ?? null;
 });
-console.log('user', currentUser.value)
 
 const selectedGcAgent = computed(() => {
   // First check if there's an agent query parameter (for admin viewing)
@@ -552,21 +595,17 @@ const selectedGcAgent = computed(() => {
 // Function to fetch all case stats for the agent across all cases
 const fetchCaseStats = async () => {
   if (!selectedGcAgent.value || !orders.value) {
-    console.log('AgentDashboard: Missing selectedGcAgent or orders');
     return;
   }
   
   try {
     // Get all cases the agent is assigned to
     const agentId = String(selectedGcAgent.value._id ?? selectedGcAgent.value.id);
-    console.log('AgentDashboard: Fetching stats for agent:', agentId, selectedGcAgent.value.name);
     
     const agentCases = orders.value.filter(order => 
       order.assignedCallers && order.assignedCallers.includes(agentId)
     );
 
-    console.log('AgentDashboard: Agent cases found:', agentCases.length);
-    console.log('AgentDashboard: Agent cases:', agentCases.map(c => c.caseName));
 
     // Fetch data for all cases the agent is assigned to
     const caseNames = agentCases.map(c => c.caseName);
@@ -574,11 +613,10 @@ const fetchCaseStats = async () => {
 
     for (const caseName of caseNames) {
       try {
-        console.log(`AgentDashboard: Fetching stats for case: ${caseName}`);
+        const encodedCaseName = encodeURIComponent(caseName);
         const response = await axios.get(
-          `${urls.backEndURL}/dailyLogs/${caseName}`
+          `${urls.backEndURL}/dailyLogs/${encodedCaseName}`
         );
-        console.log(`AgentDashboard: Got ${response.data.length} logs for case: ${caseName}`);
         allStats.push(...response.data);
       } catch (error) {
         console.warn(`AgentDashboard: Error fetching stats for case ${caseName}:`, error);
@@ -586,7 +624,6 @@ const fetchCaseStats = async () => {
     }
     
     caseStats.value = allStats;
-    console.log('AgentDashboard: All Agent Case Stats loaded:', caseStats.value.length, 'total logs');
   } catch (error) {
     console.error('AgentDashboard: Error fetching case stats:', error);
     caseStats.value = [];
@@ -657,6 +694,21 @@ const updateDateRange = (newRange) => {
   store.commit('setDateRange', newRange);
 }
 
+// Load custom weeks for the current month
+async function loadMonthWeeks() {
+  try {
+    if (!currentDateRange.value || currentDateRange.value.length < 2) return
+    const [startDate] = currentDateRange.value
+    const d = new Date(startDate)
+    const year = d.getFullYear()
+    const month = d.getMonth() + 1
+    monthWeeks.value = await getMonthWeeks(year, month)
+  } catch (e) {
+    console.warn('Failed to load month weeks:', e)
+    monthWeeks.value = []
+  }
+}
+
 // Edit log function
 const editLog = (logData) => {
   // Navigate to the daily log form with the log data for editing
@@ -664,6 +716,26 @@ const editLog = (logData) => {
     name: 'addDailyLog', 
     query: { editLog: JSON.stringify(logData) }
   });
+};
+
+// Delete log function
+const deleteLog = async (logData) => {
+  if (!confirm('Are you sure you want to delete this log entry? This action cannot be undone.')) {
+    return;
+  }
+  
+  try {
+    const response = await axios.delete(`${urls.backEndURL}/dailyLogs/${logData._id}`);
+    
+    if (response.status === 200) {
+      // Refresh the data to reflect the deletion
+      await store.dispatch('fetchDailyLogs');
+      console.log('Log deleted successfully');
+    }
+  } catch (error) {
+    console.error('Error deleting log:', error);
+    alert('Failed to delete log entry. Please try again.');
+  }
 };
 
 
@@ -676,7 +748,6 @@ onMounted(async () => {
     await store.dispatch('fetchForContext', 'agentDashboard');
     
     // Initialize date range if not set
-    console.log('Current date range on mount:', currentDateRange.value);
     if (!currentDateRange.value || currentDateRange.value.length < 2) {
       const now = new Date();
       const year = now.getFullYear();
@@ -686,13 +757,13 @@ onMounted(async () => {
       const lastDay = new Date(Date.UTC(year, month + 1, 0));
       const format = (date) => date.toISOString().split('T')[0]
       const newRange = [format(firstDay), format(lastDay)]
-      console.log('Setting new date range:', newRange);
-      console.log('Current month should be:', month + 1, 'Year:', year);
       updateDateRange(newRange)
     } else {
-      console.log('Date range already set, not overriding');
     }
 
+    // Load custom weeks for the current month
+    await loadMonthWeeks()
+    
     // Fetch case stats for the agent
     await fetchCaseStats();
   } catch (error) {
@@ -703,6 +774,13 @@ onMounted(async () => {
 onUnmounted(() => {
   // Unregister this component when it's destroyed
   store.commit('removeActiveComponent', 'agentDashboard');
+})
+
+// Reload custom weeks when date range (month) changes
+watch(currentDateRange, async (newRange) => {
+  if (newRange && newRange.length >= 2) {
+    await loadMonthWeeks()
+  }
 })
 </script>
 
@@ -727,9 +805,9 @@ onUnmounted(() => {
   
   .grid-container {
     display: grid;
-    grid-template-columns: repeat(3, 1fr); /* 3 columns */
-    gap: 16px;
-    width: 75vw;
+    grid-template-columns: repeat(6, 1fr); /* 6 columns for smaller cards */
+    gap: 12px;
+    width: 90vw;
     margin-bottom: 1rem;
     flex-shrink: 0; /* ✅ Prevent it from collapsing or overlapping */
 
@@ -744,9 +822,16 @@ onUnmounted(() => {
   }
 
   /* Responsive grid */
+  @media (max-width: 1200px) {
+    .grid-container {
+      grid-template-columns: repeat(4, 1fr); /* 4 columns for medium screens */
+      width: 100% !important;
+    }
+  }
+
   @media (max-width: 960px) {
     .grid-container {
-      grid-template-columns: repeat(2, 1fr);
+      grid-template-columns: repeat(3, 1fr); /* 3 columns for tablets */
       width: 100% !important;
     }
   }
@@ -755,6 +840,44 @@ onUnmounted(() => {
     .grid-container {
       grid-template-columns: 1fr; /* single column vertical list */
       width: 100% !important;
+    }
+    
+    /* Stack all container elements vertically on mobile */
+    .v-container {
+      display: flex !important;
+      flex-direction: column !important;
+      width: 100% !important;
+      padding: 8px !important;
+    }
+    
+    /* Make cards and tables full width on mobile */
+    .v-card {
+      width: 100% !important;
+      margin: 8px 0 !important;
+    }
+    
+    /* Mobile table optimizations */
+    .v-data-table {
+      font-size: 0.875rem;
+      width: 100% !important;
+    }
+    
+    .v-data-table th,
+    .v-data-table td {
+      padding: 12px 8px !important;
+      white-space: nowrap !important;
+    }
+    
+    /* Make tables horizontally scrollable on mobile */
+    .v-data-table__wrapper {
+      overflow-x: auto;
+      width: 100% !important;
+    }
+    
+    /* Ensure proper spacing between stacked elements */
+    .mx-auto {
+      margin-left: 0 !important;
+      margin-right: 0 !important;
     }
   }
 </style>

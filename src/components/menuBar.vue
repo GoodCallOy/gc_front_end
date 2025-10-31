@@ -44,10 +44,6 @@ function closeAllGroups() {
   opened.value = []
 }
 
-watch(user, (newVal) => {
-  console.log('🟢 user changed in menuBar:', newVal);
-}, { immediate: true });
-
 
 watch(isDrawerOpen, (open) => {
   if (!open) {

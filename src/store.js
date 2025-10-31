@@ -277,7 +277,6 @@ const store = createStore({
       try {
         console.log('🌍 Fetching orders from API')
         const response = await axios.get(`${urls.backEndURL}/orders?t=${Date.now()}`)
-        console.log('✅ Orders fetched successfully in store:', response.data)
         commit('setOrders', response.data)
         commit('setLastFetch', { key: 'orders', time: Date.now() })
       } catch (error) {
@@ -307,7 +306,6 @@ const store = createStore({
       try {
         console.log('🌍 Fetching DailyLogs from API')
         const response = await axios.get(`${urls.backEndURL}/dailyLogs?t=${Date.now()}`)
-        console.log('✅ DailyLogs fetched successfully in store:', response.data)
         commit('setDailyLogs', response.data)
         commit('setLastFetch', { key: 'dailyLogs', time: Date.now() })
       } catch (error) {
