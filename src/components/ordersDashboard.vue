@@ -1,14 +1,23 @@
 <template>
   <v-container  style="width: 90%;" >
-    <!-- Date Navigation Header -->
-    <DateHeader 
-      :currentDateRange="currentDateRange"
-      :monthWeeks="monthWeeks"
-      :showMonthOnly="true"
-      @prev="getPreviousMonth"
-      @next="getNextMonth"
-    />
-    
+    <!-- Sticky Menu/Header -->
+    <div class="sticky-toolbar">
+      <!-- Date Navigation Header -->
+      <DateHeader 
+        :currentDateRange="currentDateRange"
+        :monthWeeks="monthWeeks"
+        :showMonthOnly="true"
+        @prev="getPreviousMonth"
+        @next="getNextMonth"
+      />
+
+      <!-- Tabs -->
+      <v-tabs v-model="activeTab" density="comfortable" class="mb-2">
+        <v-tab value="tables">Tables</v-tab>
+        <v-tab value="cards">Cards</v-tab>
+      </v-tabs>
+    </div>
+
     <!-- Revenue Summary Row -->
     <v-card class="mb-4 pa-4 revenue-summary" elevation="2">
       <v-row align="center" justify="center">
@@ -27,16 +36,53 @@
     </v-card>
     
     <h1 class="text-h4 mb-4" style="width: 100%;">All Cases - {{ getFormattedDateRange() }}</h1>
-    <div class="grid-container ">
-      <DashboardCard01
-      v-for="(order, index) in filteredOrders"
-      :key="index"
-      :order="order"
-      :agents="gcAgents"
-      :dailyLogs="dailyLogs"
-      :monthWeeks="monthWeeks"
-      />
-    </div>
+
+    <v-window v-model="activeTab">
+      <v-window-item value="tables">
+        <v-card elevation="1">
+          <v-data-table
+            :headers="tableHeaders"
+            :items="filteredOrders"
+            item-value="_id"
+            class="elevation-0"
+            :items-per-page="25"
+            density="comfortable"
+          >
+            <template #item.callers="{ item }">
+              {{ getCallerNames(item) }}
+            </template>
+            <template #item.goal="{ item }">
+              {{ formatCurrency(Number(item.estimatedRevenue) || 0) }}
+            </template>
+            <template #item.revenue="{ item }">
+              {{ formatCurrency(computeOrderRevenue(item)) }}
+            </template>
+            <template #item.quantity="{ item }">
+              {{ computeOrderQuantity(item) }}
+            </template>
+            <template #item.startDate="{ item }">
+              {{ formatDate(item.startDate) }}
+            </template>
+            <template #item.deadline="{ item }">
+              {{ formatDate(item.deadline) }}
+            </template>
+          </v-data-table>
+        </v-card>
+      </v-window-item>
+
+      <v-window-item value="cards">
+        <div class="grid-container ">
+          <DashboardCard01
+          v-for="(order, index) in filteredOrders"
+          :key="index"
+          :order="order"
+          :agents="gcAgents"
+          :dailyLogs="dailyLogs"
+          :monthWeeks="monthWeeks"
+          />
+        </div>
+      </v-window-item>
+    </v-window>
   </v-container>
 </template>
 
@@ -48,6 +94,21 @@ import DashboardCard01 from '@/partials/dashboard/caseCard2.vue'
 import DateHeader from '@/components/DateHeader.vue'
 
 const store = useStore()
+const activeTab = ref('tables')
+
+const tableHeaders = ([
+  { title: 'Case Name', key: 'caseName' },
+  { title: 'Status', key: 'orderStatus' },
+  { title: 'Callers', key: 'callers', sortable: false },
+  { title: 'Price/Unit (€)', key: 'pricePerUnit' },
+  { title: 'Unit', key: 'caseUnit' },
+  { title: 'Quantity', key: 'quantity', sortable: false },
+  { title: 'Total Qty', key: 'totalQuantity' },
+  { title: 'Goal (€)', key: 'goal', sortable: false },
+  { title: 'Revenue (€)', key: 'revenue', sortable: false },
+  { title: 'Start', key: 'startDate' },
+  { title: 'Deadline', key: 'deadline' },
+])
 
 const orders = computed(() => store.getters['orders'])
 const gcAgents = computed(() => store.getters['gcAgents'])
@@ -190,7 +251,44 @@ const updateDateRange = (newRange) => {
   store.commit('setDateRange', newRange);
 }
 
-const formatDate = date => new Date(date).toLocaleDateString()
+const formatDate = date => {
+  if (!date) return ''
+  return new Date(date).toLocaleDateString()
+}
+
+const formatCurrency = (n) => new Intl.NumberFormat(undefined, { style: 'currency', currency: 'EUR' }).format(n || 0)
+
+function getMonthBoundsFromWeeks() {
+  if (!Array.isArray(monthWeeks.value) || monthWeeks.value.length === 0) return null
+  const starts = monthWeeks.value.map(w => new Date(w.start))
+  const ends = monthWeeks.value.map(w => new Date(w.end))
+  const monthStart = new Date(Math.min.apply(null, starts))
+  const monthEnd = new Date(Math.max.apply(null, ends))
+  monthEnd.setHours(23, 59, 59, 999)
+  return { monthStart, monthEnd }
+}
+
+function computeOrderQuantity(order) {
+  if (!order || !Array.isArray(dailyLogs.value)) return 0
+  const bounds = getMonthBoundsFromWeeks()
+  if (!bounds) return 0
+  const { monthStart, monthEnd } = bounds
+
+  const oid = String(order._id)
+  return dailyLogs.value
+    .filter(log => {
+      const d = new Date(log.date)
+      const idMatch = String(log.order?._id || log.order || log.orderId) === oid
+      return idMatch && d >= monthStart && d <= monthEnd && typeof log.quantityCompleted === 'number'
+    })
+    .reduce((sum, log) => sum + Number(log.quantityCompleted || 0), 0)
+}
+
+function computeOrderRevenue(order) {
+  const qty = computeOrderQuantity(order)
+  const price = Number(order?.pricePerUnit) || 0
+  return qty * price
+}
 
 function getCallerNames(order) {
   return order.assignedCallers
@@ -253,6 +351,15 @@ async function loadMonthWeeks() {
 </script>
 
 <style scoped>
+  .sticky-toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: #ffffff;
+    padding-top: 8px;
+    margin-bottom: 12px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+  }
   .order-card {
     transition: box-shadow 0.3s ease;
   }

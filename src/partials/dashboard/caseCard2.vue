@@ -44,6 +44,9 @@
       </div>
 
       <div>
+        <strong>Start:</strong> {{ formatDate(order.startDate) }}
+      </div>
+      <div>
         <strong>Deadline:</strong> {{ formatDate(order.deadline) }}
       </div>
       <div>
@@ -187,9 +190,10 @@
             console.log('Agent Names:', agentNames);
             return agentNames
         },
-        formatDate() {
-            
-            return new Date(this.order.deadline).toLocaleDateString();
+        formatDate(value) {
+            const v = value ?? this.order?.deadline
+            if (!v) return ''
+            return new Date(v).toLocaleDateString();
         },
         navigateTo(value) {
             router.push({ name: value });

@@ -8,7 +8,7 @@
             </v-btn>
 
             <v-btn color="primary" @click="openAddCaseModal">
-                Add Case
+                Add Customer
             </v-btn>
 
             <!-- Date Range Display (center) -->
@@ -23,7 +23,7 @@
             </div>
 
             <v-btn color="primary" @click="openAddOrderModal">
-                Add Order
+                Add Campaign
             </v-btn>
 
             <v-btn
@@ -31,7 +31,16 @@
                 :disabled="!selectedOrder"
                 @click="openEditOrderModal"
             >
-                Edit Order
+                Edit Campaign
+            </v-btn>
+
+            <v-btn
+                color="success"
+                :disabled="bulkCopying || !filteredSortedOrders.length"
+                :loading="bulkCopying"
+                @click="bulkCopyOrdersToNextMonth"
+            >
+                Bulk Copy Campaigns
             </v-btn>
         </div>
     </v-card>
@@ -47,7 +56,13 @@
           class="elevation-1 mobile-scroll"
           :items-per-page="20"
           density="comfortable"
-          :item-class="({ item }) => item._id === selectedOrderId ? 'selected-row' : ''"
+          :item-class="({ item }) => {
+            const id = item?.raw?._id ?? item?._id;
+            return [
+              id === selectedOrderId ? 'selected-row' : '',
+              copiedToNextMonth[String(id)] ? 'copied-row' : ''
+            ].filter(Boolean).join(' ');
+          }"
           @click:row="selectOrder"
         >
           <template #item.copy="{ item }">
@@ -119,6 +134,14 @@
                 hide-details
                 label="Goal"
                 style="max-width: 100px;"
+              />
+              <v-text-field
+                v-model.number="agent.rateForThisOrder"
+                type="number"
+                dense
+                hide-details
+                label="Rate (€)"
+                style="max-width: 120px;"
               />
             </v-col>
 
@@ -304,6 +327,13 @@
                 min="0"
                 style="max-width: 100px"
                 />
+              <v-text-field
+                v-model.number="agentRates[agentId]"
+                label="Rate (€)"
+                type="number"
+                min="0"
+                style="max-width: 120px"
+              />
             </v-list-item-action>
             </v-list-item>
         </v-list>
@@ -434,6 +464,7 @@ const store = useStore()
 const router = useRouter()
 const formRef = ref(null)
 const agentGoals = reactive({});
+const agentRates = reactive({});
 const agentForm = ref(null);
 const caseForm = ref(null);
 const selectedOrder = ref(null)
@@ -444,6 +475,179 @@ const showEditOrderModal = ref(false);
 const showAddCaseModal = ref(false);
 const showAddAgentModal = ref(false);
 const showAddOrderModal = ref(false);
+
+const copiedToNextMonth = reactive({});
+const pendingCopySourceId = ref(null);
+const bulkCopying = ref(false);
+
+function formatLocalDate(date) {
+  const d = new Date(date);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function saveCopiedFlags() {
+  try {
+    localStorage.setItem('gc_copied_to_next_month', JSON.stringify(copiedToNextMonth));
+  } catch {}
+}
+
+function loadCopiedFlags() {
+  try {
+    const raw = localStorage.getItem('gc_copied_to_next_month');
+    if (!raw) return;
+    const obj = JSON.parse(raw) || {};
+    Object.keys(obj).forEach(k => copiedToNextMonth[k] = !!obj[k]);
+  } catch {}
+}
+
+function resetCopiedFlags() {
+  Object.keys(copiedToNextMonth).forEach(k => delete copiedToNextMonth[k]);
+}
+
+function recomputeCopiedFlags() {
+  resetCopiedFlags();
+  const all = orders.value || [];
+  const range = currentDateRange.value || [];
+  const start = range[0];
+  if (!all.length || !start) {
+    saveCopiedFlags();
+    return;
+  }
+
+  // Bounds for current month and next month
+  const { from: currFrom, to: currTo } = monthBoundsFrom(start);
+  const nextFrom = new Date(currFrom.getFullYear(), currFrom.getMonth() + 1, 1, 0, 0, 0, 0);
+  const nextTo   = new Date(currFrom.getFullYear(), currFrom.getMonth() + 2, 0, 23, 59, 59, 999);
+
+  // Index next-month orders by identity key
+  const keyOf = (o) => `${String(o.caseId || '')}|${String(o.caseUnit || '')}|${Number(o.pricePerUnit || 0)}`;
+  const nextKeys = new Set(
+    all
+      .filter(o => overlapsMonth(o, nextFrom, nextTo))
+      .map(o => keyOf(o))
+  );
+
+  // For each current-month order, flag if equivalent exists in next month
+  all
+    .filter(o => overlapsMonth(o, currFrom, currTo))
+    .forEach(o => {
+      if (nextKeys.has(keyOf(o))) {
+        copiedToNextMonth[String(o._id)] = true;
+      }
+    });
+
+  saveCopiedFlags();
+}
+
+function isNextMonthOf(a, b) {
+  // returns true if date b is in the calendar month immediately after a
+  const da = new Date(a);
+  const db = new Date(b);
+  const ya = da.getFullYear();
+  const yb = db.getFullYear();
+  const ma = da.getMonth();
+  const mb = db.getMonth();
+  return (yb === ya && mb === ma + 1) || (yb === ya + 1 && ma === 11 && mb === 0);
+}
+
+function deriveCopiedFlagsFromOrders(allOrders) {
+  if (!Array.isArray(allOrders) || !allOrders.length) return;
+  // Build quick index by caseId for faster matching
+  const byCase = new Map();
+  for (const o of allOrders) {
+    const key = String(o.caseId || '');
+    if (!byCase.has(key)) byCase.set(key, []);
+    byCase.get(key).push(o);
+  }
+
+  for (const o of allOrders) {
+    const caseKey = String(o.caseId || '');
+    const candidates = byCase.get(caseKey) || [];
+    const hasNext = candidates.some(p => (
+      p._id !== o._id &&
+      isNextMonthOf(o.startDate, p.startDate) &&
+      String(p.caseUnit || '') === String(o.caseUnit || '') &&
+      Number(p.pricePerUnit || 0) === Number(o.pricePerUnit || 0)
+    ));
+    if (hasNext) {
+      copiedToNextMonth[String(o._id)] = true;
+    }
+  }
+  saveCopiedFlags();
+}
+
+function monthDateRangeForNextMonthFrom(dateLike) {
+  const d = new Date(dateLike);
+  const y = d.getFullYear();
+  const m = d.getMonth();
+  const first = new Date(y, m + 1, 1);
+  const last = new Date(y, m + 2, 0);
+  return [formatLocalDate(first), formatLocalDate(last)];
+}
+
+async function bulkCopyOrdersToNextMonth() {
+  if (!filteredSortedOrders.value || !filteredSortedOrders.value.length) return;
+  try {
+    bulkCopying.value = true;
+    const sourceOrders = filteredSortedOrders.value;
+
+    // Use the first order's startDate as the anchor for month calculation
+    const anchor = sourceOrders[0]?.startDate || (currentDateRange.value?.[0]);
+    const [nextStart, nextEnd] = monthDateRangeForNextMonthFrom(anchor);
+
+    for (const o of sourceOrders) {
+      // Skip if an equivalent order already exists next month
+      const duplicateExists = (orders.value || []).some(p => (
+        String(p.caseId || '') === String(o.caseId || '') &&
+        isNextMonthOf(o.startDate, p.startDate) &&
+        String(p.caseUnit || '') === String(o.caseUnit || '') &&
+        Number(p.pricePerUnit || 0) === Number(o.pricePerUnit || 0)
+      ));
+      if (duplicateExists) {
+        copiedToNextMonth[String(o._id)] = true; // ensure highlight
+        continue;
+      }
+
+      const assignedIds = [...new Set(
+        (o.assignedCallers || []).map(x => String(x?._id ?? x?.id ?? x))
+      )];
+
+      const payload = {
+        caseId: o.caseId || null,
+        caseUnit: o.caseUnit || null,
+        pricePerUnit: Number(o.pricePerUnit) || 0,
+        totalQuantity: Number(o.totalQuantity) || 0,
+        startDate: nextStart,
+        deadline: nextEnd,
+        orderStatus: o.orderStatus || 'pending',
+        caseType: o.caseType || null,
+        ProjectStartFee: Number(o.ProjectStartFee || 0),
+        ProjectManagmentFee: Number(o.ProjectManagmentFee || 0),
+        managers: o.managers || [],
+        assignedCallers: assignedIds,
+        agentGoals: { ...(o.agentGoals || {}) },
+        caseName: o.caseName || '',
+        estimatedRevenue: (Number(o.pricePerUnit) || 0) * (Number(o.totalQuantity) || 0),
+      };
+
+      try {
+        await axios.post(`${urls.backEndURL}/orders/`, payload);
+        copiedToNextMonth[String(o._id)] = true;
+      } catch (err) {
+        console.error('Bulk copy failed for order', o._id, err?.response?.data || err?.message);
+      }
+    }
+
+    saveCopiedFlags();
+    await fetchAllData();
+    recomputeCopiedFlags();
+  } finally {
+    bulkCopying.value = false;
+  }
+}
 
 
 async function fetchAllData() {
@@ -460,6 +664,7 @@ const cases = computed(() => store.getters['cases'])
 const roles = ['admin', 'caller', 'manager']
 const message = ref('')
 const alertType = ref('success') // 'success' or 'error'
+const savingGoals = ref(false)
 const caseTypes = computed(() => {
   const list = store.getters.caseTypes || []
   // debug
@@ -525,11 +730,14 @@ const hasGoalChanges = computed(() => {
   const ord = selectedOrder.value;
   if (!ord || !ord.agentSummary) return false;
 
-  const original = ord.agentGoals || {};
+  const originalGoals = ord.agentGoals || {};
+  const originalRates = ord.agentRates || {};
   return ord.agentSummary.some(a => {
-    const newVal = Number(a.goalForThisOrder) || 0;
-    const oldVal = Number(original[a.id]) || 0;
-    return newVal !== oldVal;
+    const newGoal = Number(a.goalForThisOrder) || 0;
+    const oldGoal = Number(originalGoals[a.id]) || 0;
+    const newRate = Number(a.rateForThisOrder) || 0;
+    const oldRate = Number(originalRates[a.id]) || 0;
+    return newGoal !== oldGoal || newRate !== oldRate;
   });
 });
 
@@ -565,8 +773,7 @@ const getCurrentMonthDateRange = () => {
   const now = new Date()
   const firstDay = new Date(now.getFullYear(), now.getMonth(), 1)
   const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0)
-  const format = (date) => date.toISOString().split('T')[0]
-  return [format(firstDay), format(lastDay)]
+  return [formatLocalDate(firstDay), formatLocalDate(lastDay)]
 }
 
 
@@ -662,6 +869,10 @@ function copyOrder(item) {
   // reset form and local goals
   form.value = defaultForm();
   Object.keys(agentGoals).forEach(k => agentGoals[k] = 0);
+  Object.keys(agentRates).forEach(k => agentRates[k] = 0);
+
+  // remember the source order to highlight after successful copy
+  pendingCopySourceId.value = item._id;
 
   const assignedIds = [...new Set(
     (item.assignedCallers || []).map(x => String(x?._id ?? x?.id ?? x))
@@ -671,16 +882,19 @@ function copyOrder(item) {
   form.value.caseUnit = item.caseUnit || null;
   form.value.pricePerUnit = Number(item.pricePerUnit) || 0;
   form.value.totalQuantity = Number(item.totalQuantity) || 0;
-  const [startOfMonth, endOfMonth] = getCurrentMonthDateRange();
-  form.value.startDate = startOfMonth;
-  form.value.deadline = endOfMonth;
+  const [nextStart, nextEnd] = monthDateRangeForNextMonthFrom(item.startDate || currentDateRange.value?.[0]);
+  form.value.startDate = nextStart;
+  form.value.deadline = nextEnd;
   form.value.orderStatus = item.orderStatus || 'pending';
   form.value.assignedCallers = assignedIds;
 
   // hydrate agent goals for assigned agents
   const goals = item.agentGoals || {};
+  const rates = item.agentRates || {};
+  const prices = item.agentPrices || {};
   assignedIds.forEach(id => {
     agentGoals[id] = Number(goals[id]) || 0;
+    agentRates[id] = Number(rates[id]) || Number(prices[id]) || 0;
   });
 
   isEditMode.value = false; // ensure we're creating a new order
@@ -699,9 +913,43 @@ function openAddCaseModal() {
 
 function openEditOrderModal() {
   if (!selectedOrder.value) return
-  
-  // Navigate to the edit order form
-  router.push({ name: 'editOrderForm', params: { id: selectedOrder.value._id } });
+
+  // hydrate form from selected order and open modal in edit mode
+  const o = selectedOrder.value;
+  form.value = defaultForm();
+
+  // basic fields
+  form.value.caseId = o.caseId || null;
+  form.value.caseUnit = o.caseUnit || null;
+  form.value.pricePerUnit = Number(o.pricePerUnit) || 0;
+  form.value.totalQuantity = Number(o.totalQuantity) || 0;
+  form.value.startDate = toDateInputString(o.startDate) || '';
+  form.value.deadline = toDateInputString(o.deadline) || '';
+  form.value.orderStatus = o.orderStatus || 'pending';
+  form.value.caseType = o.caseType || null;
+
+  // managers -> ids
+  const mgrs = Array.isArray(o.managers) ? o.managers : [];
+  form.value.managers = mgrs.map(m => m?.id || m?._id || m).filter(Boolean);
+
+  // assigned callers -> ids
+  const assignedIds = [...new Set(
+    (o.assignedCallers || []).map(x => String(x?._id ?? x?.id ?? x))
+  )];
+  form.value.assignedCallers = assignedIds;
+
+  // hydrate agent goals/rates for assigned agents
+  Object.keys(agentGoals).forEach(k => (agentGoals[k] = 0));
+  Object.keys(agentRates).forEach(k => (agentRates[k] = 0));
+  const goals = o.agentGoals || {};
+  const rates = o.agentRates || {};
+  assignedIds.forEach(id => {
+    agentGoals[id] = Number(goals[id]) || 0;
+    agentRates[id] = Number(rates[id]) || 0;
+  });
+
+  isEditMode.value = true;
+  showAddOrderModal.value = true;
 }
 
 function closeAddOrderModal() {
@@ -786,6 +1034,19 @@ const selectOrder = async (order, event) => {
 
   console.log('Selected order:', item);
   console.log('Selected order ID:', selectedOrderId.value);
+  try {
+    console.log('[AssignGoals] Selected order full payload ->\n', JSON.stringify(item, null, 2));
+  } catch {}
+  console.log('[AssignGoals] Selected case summary', {
+    orderId: String(item?._id),
+    caseName: item?.caseName,
+    caseId: item?.caseId,
+    agentGoals: item?.agentGoals,
+    agentRates: item?.agentRates,
+    agentPrices: item?.agentPrices,
+    agentAssignments: item?.agentAssignments,
+    assignedCallers: item?.assignedCallers,
+  });
 
   // clear local goals cache
   Object.keys(agentGoals).forEach(k => (agentGoals[k] = 0));
@@ -803,9 +1064,22 @@ const selectOrder = async (order, event) => {
   const orderId   = String(selectedOrder.value._id);
   const price     = Number(selectedOrder.value.pricePerUnit) || 0;
   const goalsObj  = selectedOrder.value.agentGoals || {};
+  const ratesObj  = selectedOrder.value.agentRates || {};
+  const pricesObj = selectedOrder.value.agentPrices || {};
+  const assignments = Array.isArray(selectedOrder.value.agentAssignments)
+    ? selectedOrder.value.agentAssignments
+    : [];
   const assignedIds = [...new Set(
     (selectedOrder.value.assignedCallers || []).map(x => String(x?._id ?? x?.id ?? x))
   )];
+
+  console.log('[AssignGoals] Incoming agent data sources', {
+    goalsObj,
+    ratesObj,
+    pricesObj,
+    assignments,
+    assignedIds,
+  });
 
   // build a fast lookup from agentStats
   const statsAgents = agentStats?.agents || [];
@@ -819,6 +1093,19 @@ const selectOrder = async (order, event) => {
 
   
     const goalForThisOrder = Number(goalsObj[agentId]) || 0;
+    const rateFromMap = Number(ratesObj[agentId]) || 0;
+    const rateFromAssignments = Number(assignments.find(a => String(a.id) === agentId)?.rate) || 0;
+    const rateFromPrices = Number(pricesObj[agentId]) || 0;
+    const rateForThisOrder = rateFromMap || rateFromAssignments || rateFromPrices || 0;
+
+    console.log('[AssignGoals] Agent rate resolution', {
+      agentId,
+      name,
+      rateFromMap,
+      rateFromAssignments,
+      rateFromPrices,
+      chosenRate: rateForThisOrder,
+    });
 
     // prefer the order entry from bucket.orders if present; fallback to goal*price
     const orderEntry = bucket?.orders?.find(o => String(o.orderId) === orderId);
@@ -829,6 +1116,7 @@ const selectOrder = async (order, event) => {
       id: agentId,
       name,
       goalForThisOrder,
+      rateForThisOrder,
       revenueForThisOrder,
       revenueForThisOrderFormatted: currency(revenueForThisOrder),
 
@@ -860,7 +1148,19 @@ const assignGoals = async () => {
     // Prepare the updated order object
     const updatedOrder = {
       ...selectedOrder.value,
-      agentGoals: { ...agentGoals }
+      agentGoals: { ...agentGoals },
+      agentRates: Object.fromEntries(
+        (selectedOrder.value.agentSummary || []).map(a => [a.id, Number(a.rateForThisOrder) || 0])
+      ),
+      agentPrices: Object.fromEntries(
+        (selectedOrder.value.agentSummary || []).map(a => [a.id, Number(a.rateForThisOrder) || 0])
+      ),
+      agentAssignments: (selectedOrder.value.agentSummary || []).map(a => ({
+        id: a.id,
+        name: a.name,
+        goal: Number(a.goalForThisOrder) || 0,
+        rate: Number(a.rateForThisOrder) || 0,
+      })),
     };
     // Send the update request
     console.log('Updating order with goals:', updatedOrder);
@@ -875,6 +1175,15 @@ const assignGoals = async () => {
     alert('Failed to save goals!');
   }
 };
+
+const submitGoals = async () => {
+  savingGoals.value = true;
+  try {
+    await assignGoals();
+  } finally {
+    savingGoals.value = false;
+  }
+}
 
 const agentOptions = computed(() => agents.value.map(a => ({
   value: a._id,
@@ -942,6 +1251,14 @@ const submitOredrForm = async () => {
       estimatedRevenue: estimatedRevenue.value, // ensure computed is included
       caseName: selectedCase ? selectedCase.name : '',
       agentGoals: { ...agentGoals },
+      agentRates: { ...agentRates },
+    agentPrices: { ...agentRates }, // legacy mirror for backend compatibility
+      agentAssignments: (form.value.assignedCallers || []).map(id => ({
+        id,
+        name: agentName(id),
+        goal: Number(agentGoals[id]) || 0,
+        rate: Number(agentRates[id]) || 0,
+      })),
       managers: (form.value.managers || []).map(id => {
         const agent = gcAgents.value.find(a => a._id === id)
         return agent ? { id, name: agent.name } : { id, name: '' }
@@ -958,9 +1275,16 @@ const submitOredrForm = async () => {
     } else {
       // Add mode: create a new order
       await axios.post(`${urls.backEndURL}/orders/`, payload)
+      // mark the source order as copied for green highlight
+      if (pendingCopySourceId.value) {
+        copiedToNextMonth[String(pendingCopySourceId.value)] = true;
+        pendingCopySourceId.value = null;
+        saveCopiedFlags();
+      }
     }
 
     await fetchAllData()
+    try { deriveCopiedFlagsFromOrders(orders.value || []); } catch {}
 
     if (isEditMode.value && selectedOrder.value) {
       const updated = orders.value.find(o => o._id === selectedOrder.value._id)
@@ -1014,25 +1338,38 @@ onMounted(async () => {
   try { await store.dispatch('fetchCaseTypes') } catch {}
   console.log('orders:', orders.value);
 
+  loadCopiedFlags();
+  // derive historical copied flags so past copies show up (e.g., Oct -> Nov)
+  try { deriveCopiedFlagsFromOrders(orders.value || []); } catch {}
+
   if (!currentDateRange || currentDateRange.length < 2) {
       const now = new Date();
       const year = now.getFullYear();
       const month = now.getMonth();
-      // Use UTC methods to avoid timezone issues
-      const startDate = new Date(Date.UTC(year, month, 1)); // First day of the current month
-      const endDate = new Date(Date.UTC(year, month + 1, 0)); // Last day of the current month
-      const format = (date) => date.toISOString().split('T')[0]
-
-      updateDateRange([format(startDate), format(endDate)]); // Set the default date range
+      // Use local dates to avoid timezone shifting in inputs
+      const startDate = new Date(year, month, 1); // First day of current month
+      const endDate = new Date(year, month + 1, 0); // Last day of current month
+      updateDateRange([formatLocalDate(startDate), formatLocalDate(endDate)]); // Set the default date range
     }
     console.log('filteredSortedOrders',filteredSortedOrders.value)
 
 })
 
+watch(
+  () => [orders.value, currentDateRange.value?.[0], currentDateRange.value?.[1]],
+  () => {
+    recomputeCopiedFlags();
+  },
+  { deep: true }
+)
+
 </script>
 <style>
   ::v-deep(.selected-row) {
     background-color: #e0f7fa !important; /* light blue */
+  }
+  ::v-deep(.copied-row) {
+    background-color: #e8f5e9 !important; /* light green */
   }
   /* Mobile styles for Assign Goals */
   .assign-goals .responsive-toolbar {

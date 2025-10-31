@@ -108,7 +108,8 @@ const store = createStore({
           fetchPromises.push(
             dispatch('fetchOrders', true), // force fetch
             dispatch('fetchgcAgents', true), // force fetch
-            dispatch('fetchGcCases', true) // force fetch
+            dispatch('fetchGcCases', true), // force fetch
+            dispatch('fetchCaseTypes')
           );
           break;
           
@@ -124,7 +125,8 @@ const store = createStore({
           fetchPromises.push(
             dispatch('fetchOrders'),
             dispatch('fetchgcAgents'),
-            dispatch('fetchDailyLogs')
+            dispatch('fetchDailyLogs'),
+            dispatch('fetchCaseTypes')
           );
           break;
           
