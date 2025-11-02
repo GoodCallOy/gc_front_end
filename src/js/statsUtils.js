@@ -205,4 +205,117 @@ export function populateCasesSortedByAgent(agentStats, selectedAgent) {
     }
   }
 
+  /**
+   * Check if an order spans multiple months
+   * @param {Object} order - Order object with startDate and deadline
+   * @returns {boolean} - True if order spans multiple months
+   */
+  export function orderSpansMultipleMonths(order) {
+    if (!order.startDate || !order.deadline) return false;
+    
+    const start = new Date(order.startDate);
+    const end = new Date(order.deadline);
+    
+    // Check if start and end are in different months/years
+    return start.getFullYear() !== end.getFullYear() || 
+           start.getMonth() !== end.getMonth();
+  }
+
+  /**
+   * Get all months an order spans
+   * @param {Object} order - Order object with startDate and deadline
+   * @returns {Array} - Array of month objects with {year, month, startDate, endDate}
+   */
+  export function getOrderMonths(order) {
+    if (!order.startDate || !order.deadline) return [];
+    
+    const start = new Date(order.startDate);
+    const end = new Date(order.deadline);
+    
+    const months = [];
+    let current = new Date(start);
+    current.setDate(1); // Start of month
+    
+    while (current <= end) {
+      const year = current.getFullYear();
+      const month = current.getMonth();
+      
+      // First day of this month within the order range
+      const monthStart = new Date(Math.max(start.getTime(), new Date(year, month, 1).getTime()));
+      
+      // Last day of this month within the order range
+      const lastDayOfMonth = new Date(year, month + 1, 0);
+      const monthEnd = new Date(Math.min(end.getTime(), lastDayOfMonth.getTime()));
+      
+      months.push({
+        year,
+        month: month + 1, // 1-indexed for display
+        monthKey: `${year}-${String(month + 1).padStart(2, '0')}`,
+        startDate: monthStart,
+        endDate: monthEnd,
+        startDateStr: monthStart.toISOString().split('T')[0],
+        endDateStr: monthEnd.toISOString().split('T')[0]
+      });
+      
+      // Move to next month
+      current.setMonth(month + 1);
+    }
+    
+    return months;
+  }
+
+  /**
+   * Calculate progress per month for an order
+   * @param {Object} order - Order object
+   * @param {Array} dailyLogs - Array of daily log objects
+   * @returns {Array} - Array of monthly progress objects
+   */
+  export function calculateMonthlyProgress(order, dailyLogs) {
+    if (!order || !dailyLogs || !Array.isArray(dailyLogs)) return [];
+    
+    const months = getOrderMonths(order);
+    const orderId = order._id || order.id;
+    
+    // Helper to match log to order
+    const isOrderMatch = (log) => {
+      return (
+        (log.order?._id && orderId && String(log.order._id) === String(orderId)) ||
+        (log.caseId && order.caseId && String(log.caseId) === String(order.caseId)) ||
+        (log.caseName && order.caseName && String(log.caseName) === String(order.caseName))
+      );
+    };
+    
+    const monthlyProgress = months.map(monthInfo => {
+      const monthStart = new Date(monthInfo.startDateStr);
+      const monthEnd = new Date(monthInfo.endDateStr);
+      monthEnd.setHours(23, 59, 59, 999);
+      
+      // Filter logs for this month and order
+      const monthLogs = dailyLogs.filter(log => {
+        if (!isOrderMatch(log)) return false;
+        const logDate = new Date(log.date);
+        return logDate >= monthStart && logDate <= monthEnd;
+      });
+      
+      // Calculate total quantity completed in this month
+      const quantityCompleted = monthLogs.reduce(
+        (sum, log) => sum + (Number(log.quantityCompleted) || 0),
+        0
+      );
+      
+      // Calculate revenue for this month
+      const unitPrice = Number(order.pricePerUnit || 0);
+      const revenue = quantityCompleted * unitPrice;
+      
+      return {
+        ...monthInfo,
+        quantityCompleted,
+        revenue,
+        logCount: monthLogs.length
+      };
+    });
+    
+    return monthlyProgress;
+  }
+
   

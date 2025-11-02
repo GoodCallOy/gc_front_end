@@ -3,7 +3,7 @@
     <h1 class="mb-6">{{ isEditMode ? 'Edit Case' : 'Add New Case' }}</h1>
     
     <v-form ref="formRef" @submit.prevent="submitForm">
-      <v-select
+      <v-autocomplete
         v-model="form.caseId"
         :items="caseOptions"
         item-value="value"

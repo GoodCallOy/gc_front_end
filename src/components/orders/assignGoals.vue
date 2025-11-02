@@ -201,7 +201,7 @@
 
         <div class="d-flex flex-column align-center" style="justify-content: center; overflow-y: auto;">
         <v-form ref="formRef" style="width: 60%;" @submit.prevent="submitOredrForm">
-        <v-select
+        <v-autocomplete
             v-model="form.caseId"
             :items="caseOptions"
             item-value="value"

@@ -298,13 +298,13 @@ const store = createStore({
         console.error('❌ Error fetching gcAgents:', error)
       }
     },
-    async fetchDailyLogs({ state, commit }) {
-      if (state.dailyLogs.length && (Date.now() - state.lastFetch.dailyLogs < CACHE_TIMEOUT)) {
+    async fetchDailyLogs({ state, commit }, force = false) {
+      if (!force && state.dailyLogs.length && (Date.now() - state.lastFetch.dailyLogs < CACHE_TIMEOUT)) {
         console.log('✅ Using cached DailyLogs (data is fresh)', state.dailyLogs)
         return
       }
       try {
-        console.log('🌍 Fetching DailyLogs from API')
+        console.log('🌍 Fetching DailyLogs from API', force ? '(forced refresh)' : '')
         const response = await axios.get(`${urls.backEndURL}/dailyLogs?t=${Date.now()}`)
         commit('setDailyLogs', response.data)
         commit('setLastFetch', { key: 'dailyLogs', time: Date.now() })

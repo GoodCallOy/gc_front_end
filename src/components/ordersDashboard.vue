@@ -11,11 +11,25 @@
         @next="getNextMonth"
       />
 
-      <!-- Tabs -->
-      <v-tabs v-model="activeTab" density="comfortable" class="mb-2">
-        <v-tab value="tables">Tables</v-tab>
-        <v-tab value="cards">Cards</v-tab>
-      </v-tabs>
+      <!-- Tabs and Filter -->
+      <v-row class="mb-2" align="center">
+        <v-col cols="12" md="8">
+          <v-tabs v-model="activeTab" density="comfortable">
+            <v-tab value="tables">Tables</v-tab>
+            <v-tab value="cards">Cards</v-tab>
+          </v-tabs>
+        </v-col>
+        <v-col cols="12" md="4">
+          <v-select
+            v-model="selectedCaseType"
+            :items="caseTypeOptions"
+            label="Filter by Case Type"
+            clearable
+            density="comfortable"
+            hide-details
+          />
+        </v-col>
+      </v-row>
     </div>
 
     <!-- Revenue Summary Row -->
@@ -36,15 +50,82 @@
 
     <v-window v-model="activeTab">
       <v-window-item value="tables">
-        <v-card elevation="1">
-          <v-data-table
-            :headers="tableHeaders"
-            :items="filteredOrders"
-            item-value="_id"
-            class="elevation-0"
-            :items-per-page="25"
-            density="comfortable"
-          >
+        <div v-for="group in groupedOrdersByCaseType" :key="group.caseType" class="mb-6">
+          <v-card elevation="2" class="mb-2">
+            <v-card-title class="text-h6">
+              {{ group.caseType || 'Unspecified' }}
+              <v-chip size="small" class="ml-2">
+                {{ group.items.length }} {{ group.items.length === 1 ? 'case' : 'cases' }}
+              </v-chip>
+            </v-card-title>
+          </v-card>
+          <v-card elevation="1">
+            <v-data-table
+              :headers="tableHeaders"
+              :items="group.items"
+              item-value="_id"
+              class="elevation-0"
+              :items-per-page="25"
+              density="comfortable"
+              show-expand
+              :expanded="Array.from(expandedRows)"
+              @update:expanded="(value) => { expandedRows = new Set(value) }"
+            >
+            <template #item.data-table-expand="{ item }">
+              <v-btn
+                v-if="item.isMultiMonth"
+                icon
+                size="small"
+                variant="text"
+                @click.stop="toggleExpand(item._id)"
+              >
+                <v-icon>{{ expandedRows.has(item._id) ? 'mdi-chevron-up' : 'mdi-chevron-down' }}</v-icon>
+              </v-btn>
+              <v-icon v-else size="small" color="transparent">mdi-circle-outline</v-icon>
+            </template>
+            <template #expanded-row="{ item }">
+              <tr v-if="item.isMultiMonth && item.monthlyBreakdown">
+                <td :colspan="tableHeaders.length">
+                  <div class="pa-4 bg-grey-lighten-4">
+                    <h3 class="text-h6 mb-3">Monthly Breakdown</h3>
+                    <v-table density="compact">
+                      <thead>
+                        <tr>
+                          <th>Month</th>
+                          <th>Date Range</th>
+                          <th>Quantity Completed</th>
+                          <th>Revenue (€)</th>
+                          <th>Remaining</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr v-for="month in item.monthlyBreakdown" :key="month.monthKey">
+                          <td>{{ getMonthName(month.month) }} {{ month.year }}</td>
+                          <td>{{ formatDateDetailed(month.startDateStr) }} - {{ formatDateDetailed(month.endDateStr) }}</td>
+                          <td>{{ month.quantityCompleted }}</td>
+                          <td>€{{ formatCurrency(month.revenue) }}</td>
+                          <td>{{ Math.max(0, item.totalQuantity - getTotalCompletedUpToMonth(item.monthlyBreakdown, month.monthKey)) }}</td>
+                        </tr>
+                        <tr class="font-weight-bold">
+                          <td colspan="2">Total</td>
+                          <td>{{ getTotalQuantity(item.monthlyBreakdown) }}</td>
+                          <td>€{{ formatCurrency(getTotalRevenue(item.monthlyBreakdown)) }}</td>
+                          <td>{{ Math.max(0, item.totalQuantity - getTotalQuantity(item.monthlyBreakdown)) }}</td>
+                        </tr>
+                      </tbody>
+                    </v-table>
+                  </div>
+                </td>
+              </tr>
+            </template>
+            <template #item.caseName="{ item }">
+              <span>
+                {{ item.caseName }}
+                <v-chip v-if="item.isMultiMonth" size="x-small" color="primary" class="ml-2">
+                  Multi-Month
+                </v-chip>
+              </span>
+            </template>
             <template #item.callers="{ item }">
               {{ getCallerNames(item) }}
             </template>
@@ -63,20 +144,31 @@
             <template #item.deadline="{ item }">
               {{ formatDate(item.deadline) }}
             </template>
-          </v-data-table>
-        </v-card>
+            </v-data-table>
+          </v-card>
+        </div>
       </v-window-item>
 
       <v-window-item value="cards">
-        <div class="grid-container ">
-          <DashboardCard01
-          v-for="(order, index) in filteredOrders"
-          :key="index"
-          :order="order"
-          :agents="gcAgents"
-          :dailyLogs="dailyLogs"
-          :monthWeeks="monthWeeks"
-          />
+        <div v-for="group in groupedOrdersByCaseTypeForCards" :key="`cards-${group.caseType}`" class="mb-6">
+          <v-card elevation="2" class="mb-2">
+            <v-card-title class="text-h6">
+              {{ group.caseType || 'Unspecified' }}
+              <v-chip size="small" class="ml-2">
+                {{ group.items.length }} {{ group.items.length === 1 ? 'case' : 'cases' }}
+              </v-chip>
+            </v-card-title>
+          </v-card>
+          <div class="grid-container">
+            <DashboardCard01
+              v-for="(order, index) in group.items"
+              :key="`${group.caseType}-${order._id || index}`"
+              :order="order"
+              :agents="gcAgents"
+              :dailyLogs="dailyLogs"
+              :monthWeeks="monthWeeks"
+            />
+          </div>
         </div>
       </v-window-item>
     </v-window>
@@ -89,11 +181,13 @@ import { useStore } from 'vuex'
 import { goToNextMonth, goToPreviousMonth, formattedDateRange, isCurrentMonth, getMonthWeeks } from '@/js/dateUtils';
 import DashboardCard01 from '@/partials/dashboard/caseCard2.vue'
 import DateHeader from '@/components/DateHeader.vue'
+import { orderSpansMultipleMonths, calculateMonthlyProgress } from '@/js/statsUtils'
 
 const store = useStore()
 const activeTab = ref('tables')
 
 const tableHeaders = ([
+  { title: '', key: 'data-table-expand', sortable: false, width: '40px' },
   { title: 'Case Name', key: 'caseName' },
   { title: 'Status', key: 'orderStatus' },
   { title: 'Callers', key: 'callers', sortable: false },
@@ -111,8 +205,15 @@ const orders = computed(() => store.getters['orders'])
 const gcAgents = computed(() => store.getters['gcAgents'])
 const dailyLogs = computed(() => store.getters['dailyLogs'])
 const currentDateRange = computed(() => store.getters['currentDateRange'])
+const caseTypes = computed(() => store.getters['caseTypes'] || [])
 // Custom weeks for current month
 const monthWeeks = ref([])
+
+// Track expanded rows for multi-month cases
+const expandedRows = ref(new Set())
+
+// Case type filter
+const selectedCaseType = ref(null)
 
 // Filter orders by the selected month
 const filteredOrders = computed(() => {
@@ -133,20 +234,149 @@ const filteredOrders = computed(() => {
   });
 });
 
-// Calculate estimated revenue total from all orders for the month
+// Enrich orders with multi-month information
+const enrichedOrders = computed(() => {
+  let enriched = filteredOrders.value.map(order => {
+    const isMultiMonth = orderSpansMultipleMonths(order);
+    const monthlyBreakdown = isMultiMonth ? calculateMonthlyProgress(order, dailyLogs.value) : null;
+    
+    return {
+      ...order,
+      isMultiMonth,
+      monthlyBreakdown,
+    };
+  });
+  
+  // Apply case type filter
+  if (selectedCaseType.value) {
+    enriched = enriched.filter(order => order.caseType === selectedCaseType.value);
+  }
+  
+  return enriched;
+});
+
+// Filtered orders for cards view (with case type filter)
+const filteredOrdersByCaseType = computed(() => {
+  let filtered = filteredOrders.value;
+  
+  // Apply case type filter
+  if (selectedCaseType.value) {
+    filtered = filtered.filter(order => order.caseType === selectedCaseType.value);
+  }
+  
+  return filtered;
+});
+
+// Case type options for dropdown (include "All" option)
+const caseTypeOptions = computed(() => {
+  return [
+    ...caseTypes.value.map(type => ({ title: type, value: type })),
+  ];
+});
+
+// Group filtered orders by case type for cards view (respects filter if selected)
+const groupedOrdersByCaseTypeForCards = computed(() => {
+  // Get orders to group (already filtered by date range)
+  const ordersToGroup = filteredOrdersByCaseType.value;
+  
+  // Group by case type
+  const groups = {};
+  
+  // Initialize groups with all case types
+  caseTypes.value.forEach(type => {
+    groups[type] = {
+      caseType: type,
+      items: []
+    };
+  });
+  
+  // Add an "Unspecified" group for orders without a case type
+  groups['Unspecified'] = {
+    caseType: 'Unspecified',
+    items: []
+  };
+  
+  // Distribute orders into groups
+  ordersToGroup.forEach(order => {
+    const type = order.caseType || 'Unspecified';
+    if (!groups[type]) {
+      groups[type] = {
+        caseType: type,
+        items: []
+      };
+    }
+    groups[type].items.push(order);
+  });
+  
+  // Return groups that have items, sorted by case type name
+  return Object.values(groups)
+    .filter(group => group.items.length > 0)
+    .sort((a, b) => {
+      // Sort "Unspecified" to the end
+      if (a.caseType === 'Unspecified') return 1;
+      if (b.caseType === 'Unspecified') return -1;
+      return a.caseType.localeCompare(b.caseType);
+    });
+});
+
+// Group orders by case type for display
+const groupedOrdersByCaseType = computed(() => {
+  // Get all case types from the store and create groups
+  const groups = {};
+  
+  // Initialize groups with all case types
+  caseTypes.value.forEach(type => {
+    groups[type] = {
+      caseType: type,
+      items: []
+    };
+  });
+  
+  // Add an "Unspecified" group for orders without a case type
+  groups['Unspecified'] = {
+    caseType: 'Unspecified',
+    items: []
+  };
+  
+  // Distribute enriched orders into groups
+  enrichedOrders.value.forEach(order => {
+    const type = order.caseType || 'Unspecified';
+    if (!groups[type]) {
+      groups[type] = {
+        caseType: type,
+        items: []
+      };
+    }
+    groups[type].items.push(order);
+  });
+  
+  // Return groups that have items, sorted by case type name
+  return Object.values(groups)
+    .filter(group => group.items.length > 0)
+    .sort((a, b) => {
+      // Sort "Unspecified" to the end
+      if (a.caseType === 'Unspecified') return 1;
+      if (b.caseType === 'Unspecified') return -1;
+      return a.caseType.localeCompare(b.caseType);
+    });
+});
+
+// Calculate estimated revenue total from filtered orders (respects case type filter)
 const estimatedRevenueTotal = computed(() => {
-  if (!filteredOrders.value || filteredOrders.value.length === 0) {
+  const ordersToCalculate = selectedCaseType.value ? filteredOrdersByCaseType.value : filteredOrders.value;
+  if (!ordersToCalculate || ordersToCalculate.length === 0) {
     return 0;
   }
   
-  return filteredOrders.value.reduce((total, order) => {
+  return ordersToCalculate.reduce((total, order) => {
     return total + (Number(order.estimatedRevenue) || 0);
   }, 0);
 });
 
-// Calculate current revenue from daily logs for all orders in the month using custom weeks
+// Calculate current revenue from daily logs for filtered orders using custom weeks
 const currentRevenueTotal = computed(() => {
-  if (!dailyLogs.value || !filteredOrders.value || !monthWeeks.value) {
+  const ordersToCalculate = selectedCaseType.value ? filteredOrdersByCaseType.value : filteredOrders.value;
+  if (!dailyLogs.value || !ordersToCalculate || !monthWeeks.value) {
     return 0;
   }
 
@@ -176,7 +406,7 @@ const currentRevenueTotal = computed(() => {
     const quantityCompleted = Number(log.quantityCompleted) || 0;
     
     // Find the order for this log to get price per unit
-    const order = filteredOrders.value.find(o => 
+    const order = ordersToCalculate.find(o => 
       o.caseName === log.caseName || 
       String(o._id) === String(log.order?._id || log.order || log.orderId)
     );
@@ -288,9 +518,53 @@ function computeOrderRevenue(order) {
 }
 
 function getCallerNames(order) {
+  if (!order.assignedCallers || !Array.isArray(order.assignedCallers)) return ''
   return order.assignedCallers
     .map(id => gcAgents.value.find(agent => agent._id === id)?.name || 'Unknown')
     .join(', ')
+}
+
+function toggleExpand(orderId) {
+  const newExpanded = new Set(expandedRows.value)
+  if (newExpanded.has(orderId)) {
+    newExpanded.delete(orderId)
+  } else {
+    newExpanded.add(orderId)
+  }
+  expandedRows.value = newExpanded
+}
+
+function getMonthName(monthNum) {
+  const months = ['January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December']
+  return months[monthNum - 1] || ''
+}
+
+function formatDateDetailed(dateStr) {
+  if (!dateStr) return ''
+  const d = new Date(dateStr)
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+function getTotalQuantity(monthlyBreakdown) {
+  if (!monthlyBreakdown || !Array.isArray(monthlyBreakdown)) return 0
+  return monthlyBreakdown.reduce((sum, m) => sum + (m.quantityCompleted || 0), 0)
+}
+
+function getTotalRevenue(monthlyBreakdown) {
+  if (!monthlyBreakdown || !Array.isArray(monthlyBreakdown)) return 0
+  return monthlyBreakdown.reduce((sum, m) => sum + (m.revenue || 0), 0)
+}
+
+function getTotalCompletedUpToMonth(monthlyBreakdown, upToMonthKey) {
+  if (!monthlyBreakdown || !Array.isArray(monthlyBreakdown)) return 0
+  let total = 0
+  for (const m of monthlyBreakdown) {
+    if (m.monthKey <= upToMonthKey) {
+      total += (m.quantityCompleted || 0)
+    }
+  }
+  return total
 }
 
 onMounted(async () => {
@@ -300,6 +574,13 @@ onMounted(async () => {
     
     // Selective fetching - only fetch data needed for orders dashboard
     await store.dispatch('fetchForContext', 'ordersDashboard');
+    
+    // Ensure case types are loaded
+    try {
+      await store.dispatch('fetchCaseTypes');
+    } catch (e) {
+      console.warn('Failed to fetch case types:', e);
+    }
     
     // Initialize date range if not set
     if (!currentDateRange.value || currentDateRange.value.length < 2) {
@@ -315,6 +596,9 @@ onMounted(async () => {
     }
     // Load custom weeks for the current month
     await loadMonthWeeks()
+    
+    // Setup auto-refresh for daily logs
+    setupAutoRefresh()
   } catch (error) {
     console.error('Error fetching data on mount:', error)
   }
@@ -323,6 +607,18 @@ onMounted(async () => {
 onUnmounted(() => {
   // Unregister this component when it's destroyed
   store.commit('removeActiveComponent', 'ordersDashboard');
+  
+  // Clean up auto-refresh interval
+  if (refreshInterval.value) {
+    clearInterval(refreshInterval.value);
+    refreshInterval.value = null;
+  }
+  
+  // Remove focus event listener
+  if (focusHandler.value) {
+    window.removeEventListener('focus', focusHandler.value);
+    focusHandler.value = null;
+  }
 })
 
 // Reload custom weeks when date range (month) changes
@@ -331,6 +627,48 @@ watch(currentDateRange, async (newRange) => {
     await loadMonthWeeks()
   }
 })
+
+// Watch for changes in dailyLogs length to ensure breakdown refreshes
+watch(
+  () => dailyLogs.value?.length,
+  async (newLength, oldLength) => {
+    // If logs are added/removed, the computed properties will auto-update
+    // But we should also check if we need to refresh from server
+    if (oldLength !== undefined && newLength !== oldLength) {
+      console.log('Daily logs count changed, refreshing data...');
+    }
+  }
+)
+
+// Refresh daily logs periodically and on window focus to catch new data
+const refreshInterval = ref(null)
+const focusHandler = ref(null)
+
+function setupAutoRefresh() {
+  // Refresh every 30 seconds if component is active
+  refreshInterval.value = setInterval(async () => {
+    if (document.hasFocus() && store.state.activeComponents.has('ordersDashboard')) {
+      try {
+        await store.dispatch('fetchDailyLogs', true) // Force refresh
+      } catch (e) {
+        console.warn('Failed to refresh daily logs:', e)
+      }
+    }
+  }, 30000)
+  
+  // Also refresh when window gains focus
+  focusHandler.value = async () => {
+    if (store.state.activeComponents.has('ordersDashboard')) {
+      try {
+        await store.dispatch('fetchDailyLogs', true) // Force refresh
+      } catch (e) {
+        console.warn('Failed to refresh daily logs on focus:', e)
+      }
+    }
+  }
+  
+  window.addEventListener('focus', focusHandler.value)
+}
 
 async function loadMonthWeeks() {
   try {

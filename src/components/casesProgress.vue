@@ -28,13 +28,72 @@
         class="elevation-1"
         density="comfortable"
         :items-per-page="10"
+        show-expand
+        :expanded="Array.from(expandedRows)"
+        @update:expanded="(value) => { expandedRows = new Set(value) }"
+        item-value="orderId"
       >
+        <template #item.data-table-expand="{ item }">
+          <v-btn
+            v-if="item.isMultiMonth"
+            icon
+            size="small"
+            variant="text"
+            @click.stop="toggleExpand(item.orderId)"
+          >
+            <v-icon>{{ expandedRows.has(item.orderId) ? 'mdi-chevron-up' : 'mdi-chevron-down' }}</v-icon>
+          </v-btn>
+          <v-icon v-else size="small" color="transparent">mdi-circle-outline</v-icon>
+        </template>
+        <template #expanded-row="{ item }">
+          <tr v-if="item.isMultiMonth && item.monthlyBreakdown">
+            <td :colspan="headers.length">
+              <div class="pa-4 bg-grey-lighten-4">
+                <h3 class="text-h6 mb-3">Monthly Breakdown</h3>
+                <v-table density="compact">
+                  <thead>
+                    <tr>
+                      <th>Month</th>
+                      <th>Date Range</th>
+                      <th>Quantity Completed</th>
+                      <th>Revenue (€)</th>
+                      <th>Remaining</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="month in item.monthlyBreakdown" :key="month.monthKey">
+                      <td>{{ getMonthName(month.month) }} {{ month.year }}</td>
+                      <td>{{ formatDate(month.startDateStr) }} - {{ formatDate(month.endDateStr) }}</td>
+                      <td>{{ month.quantityCompleted }}</td>
+                      <td>€{{ formatCurrency(month.revenue) }}</td>
+                      <td>{{ Math.max(0, item.monthGoal - getTotalCompletedUpToMonth(item.monthlyBreakdown, month.monthKey)) }}</td>
+                    </tr>
+                    <tr class="font-weight-bold">
+                      <td colspan="2">Total</td>
+                      <td>{{ getTotalQuantity(item.monthlyBreakdown) }}</td>
+                      <td>€{{ formatCurrency(getTotalRevenue(item.monthlyBreakdown)) }}</td>
+                      <td>{{ Math.max(0, item.monthGoal - getTotalQuantity(item.monthlyBreakdown)) }}</td>
+                    </tr>
+                  </tbody>
+                </v-table>
+              </div>
+            </td>
+          </tr>
+        </template>
         <template #item.revenueNow="{ item }">€{{ formatCurrency(item.revenueNow) }}</template>
         <template #item.revenueGoal="{ item }">€{{ formatCurrency(item.revenueGoal) }}</template>
         <template #item.projectManagementFee="{ item }">€{{ formatCurrency(item.projectManagementFee) }}</template>
         <template #item.projectStartFee="{ item }">€{{ formatCurrency(item.projectStartFee) }}</template>
         <template #item.invoicePrice="{ item }">€{{ formatCurrency(item.invoicePrice) }}</template>
         <template #item.totalPrice="{ item }">€{{ formatCurrency(item.totalPrice) }}</template>
+        <template #item.caseName="{ item }">
+          <span>
+            {{ item.caseName }}
+            <v-chip v-if="item.isMultiMonth" size="x-small" color="primary" class="ml-2">
+              Multi-Month
+            </v-chip>
+          </span>
+        </template>
         <template #item.actions="{ item }">
           <v-btn icon size="small" color="grey" title="Edit Order" @click="editOrder(item)">
             <v-icon>mdi-pencil</v-icon>
@@ -51,8 +110,10 @@ import { useStore } from 'vuex'
 import DateHeader from '@/components/DateHeader.vue'
 import { goToNextMonth, goToPreviousMonth } from '@/js/dateUtils'
 import { useRouter } from 'vue-router'
+import { orderSpansMultipleMonths, calculateMonthlyProgress } from '@/js/statsUtils'
 
 const headers = [
+  { title: '', key: 'data-table-expand', sortable: false, width: '40px' },
   { title: 'Case Name', key: 'caseName', sortable: true },
   { title: 'Case Unit', key: 'caseUnit', sortable: true },
   { title: 'Managers', key: 'managers', sortable: false },
@@ -99,6 +160,9 @@ const caseIdToCase = computed(() => {
 })
 const currentDateRange = computed(() => store.getters['currentDateRange'])
 const monthWeeks = ref([])
+
+// Track expanded rows for each case type group
+const expandedRows = ref(new Set())
 
 function getPreviousMonth() {
   const prev = goToPreviousMonth(currentDateRange.value)
@@ -198,6 +262,10 @@ const tableRowsFromOrders = computed(() => {
       const monthGoal = Number(o.totalQuantity || 0)
       const revenueGoal = Number(o.estimatedRevenue || 0)
 
+      // Check if order spans multiple months
+      const isMultiMonth = orderSpansMultipleMonths(o)
+      const monthlyBreakdown = isMultiMonth ? calculateMonthlyProgress(o, dailyLogs.value) : null
+
       // Current Amount = sum of quantityCompleted from daily logs for this order within current month
       const range = currentDateRange.value || []
       const [startDate, endDate] = range
@@ -220,12 +288,17 @@ const tableRowsFromOrders = computed(() => {
         .filter(l => isInRange(l.date) && isOrderMatch(l))
         .reduce((sum, l) => sum + (Number(l.quantityCompleted) || 0), 0)
 
+      // For multi-month cases, calculate total completed across all months
+      const totalCompleted = isMultiMonth && monthlyBreakdown
+        ? monthlyBreakdown.reduce((sum, m) => sum + m.quantityCompleted, 0)
+        : currentAmount
+
       // Revenue Now = currentAmount * unit price from order
       const unitPrice = Number(o.pricePerUnit || 0)
       const revenueNow = currentAmount * unitPrice
 
       // Placeholders for now; will be computed from logs/orders per month later
-      const goalMissing = Math.max(monthGoal - currentAmount, 0)
+      const goalMissing = Math.max(monthGoal - totalCompleted, 0)
       // Fees/prices: invoice price from order.pricePerUnit, start fee from order
       const projectStartFee = Number(o.ProjectStartFee || o.projectStartFee || 0)
       const invoicePrice = Number(o.pricePerUnit || caseMeta.invoicePrice || 0)
@@ -239,8 +312,10 @@ const tableRowsFromOrders = computed(() => {
         caseUnit: o.caseUnit || '—',
         managers,
         orderId: o._id || o.id,
+        order: o, // Store original order for monthly breakdown
         monthGoal,
         currentAmount,
+        totalCompleted, // Total across all months
         goalMissing,
         revenueNow,
         revenueGoal,
@@ -248,6 +323,8 @@ const tableRowsFromOrders = computed(() => {
         projectStartFee,
         invoicePrice,
         totalPrice,
+        isMultiMonth,
+        monthlyBreakdown,
       })
     })
   })
@@ -302,6 +379,49 @@ const groupedByCaseType = computed(() => {
 function formatCurrency(n) {
   const v = Number(n || 0)
   return v.toFixed(2)
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return ''
+  const d = new Date(dateStr)
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+function getMonthName(monthNum) {
+  const months = ['January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December']
+  return months[monthNum - 1] || ''
+}
+
+function getTotalQuantity(monthlyBreakdown) {
+  if (!monthlyBreakdown || !Array.isArray(monthlyBreakdown)) return 0
+  return monthlyBreakdown.reduce((sum, m) => sum + (m.quantityCompleted || 0), 0)
+}
+
+function getTotalRevenue(monthlyBreakdown) {
+  if (!monthlyBreakdown || !Array.isArray(monthlyBreakdown)) return 0
+  return monthlyBreakdown.reduce((sum, m) => sum + (m.revenue || 0), 0)
+}
+
+function getTotalCompletedUpToMonth(monthlyBreakdown, upToMonthKey) {
+  if (!monthlyBreakdown || !Array.isArray(monthlyBreakdown)) return 0
+  let total = 0
+  for (const m of monthlyBreakdown) {
+    if (m.monthKey <= upToMonthKey) {
+      total += (m.quantityCompleted || 0)
+    }
+  }
+  return total
+}
+
+function toggleExpand(orderId) {
+  const newExpanded = new Set(expandedRows.value)
+  if (newExpanded.has(orderId)) {
+    newExpanded.delete(orderId)
+  } else {
+    newExpanded.add(orderId)
+  }
+  expandedRows.value = newExpanded
 }
 
 function editOrder(item) {
