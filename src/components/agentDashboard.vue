@@ -217,22 +217,39 @@ const revenueGenerated = computed(() => {
     }
   });
   
-  // Calculate total units and revenue from deduplicated logs for ALL cases the agent is assigned to
+  // Helper function to check if an order is a test case
+  function isTestCase(order) {
+    if (!order) return false;
+    const caseType = String(order.caseType || '').toLowerCase();
+    if (caseType.includes('test')) return true;
+    const caseName = String(order.caseName || '').toLowerCase();
+    if (caseName.includes('test')) return true;
+    if (order.isTest === true || order.test === true) return true;
+    return false;
+  }
+
+  // Calculate total units and revenue from deduplicated logs for ALL cases the agent is assigned to (excluding test cases)
   const agentCases = orders.value.filter(order => 
-    order.assignedCallers && order.assignedCallers.includes(agentId)
+    order.assignedCallers && order.assignedCallers.includes(agentId) && !isTestCase(order)
   );
   
   let totalUnits = 0;
   let totalRevenue = 0;
   
   uniqueLogs.forEach(log => {
+    // Check if log case name indicates test
+    const caseName = String(log.caseName || '').toLowerCase();
+    if (caseName.includes('test')) return;
+    
     const logQuantityCompleted = Number(log.quantityCompleted) || 0;
     totalUnits += logQuantityCompleted;
     
     // Find the case for this log to get the correct price per unit
     const logCase = agentCases.find(c => c.caseName === log.caseName);
-    const pricePerUnit = logCase?.pricePerUnit || 0;
-    totalRevenue += logQuantityCompleted * pricePerUnit;
+    if (logCase && !isTestCase(logCase)) {
+      const pricePerUnit = logCase.pricePerUnit || 0;
+      totalRevenue += logQuantityCompleted * pricePerUnit;
+    }
   });
   
   const revenue = totalRevenue.toFixed(2);

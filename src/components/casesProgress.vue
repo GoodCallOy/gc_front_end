@@ -112,6 +112,24 @@ import { goToNextMonth, goToPreviousMonth } from '@/js/dateUtils'
 import { useRouter } from 'vue-router'
 import { orderSpansMultipleMonths, calculateMonthlyProgress } from '@/js/statsUtils'
 
+// Helper function to check if an order is a test case
+function isTestCase(order) {
+  if (!order) return false;
+  
+  // Check caseType (case-insensitive)
+  const caseType = String(order.caseType || '').toLowerCase();
+  if (caseType.includes('test')) return true;
+  
+  // Check caseName (case-insensitive)
+  const caseName = String(order.caseName || '').toLowerCase();
+  if (caseName.includes('test')) return true;
+  
+  // Check for explicit isTest flag
+  if (order.isTest === true || order.test === true) return true;
+  
+  return false;
+}
+
 const headers = [
   { title: '', key: 'data-table-expand', sortable: false, width: '40px' },
   { title: 'Case Name', key: 'caseName', sortable: true },
@@ -293,9 +311,10 @@ const tableRowsFromOrders = computed(() => {
         ? monthlyBreakdown.reduce((sum, m) => sum + m.quantityCompleted, 0)
         : currentAmount
 
-      // Revenue Now = currentAmount * unit price from order
+      // Revenue Now = currentAmount * unit price from order (exclude test cases)
+      const isTest = isTestCase(o)
       const unitPrice = Number(o.pricePerUnit || 0)
-      const revenueNow = currentAmount * unitPrice
+      const revenueNow = isTest ? 0 : currentAmount * unitPrice
 
       // Placeholders for now; will be computed from logs/orders per month later
       const goalMissing = Math.max(monthGoal - totalCompleted, 0)

@@ -70,6 +70,7 @@
               show-expand
               :expanded="Array.from(expandedRows)"
               @update:expanded="(value) => { expandedRows = new Set(value) }"
+              @click:row="(event, row) => navigateToOrderDetails(row.item)"
             >
             <template #item.data-table-expand="{ item }">
               <v-btn
@@ -178,12 +179,14 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useStore } from 'vuex'
+import { useRouter } from 'vue-router'
 import { goToNextMonth, goToPreviousMonth, formattedDateRange, isCurrentMonth, getMonthWeeks } from '@/js/dateUtils';
 import DashboardCard01 from '@/partials/dashboard/caseCard2.vue'
 import DateHeader from '@/components/DateHeader.vue'
 import { orderSpansMultipleMonths, calculateMonthlyProgress } from '@/js/statsUtils'
 
 const store = useStore()
+const router = useRouter()
 const activeTab = ref('tables')
 
 const tableHeaders = ([
@@ -361,14 +364,35 @@ const groupedOrdersByCaseType = computed(() => {
     });
 });
 
-// Calculate estimated revenue total from filtered orders (respects case type filter)
+// Helper function to check if an order is a test case
+function isTestCase(order) {
+  if (!order) return false;
+  
+  // Check caseType (case-insensitive)
+  const caseType = String(order.caseType || '').toLowerCase();
+  if (caseType.includes('test')) return true;
+  
+  // Check caseName (case-insensitive)
+  const caseName = String(order.caseName || '').toLowerCase();
+  if (caseName.includes('test')) return true;
+  
+  // Check for explicit isTest flag
+  if (order.isTest === true || order.test === true) return true;
+  
+  return false;
+}
+
+// Calculate estimated revenue total from filtered orders (respects case type filter, excludes test cases)
 const estimatedRevenueTotal = computed(() => {
   const ordersToCalculate = selectedCaseType.value ? filteredOrdersByCaseType.value : filteredOrders.value;
   if (!ordersToCalculate || ordersToCalculate.length === 0) {
     return 0;
   }
   
-  return ordersToCalculate.reduce((total, order) => {
+  // Filter out test cases
+  const nonTestOrders = ordersToCalculate.filter(order => !isTestCase(order));
+  
+  return nonTestOrders.reduce((total, order) => {
     return total + (Number(order.estimatedRevenue) || 0);
   }, 0);
 });
@@ -391,15 +415,20 @@ const currentRevenueTotal = computed(() => {
   const monthEnd = new Date(Math.max.apply(null, ends));
   monthEnd.setHours(23, 59, 59, 999);
 
-  // Filter daily logs within the custom week date range, excluding "case good call"
+  // Filter daily logs within the custom week date range, excluding "case good call" and test cases
   const logsInMonth = dailyLogs.value.filter(log => {
     const logDate = new Date(log.date);
     const isInDateRange = logDate >= monthStart && logDate <= monthEnd;
     const isNotCaseGoodCall = log.caseName !== 'case good call';
-    return isInDateRange && isNotCaseGoodCall;
+    
+    // Check if the log's case name indicates test
+    const caseName = String(log.caseName || '').toLowerCase();
+    const isNotTest = !caseName.includes('test');
+    
+    return isInDateRange && isNotCaseGoodCall && isNotTest;
   });
 
-  // Calculate revenue from quantity completed
+  // Calculate revenue from quantity completed, excluding test cases
   let totalRevenue = 0;
   
   logsInMonth.forEach(log => {
@@ -411,7 +440,8 @@ const currentRevenueTotal = computed(() => {
       String(o._id) === String(log.order?._id || log.order || log.orderId)
     );
     
-    if (order) {
+    // Skip if order is a test case
+    if (order && !isTestCase(order)) {
       const pricePerUnit = Number(order.pricePerUnit) || 0;
       totalRevenue += quantityCompleted * pricePerUnit;
     }
@@ -532,6 +562,15 @@ function toggleExpand(orderId) {
     newExpanded.add(orderId)
   }
   expandedRows.value = newExpanded
+}
+
+function navigateToOrderDetails(order) {
+  if (!order || !order._id) return
+  console.log('Navigating to order details for order:', order._id)
+  router.push({
+    name: 'orderDetails',
+    query: { orderId: order._id }
+  })
 }
 
 function getMonthName(monthNum) {
@@ -776,6 +815,15 @@ async function loadMonthWeeks() {
   
   .revenue-summary .text-primary {
     color: #0d6efd !important;
+  }
+  
+  /* Make table rows clickable */
+  :deep(.v-data-table__tr) {
+    cursor: pointer;
+  }
+  
+  :deep(.v-data-table__tr:hover) {
+    background-color: rgba(0, 0, 0, 0.04) !important;
   }
   
   .revenue-summary .text-success {

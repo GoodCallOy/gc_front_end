@@ -214,10 +214,33 @@
     }
   });
   
-  // Calculate total units and revenue from deduplicated logs for the current case only
+  // Helper function to check if an order is a test case
+  function isTestCase(order) {
+    if (!order) return false;
+    const caseType = String(order.caseType || '').toLowerCase();
+    if (caseType.includes('test')) return true;
+    const caseName = String(order.caseName || '').toLowerCase();
+    if (caseName.includes('test')) return true;
+    if (order.isTest === true || order.test === true) return true;
+    return false;
+  }
+
+  // Calculate total units and revenue from deduplicated logs for the current case only (excluding test cases)
   const currentCaseName = order.value.caseName;
+  const isTest = isTestCase(order.value);
+  
+  // If it's a test case, return zero revenue
+  if (isTest) {
+    return { totalUnits: 0, revenue: '0.00' };
+  }
+  
   const totalUnits = uniqueLogs
-    .filter(log => log.caseName === currentCaseName)
+    .filter(log => {
+      if (log.caseName !== currentCaseName) return false;
+      // Also filter out test logs by case name
+      const logCaseName = String(log.caseName || '').toLowerCase();
+      return !logCaseName.includes('test');
+    })
     .reduce((sum, log) => sum + (Number(log.quantityCompleted) || 0), 0);
   const revenue = (totalUnits * (Number(order.value.pricePerUnit) || 0)).toFixed(2);
   

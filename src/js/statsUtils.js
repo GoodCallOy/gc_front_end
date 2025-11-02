@@ -270,11 +270,25 @@ export function populateCasesSortedByAgent(agentStats, selectedAgent) {
    * @param {Array} dailyLogs - Array of daily log objects
    * @returns {Array} - Array of monthly progress objects
    */
+  // Helper function to check if an order is a test case
+  function isTestCase(order) {
+    if (!order) return false;
+    const caseType = String(order.caseType || '').toLowerCase();
+    if (caseType.includes('test')) return true;
+    const caseName = String(order.caseName || '').toLowerCase();
+    if (caseName.includes('test')) return true;
+    if (order.isTest === true || order.test === true) return true;
+    return false;
+  }
+
   export function calculateMonthlyProgress(order, dailyLogs) {
     if (!order || !dailyLogs || !Array.isArray(dailyLogs)) return [];
     
     const months = getOrderMonths(order);
+    if (!months || months.length === 0) return [];
+    
     const orderId = order._id || order.id;
+    const isTest = isTestCase(order);
     
     // Helper to match log to order
     const isOrderMatch = (log) => {
@@ -291,21 +305,22 @@ export function populateCasesSortedByAgent(agentStats, selectedAgent) {
       monthEnd.setHours(23, 59, 59, 999);
       
       // Filter logs for this month and order
+      // Include all matching logs - don't filter by test status here
       const monthLogs = dailyLogs.filter(log => {
         if (!isOrderMatch(log)) return false;
         const logDate = new Date(log.date);
         return logDate >= monthStart && logDate <= monthEnd;
       });
       
-      // Calculate total quantity completed in this month
+      // Calculate total quantity completed in this month (always show quantity)
       const quantityCompleted = monthLogs.reduce(
         (sum, log) => sum + (Number(log.quantityCompleted) || 0),
         0
       );
       
-      // Calculate revenue for this month
+      // Calculate revenue for this month (only exclude revenue if order is a test case)
       const unitPrice = Number(order.pricePerUnit || 0);
-      const revenue = quantityCompleted * unitPrice;
+      const revenue = isTest ? 0 : quantityCompleted * unitPrice;
       
       return {
         ...monthInfo,

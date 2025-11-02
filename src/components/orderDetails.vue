@@ -296,10 +296,33 @@
     }
   });
   
-  // Calculate total units from deduplicated logs for the current case only
+  // Helper function to check if an order is a test case
+  function isTestCase(order) {
+    if (!order) return false;
+    const caseType = String(order.caseType || '').toLowerCase();
+    if (caseType.includes('test')) return true;
+    const caseName = String(order.caseName || '').toLowerCase();
+    if (caseName.includes('test')) return true;
+    if (order.isTest === true || order.test === true) return true;
+    return false;
+  }
+
+  // Calculate total units from deduplicated logs for the current case only (excluding test cases)
   const currentCaseName = order.value.caseName;
+  const isTest = isTestCase(order.value);
+  
+  // If it's a test case, return zero revenue
+  if (isTest) {
+    return { totalUnits: 0, revenue: '0.00' };
+  }
+  
   const totalUnits = uniqueLogs
-    .filter(log => log.caseName === currentCaseName)
+    .filter(log => {
+      if (log.caseName !== currentCaseName) return false;
+      // Also filter out test logs by case name
+      const logCaseName = String(log.caseName || '').toLowerCase();
+      return !logCaseName.includes('test');
+    })
     .reduce((sum, log) => sum + (Number(log.quantityCompleted) || 0), 0);
   const revenue = (totalUnits * (Number(order.value.pricePerUnit) || 0)).toFixed(2);
   
@@ -497,13 +520,19 @@ const calculateWeeklyTotals = async () => {
     weeklyGroups[targetWeekKey].logs.push(log)
     weeklyGroups[targetWeekKey].cases.add(log.caseName)
 
+    // Skip test cases in revenue calculations
+    const logCaseName = String(log.caseName || '').toLowerCase();
+    const isTestLog = logCaseName.includes('test');
+    const isTestOrder = isTestCase(order.value);
+    
     const logCallTime = log.call_time || 0
     const logOutgoingCalls = log.outgoing_calls || 0
     const logAnsweredCalls = log.answered_calls || 0
     const logCompletedCalls = log.completed_calls || 0
     const logQuantityCompleted = log.quantityCompleted || 0
     const pricePerUnit = order.value?.pricePerUnit || 0
-    const logAmountMade = logQuantityCompleted * pricePerUnit
+    // Only count revenue if not a test case
+    const logAmountMade = (isTestLog || isTestOrder) ? 0 : logQuantityCompleted * pricePerUnit
 
     weeklyGroups[targetWeekKey].totals.callTime += logCallTime
     weeklyGroups[targetWeekKey].totals.outgoingCalls += logOutgoingCalls
@@ -639,8 +668,14 @@ const individualLogs = computed(() => {
       
       // Use the current order's data since we're only showing current case data
       const caseUnit = order.value?.caseUnit || 'N/A';
+      // Skip test cases in revenue calculations
+      const logCaseName = String(log.caseName || '').toLowerCase();
+      const isTestLog = logCaseName.includes('test');
+      const isTestOrder = isTestCase(order.value);
+      
       const pricePerUnit = order.value?.pricePerUnit || 0;
-      const amountMade = (quantityCompleted * pricePerUnit).toFixed(2);
+      // Only count revenue if not a test case
+      const amountMade = (isTestLog || isTestOrder) ? '0.00' : (quantityCompleted * pricePerUnit).toFixed(2);
 
       // Get agent name
       const logAgentId = log.agent?._id || log.agent || log.agentId;
