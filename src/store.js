@@ -230,26 +230,30 @@ const store = createStore({
       return [format(firstDay), format(lastDay)]
     },
     
-    async fetchUser({ state, commit }) {
-      
-      if (state.user) {
+    async fetchUser({ state, commit }, force = false) {
+      // If force is false and we have cached user, return early (session check will verify)
+      if (!force && state.user) {
         console.log('✅ Using cached user data from state')
         return
       }
     
       try {
-        console.log('🌍 Fetching user from API')
+        console.log('🌍 Fetching user from API', force ? '(forced refresh)' : '')
         const response = await axios.get(`${urls.backEndURL}/auth/me`, {
           withCredentials: true
         })
 
         console.log('✅ User data fetched successfully', response.data)
         if (response.data) {
-          
           commit('SET_USER', response.data)
         }
       } catch (error) {
         console.error('❌ Error fetching user:', error)
+        // If session expired, clear user state
+        if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+          commit('LOGOUT')
+        }
+        throw error // Re-throw so callers can handle it
       }
     },
 

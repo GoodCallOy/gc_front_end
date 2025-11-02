@@ -152,26 +152,81 @@ function getCurrentUserRole() {
   return null;
 }
 
+// Clear auth state and redirect to login
+function clearAuthAndRedirect() {
+  localStorage.removeItem('auth_user');
+  localStorage.removeItem('token');
+  store.commit('LOGOUT');
+  return { name: 'login' };
+}
+
+// Verify session with server
+async function verifySession() {
+  try {
+    const axios = (await import('axios')).default;
+    const urls = (await import('@/js/config.js')).default;
+    
+    const response = await axios.get(`${urls.backEndURL}/auth/me`, {
+      withCredentials: true,
+      timeout: 5000 // 5 second timeout
+    });
+    
+    const currentUser = response.data?.user || response.data;
+    
+    // Update store and localStorage with fresh user data
+    if (currentUser) {
+      store.commit('SET_USER', { user: currentUser });
+      localStorage.setItem('auth_user', JSON.stringify(currentUser));
+      return currentUser;
+    }
+    
+    return null;
+  } catch (error) {
+    // Session expired or invalid
+    console.warn('Session verification failed:', error?.response?.status || error?.message);
+    return null;
+  }
+}
+
 function getHomeRouteNameForRole(role) {
   if (role === 'admin' || role === 'manager') return 'orderDashboard'; // /order-dashboard
   if (role === 'caller') return 'agentDashboard';                      // /agent-dashboard
   return 'login';
 }
 
-router.beforeEach((to, from, next) => {
+router.beforeEach(async (to, from, next) => {
   if (to.name === 'postLogin') return next();
 
   const routeRequiresAuth = to.matched.some(record => record.meta?.requiresAuth);
-  const userRole = getCurrentUserRole();
-  console.log('Guard role source:', getCurrentUserRole());
+  
+  // If route doesn't require auth, proceed
+  if (!routeRequiresAuth) {
+    return next();
+  }
 
-  // If a route needs auth and we don't know the user's role yet, send to login.
-  if (routeRequiresAuth && !userRole) {
+  // For routes that require auth, verify session if we have cached user data
+  const cachedRole = getCurrentUserRole();
+  
+  // If no cached role, redirect to login
+  if (!cachedRole) {
+    clearAuthAndRedirect();
     return next({ name: 'login' });
   }
 
+  // Verify session with server to ensure it's still valid
+  const verifiedUser = await verifySession();
+  
+  // If session verification failed, clear auth and redirect to login
+  if (!verifiedUser) {
+    clearAuthAndRedirect();
+    return next({ name: 'login' });
+  }
+
+  // Session is valid, get the verified role
+  const userRole = verifiedUser.role || cachedRole;
+
   // If a logged-in user hits /login, send them to the correct home
-  if (to.name === 'login' && userRole) {
+  if (to.name === 'login') {
     return next({ name: getHomeRouteNameForRole(userRole) });
   }
 
