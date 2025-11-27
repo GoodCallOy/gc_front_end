@@ -488,6 +488,20 @@ function formatLocalDate(date) {
   return `${y}-${m}-${day}`;
 }
 
+// Helper to extract YYYY-MM-DD from any date format (handles timezone issues)
+function toDateOnly(dateValue) {
+  if (!dateValue) return null;
+  const str = String(dateValue);
+  // If it's already YYYY-MM-DD format, use it directly
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+  // If it's an ISO string, extract just the date part (before T)
+  if (str.includes('T')) return str.split('T')[0];
+  // Otherwise try to parse and format
+  const d = new Date(dateValue);
+  if (isNaN(d.getTime())) return null;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 function saveCopiedFlags() {
   try {
     localStorage.setItem('gc_copied_to_next_month', JSON.stringify(copiedToNextMonth));
@@ -544,13 +558,16 @@ function recomputeCopiedFlags() {
 
 function isNextMonthOf(a, b) {
   // returns true if date b is in the calendar month immediately after a
-  const da = new Date(a);
-  const db = new Date(b);
-  const ya = da.getFullYear();
-  const yb = db.getFullYear();
-  const ma = da.getMonth();
-  const mb = db.getMonth();
-  return (yb === ya && mb === ma + 1) || (yb === ya + 1 && ma === 11 && mb === 0);
+  // Use string parsing to avoid timezone issues
+  const strA = toDateOnly(a);
+  const strB = toDateOnly(b);
+  if (!strA || !strB) return false;
+  
+  const [ya, ma] = strA.split('-').map(Number); // year, month (1-12)
+  const [yb, mb] = strB.split('-').map(Number);
+  
+  // Check if b is in the month immediately after a
+  return (yb === ya && mb === ma + 1) || (yb === ya + 1 && ma === 12 && mb === 1);
 }
 
 function deriveCopiedFlagsFromOrders(allOrders) {
@@ -579,45 +596,98 @@ function deriveCopiedFlagsFromOrders(allOrders) {
   saveCopiedFlags();
 }
 
+function getNextMonthDateRange(currentRangeStart) {
+  // Parse the date string (YYYY-MM-DD) directly to avoid timezone issues
+  const dateStr = String(currentRangeStart).split('T')[0]; // Handle ISO strings too
+  const parts = dateStr.split('-');
+  const year = parseInt(parts[0], 10);
+  const month = parseInt(parts[1], 10); // 1-12 format from the string
+  
+  // Calculate next month
+  let nextYear = year;
+  let nextMonth = month + 1;
+  if (nextMonth > 12) {
+    nextMonth = 1;
+    nextYear = year + 1;
+  }
+  
+  // Get last day of next month
+  const lastDay = new Date(nextYear, nextMonth, 0).getDate();
+  
+  const nextStart = `${nextYear}-${String(nextMonth).padStart(2, '0')}-01`;
+  const nextEnd = `${nextYear}-${String(nextMonth).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+  
+  return [nextStart, nextEnd];
+}
+
+// Alias for backward compatibility with single order copy
 function monthDateRangeForNextMonthFrom(dateLike) {
-  const d = new Date(dateLike);
-  const y = d.getFullYear();
-  const m = d.getMonth();
-  const first = new Date(y, m + 1, 1);
-  const last = new Date(y, m + 2, 0);
-  return [formatLocalDate(first), formatLocalDate(last)];
+  return getNextMonthDateRange(dateLike);
 }
 
 async function bulkCopyOrdersToNextMonth() {
+  // Prevent double-execution
+  if (bulkCopying.value) {
+    console.warn('📋 Bulk copy: Already in progress, ignoring duplicate call');
+    return;
+  }
+  
   if (!filteredSortedOrders.value || !filteredSortedOrders.value.length) {
     console.warn('📋 Bulk copy: No orders to copy');
     return;
   }
+  
   try {
     bulkCopying.value = true;
-    const sourceOrders = filteredSortedOrders.value;
+    
+    // Take a snapshot of source orders to prevent reactivity issues
+    const sourceOrders = [...filteredSortedOrders.value];
     console.log(`📋 Bulk copy: Starting copy of ${sourceOrders.length} orders`);
 
-    // Use the first order's startDate as the anchor for month calculation
-    const anchor = sourceOrders[0]?.startDate || (currentDateRange.value?.[0]);
-    const [nextStart, nextEnd] = monthDateRangeForNextMonthFrom(anchor);
+    // Use the currentDateRange (the displayed month) to calculate next month
+    // This avoids timezone parsing issues with individual order dates
+    const currentStart = currentDateRange.value?.[0];
+    if (!currentStart) {
+      console.error('📋 Bulk copy: No current date range set');
+      return;
+    }
+    
+    const [nextStart, nextEnd] = getNextMonthDateRange(currentStart);
+    console.log(`📋 Bulk copy: Current month starts: ${currentStart}`);
     console.log(`📋 Bulk copy: Target month range: ${nextStart} to ${nextEnd}`);
 
     let skippedCount = 0;
     let copiedCount = 0;
     let failedCount = 0;
+    
+    // Track what we create during this run to prevent duplicates within the batch
+    const createdKeys = new Set();
+    
+    // Helper to create a unique key for duplicate detection
+    const orderKey = (caseId, caseUnit, pricePerUnit) => 
+      `${String(caseId || '')}|${String(caseUnit || '')}|${Number(pricePerUnit || 0)}`;
 
     for (const o of sourceOrders) {
-      // Skip if an equivalent order already exists next month
+      const key = orderKey(o.caseId, o.caseUnit, o.pricePerUnit);
+      
+      // Skip if we already created this in the current batch
+      if (createdKeys.has(key)) {
+        console.log(`📋 Bulk copy: Skipping "${o.caseName}" (already created in this batch)`);
+        skippedCount++;
+        continue;
+      }
+      
+      // Skip if an equivalent order already exists in next month (from previous copies)
       const duplicateExists = (orders.value || []).some(p => (
         String(p.caseId || '') === String(o.caseId || '') &&
         isNextMonthOf(o.startDate, p.startDate) &&
         String(p.caseUnit || '') === String(o.caseUnit || '') &&
         Number(p.pricePerUnit || 0) === Number(o.pricePerUnit || 0)
       ));
+      
       if (duplicateExists) {
         console.log(`📋 Bulk copy: Skipping "${o.caseName}" (already exists in next month)`);
-        copiedToNextMonth[String(o._id)] = true; // ensure highlight
+        copiedToNextMonth[String(o._id)] = true;
         skippedCount++;
         continue;
       }
@@ -645,9 +715,10 @@ async function bulkCopyOrdersToNextMonth() {
       };
 
       try {
-        console.log(`📋 Bulk copy: Copying "${o.caseName}" to next month...`);
+        console.log(`📋 Bulk copy: Copying "${o.caseName}" with dates ${nextStart} to ${nextEnd}...`);
         await axios.post(`${urls.backEndURL}/orders/`, payload);
         copiedToNextMonth[String(o._id)] = true;
+        createdKeys.add(key); // Track that we created this
         copiedCount++;
         console.log(`✅ Bulk copy: Successfully copied "${o.caseName}"`);
       } catch (err) {
@@ -677,7 +748,7 @@ const orders = computed(() => store.getters['orders'])
 const gcAgents = computed(() => store.getters['gcAgents'])
 const agents = gcAgents
 const currentDateRange = computed(() => store.getters['currentDateRange'])
-const cases = computed(() => store.getters['cases'])
+const cases = computed(() => store.getters['GcCases'])
 const roles = ['admin', 'caller', 'manager']
 const message = ref('')
 const alertType = ref('success') // 'success' or 'error'
@@ -846,21 +917,26 @@ const { data } = await axios.get(
 }
 
 const filteredSortedOrders = computed(() => {
-
   if (!orders.value || !orders.value.length || !currentDateRange.value || !currentDateRange.value.length) return [];
 
-  // Use the full month range to check for overlap
-  const rangeStart = new Date(currentDateRange.value[0]);
-  const rangeEnd = new Date(currentDateRange.value[1]);
+  // Use string comparison for dates to avoid timezone issues
+  const rangeStart = currentDateRange.value[0]; // "YYYY-MM-DD"
+  const rangeEnd = currentDateRange.value[1];   // "YYYY-MM-DD"
 
   return orders.value
     .filter(order => {
-      const start = new Date(order.startDate);
-      const end = new Date(order.deadline);
+      const start = toDateOnly(order.startDate);
+      const end = toDateOnly(order.deadline);
+      if (!start || !end) return false;
       // Order overlaps with the month range (any overlap counts)
+      // String comparison works for YYYY-MM-DD format
       return start <= rangeEnd && end >= rangeStart;
     })
-    .sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
+    .sort((a, b) => {
+      const aDate = toDateOnly(a.startDate) || '';
+      const bDate = toDateOnly(b.startDate) || '';
+      return aDate.localeCompare(bDate);
+    });
 });
 
 function toDateInputString(dateStr) {
@@ -1013,16 +1089,32 @@ async function fetchAgentRevenueAggregates(fromDate, toDate) {
 }
 
 function monthBoundsFrom(dateLike) {
-  const d = new Date(dateLike);
-  const from = new Date(d.getFullYear(), d.getMonth(), 1, 0, 0, 0, 0);
-  const to   = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999);
+  // Parse date string safely to avoid timezone issues
+  const dateStr = toDateOnly(dateLike);
+  if (!dateStr) {
+    // Fallback to current month
+    const now = new Date();
+    return {
+      from: new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0),
+      to: new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
+    };
+  }
+  const [year, month] = dateStr.split('-').map(Number);
+  const from = new Date(year, month - 1, 1, 0, 0, 0, 0);
+  const to   = new Date(year, month, 0, 23, 59, 59, 999);
   return { from, to };
 }
 
 function overlapsMonth(order, from, to) {
-  const s = new Date(order.startDate);
-  const e = new Date(order.deadline);
-  return s <= to && e >= from;
+  // Use string-based date comparison to avoid timezone issues
+  const startStr = toDateOnly(order.startDate);
+  const endStr = toDateOnly(order.deadline);
+  if (!startStr || !endStr) return false;
+  
+  const fromStr = `${from.getFullYear()}-${String(from.getMonth() + 1).padStart(2, '0')}-${String(from.getDate()).padStart(2, '0')}`;
+  const toStr = `${to.getFullYear()}-${String(to.getMonth() + 1).padStart(2, '0')}-${String(to.getDate()).padStart(2, '0')}`;
+  
+  return startStr <= toStr && endStr >= fromStr;
 }
 
 function agentMonthlyStats(agentId, from, to, allOrders) {
@@ -1209,7 +1301,7 @@ const agentOptions = computed(() => agents.value.map(a => ({
   title: a.name
 })))
 
-const caseOptions = computed(() => cases.value.map(c => ({
+const caseOptions = computed(() => (cases.value || []).map(c => ({
   value: c._id,
   title: c.name
 })))

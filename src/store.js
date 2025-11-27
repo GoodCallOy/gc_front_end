@@ -65,6 +65,7 @@ const store = createStore({
     users: state => state.users,
     cases: state => state.cases,
     GcCases: state => state.GcCases,
+    gcCases: state => state.GcCases, // alias for consistency
     agents: state => state.agents,
     agentStats: state => state.agentStats,
     orders: state => state.orders,
