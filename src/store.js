@@ -198,7 +198,7 @@ const store = createStore({
       try {
         console.log('🌍 Fetching cases from API')
         const response = await axios.get(`${urls.backEndURL}/GcCases?t=${Date.now()}`)
-        commit('setCases', response.data)
+        commit('setGcCases', response.data)
         commit('setLastFetch', { key: 'GcCases', time: Date.now() })
       } catch (error) {
         console.error('❌ Error fetching GcCases:', error)

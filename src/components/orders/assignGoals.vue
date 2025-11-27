@@ -589,14 +589,23 @@ function monthDateRangeForNextMonthFrom(dateLike) {
 }
 
 async function bulkCopyOrdersToNextMonth() {
-  if (!filteredSortedOrders.value || !filteredSortedOrders.value.length) return;
+  if (!filteredSortedOrders.value || !filteredSortedOrders.value.length) {
+    console.warn('📋 Bulk copy: No orders to copy');
+    return;
+  }
   try {
     bulkCopying.value = true;
     const sourceOrders = filteredSortedOrders.value;
+    console.log(`📋 Bulk copy: Starting copy of ${sourceOrders.length} orders`);
 
     // Use the first order's startDate as the anchor for month calculation
     const anchor = sourceOrders[0]?.startDate || (currentDateRange.value?.[0]);
     const [nextStart, nextEnd] = monthDateRangeForNextMonthFrom(anchor);
+    console.log(`📋 Bulk copy: Target month range: ${nextStart} to ${nextEnd}`);
+
+    let skippedCount = 0;
+    let copiedCount = 0;
+    let failedCount = 0;
 
     for (const o of sourceOrders) {
       // Skip if an equivalent order already exists next month
@@ -607,7 +616,9 @@ async function bulkCopyOrdersToNextMonth() {
         Number(p.pricePerUnit || 0) === Number(o.pricePerUnit || 0)
       ));
       if (duplicateExists) {
+        console.log(`📋 Bulk copy: Skipping "${o.caseName}" (already exists in next month)`);
         copiedToNextMonth[String(o._id)] = true; // ensure highlight
+        skippedCount++;
         continue;
       }
 
@@ -634,12 +645,18 @@ async function bulkCopyOrdersToNextMonth() {
       };
 
       try {
+        console.log(`📋 Bulk copy: Copying "${o.caseName}" to next month...`);
         await axios.post(`${urls.backEndURL}/orders/`, payload);
         copiedToNextMonth[String(o._id)] = true;
+        copiedCount++;
+        console.log(`✅ Bulk copy: Successfully copied "${o.caseName}"`);
       } catch (err) {
-        console.error('Bulk copy failed for order', o._id, err?.response?.data || err?.message);
+        failedCount++;
+        console.error('❌ Bulk copy failed for order', o._id, o.caseName, err?.response?.data || err?.message);
       }
     }
+
+    console.log(`📋 Bulk copy complete: ${copiedCount} copied, ${skippedCount} skipped (duplicates), ${failedCount} failed`);
 
     saveCopiedFlags();
     await fetchAllData();
@@ -832,14 +849,16 @@ const filteredSortedOrders = computed(() => {
 
   if (!orders.value || !orders.value.length || !currentDateRange.value || !currentDateRange.value.length) return [];
 
-  // Use the first date in the range as the "current" date
-  const currentDate = new Date(currentDateRange.value[0]);
+  // Use the full month range to check for overlap
+  const rangeStart = new Date(currentDateRange.value[0]);
+  const rangeEnd = new Date(currentDateRange.value[1]);
 
   return orders.value
     .filter(order => {
       const start = new Date(order.startDate);
       const end = new Date(order.deadline);
-      return start <= currentDate && end >= currentDate;
+      // Order overlaps with the month range (any overlap counts)
+      return start <= rangeEnd && end >= rangeStart;
     })
     .sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
 });
