@@ -35,7 +35,11 @@
         item-value="value"
         label="Link to Google User"
         clearable
-      />
+      >
+        <template v-slot:selection="{ item }">
+          {{ item.title }}
+        </template>
+      </v-select>
 
       <v-switch v-model="agent.active" label="Active" />
 
@@ -96,16 +100,16 @@ const userOptions = computed(() =>
   (users.value || [])
     .map(user => {
       const id = String(user._id ?? user.id ?? user.userId ?? user.uuid ?? '');
+      const email = user.email ?? user.emails?.[0]?.value ?? '';
       const nameCandidate =
         user.name ??
         user.displayName ??
         `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim();
       const name = nameCandidate || 'Unnamed';
-      const email = user.email ?? user.emails?.[0]?.value ?? '';
       console.log('Mapping user to option:', { id, name, email });
       return {
-        title: email ? `${name} (${email})` : name,
-        value: id, // v-model will receive this ID
+        title: email || name, // Show email if available, otherwise fallback to name
+        value: id, // v-model will receive this ID (passed to backend)
       };
     })
     .filter(opt => opt.value) // drop entries without an id
@@ -132,7 +136,8 @@ async function loadAgentData() {
         active: typeof foundAgent.active === 'boolean' ? foundAgent.active : true,
         _id: foundAgent._id,
       }
-      selectedUserId.value = foundAgent.linkedUserId || null
+      // Convert to string to ensure proper matching with userOptions
+      selectedUserId.value = foundAgent.linkedUserId ? String(foundAgent.linkedUserId) : null
     } else {
       alertType.value = 'error'
       message.value = 'Agent not found. Please try again.'
