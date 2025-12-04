@@ -60,6 +60,7 @@
   
   <script>
   import { ref, computed, watchEffect } from 'vue'
+  import { useStore } from 'vuex'
   import EditMenu from '../components/DropdownEditMenu.vue'
   
   
@@ -78,6 +79,7 @@
       currentUser: { type: Object, required: true },
     },
     setup(props) {
+      const store = useStore()
 
       const percentage = computed(() => {
         if (myGoal.value === 0) return 0;
@@ -105,6 +107,19 @@
       });
       const orderId = computed(() => String(props.order?._id ?? ''))
 
+      // current month/date range from store (shared with dashboards)
+      const currentDateRange = computed(() => store.getters['currentDateRange'])
+
+      const monthBounds = computed(() => {
+        const range = currentDateRange.value
+        if (!Array.isArray(range) || range.length < 2) return null
+        const [start, end] = range
+        const from = new Date(start)
+        const to = new Date(end)
+        to.setHours(23, 59, 59, 999)
+        return { from, to }
+      })
+
       // all logs that belong to the current agent (reactive)
       const agentLogs = computed(() => {
         const myId = myAgentId.value
@@ -120,11 +135,27 @@
       })
 
       // only this order’s logs for the current agent
-      const myAgentOrderLogs = computed(() =>
-        agentLogs.value.filter(
-          l => String(l?.order?._id ?? l?.order ?? '') === orderId.value
-        )
-      )
+      const myAgentOrderLogs = computed(() => {
+        const bounds = monthBounds.value
+        const preliminary = agentLogs.value.filter(l => {
+          const rawOrderId = l?.order?._id ?? l?.order ?? l?.orderId
+          const sameOrder = String(rawOrderId) === orderId.value
+          if (!sameOrder) return false
+          if (!bounds) return true
+          const d = new Date(l?.date)
+          return d >= bounds.from && d <= bounds.to
+        })
+
+        // De‑duplicate logs by _id (or by date+order+agent as a fallback)
+        const uniqueMap = new Map()
+        for (const l of preliminary) {
+          const rawOrderId = l?.order?._id ?? l?.order ?? l?.orderId
+          const rawAgentId = l?.agent?._id ?? l?.agent ?? l?.agentId
+          const key = String(l?._id ?? `${l?.date}|${rawOrderId}|${rawAgentId}`)
+          if (!uniqueMap.has(key)) uniqueMap.set(key, l)
+        }
+        return Array.from(uniqueMap.values())
+      })
 
       // agent's specific goal for this case (from agentGoals)
       const myGoal = computed(() => {
@@ -155,14 +186,16 @@
 
       // current agent's units completed for this order
       const myAgentUnits = computed(() => {
-        return myAgentOrderLogs.value.reduce(
+        const total = myAgentOrderLogs.value.reduce(
           (sum, l) => sum + (Number(l.quantityCompleted) || 0),
           0
         )
+        return total
       })
 
       // revenue completed for this agent on this order (from daily logs)
       const totalAgentUnitsValue = computed(() => {
+        console.log('Total agent units value:', myAgentUnits.value * (Number(props.order?.pricePerUnit) || 0))
         return myAgentUnits.value * (Number(props.order?.pricePerUnit) || 0)
       })
 
