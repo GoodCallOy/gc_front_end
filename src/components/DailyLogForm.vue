@@ -191,8 +191,8 @@ export default {
     return this.ordersWithCaseName.find(o => o._id === this.form.order) || null
   },
   showLeadFields() {
-    const t = String(this.selectedOrder?.caseType || '').toLowerCase()
-    return t.includes('kuuki') || t.includes('hour') || t.includes('daily')
+    // Show lead fields for all cases
+    return true
   },
   showInterviewFields() {
     const t = String(this.selectedOrder?.caseType || '').toLowerCase()
