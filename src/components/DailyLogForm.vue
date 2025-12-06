@@ -223,6 +223,9 @@ async mounted() {
    await this.fetchAllData();
     console.log('Orders fetched:', this.orders);
     
+    // Wait for next tick to ensure computed properties are updated
+    await this.$nextTick();
+    
     // Check for edit log data in query parameters
     if (this.route.query.editLog) {
       try {
@@ -230,19 +233,41 @@ async mounted() {
         console.log('Editing log:', logData);
         
         // Populate form with log data
-        this.form.agent = logData.agent || '';
+        // Handle agent - can be object with _id or just ID string
+        const agentId = logData.agent?._id || logData.agent?.id || logData.agent || '';
+        this.form.agent = agentId;
         this.form.agentName = logData.agentName || '';
-        this.form.order = logData.order || '';
         
-        // Resolve case name properly - try to find it from the order if not available in log data
-        let resolvedCaseName = logData.caseName || '';
-        if (!resolvedCaseName && logData.order) {
-          const order = this.ordersWithCaseName.find(o => o._id === logData.order);
-          if (order) {
-            resolvedCaseName = order.caseName;
+        // Wait another tick after setting agent so filteredOrders updates
+        await this.$nextTick();
+        
+        // Find the order by caseName if order ID is not available
+        let orderId = logData.order?._id || logData.order?.id || logData.order || '';
+        const caseName = logData.caseName || '';
+        
+        // If we have caseName but no order ID, try to find the order by caseName
+        if (!orderId && caseName) {
+          console.log('Looking for order with caseName:', caseName);
+          console.log('Available orders:', this.ordersWithCaseName);
+          const matchingOrder = this.ordersWithCaseName.find(o => {
+            // Check if order's caseName matches
+            const orderCaseName = o.caseName || '';
+            const matches = orderCaseName === caseName || orderCaseName.toLowerCase() === caseName.toLowerCase();
+            if (matches) {
+              console.log('Matched order:', o);
+            }
+            return matches;
+          });
+          if (matchingOrder) {
+            orderId = matchingOrder._id;
+            console.log('Found order by caseName:', matchingOrder);
+          } else {
+            console.warn('No matching order found for caseName:', caseName);
           }
         }
-        this.form.caseName = resolvedCaseName;
+        
+        this.form.order = orderId;
+        this.form.caseName = caseName;
         
         this.form.caseUnit = logData.caseUnit || '';
         this.form.call_time = logData.call_time || 0;

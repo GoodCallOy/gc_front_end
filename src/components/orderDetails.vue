@@ -295,17 +295,6 @@
       uniqueLogs.push(log);
     }
   });
-  
-  // Helper function to check if an order is a test case
-  function isTestCase(order) {
-    if (!order) return false;
-    const caseType = String(order.caseType || '').toLowerCase();
-    if (caseType.includes('test')) return true;
-    const caseName = String(order.caseName || '').toLowerCase();
-    if (caseName.includes('test')) return true;
-    if (order.isTest === true || order.test === true) return true;
-    return false;
-  }
 
   // Calculate total units from deduplicated logs for the current case only (excluding test cases)
   const currentCaseName = order.value.caseName;
@@ -376,6 +365,17 @@ function formatDateToDDMMYYYY(dateString) {
   const year = date.getFullYear();
   
   return `${day}/${month}/${year}`;
+}
+
+// Helper function to check if an order is a test case
+function isTestCase(order) {
+  if (!order) return false;
+  const caseType = String(order.caseType || '').toLowerCase();
+  if (caseType.includes('test')) return true;
+  const caseName = String(order.caseName || '').toLowerCase();
+  if (caseName.includes('test')) return true;
+  if (order.isTest === true || order.test === true) return true;
+  return false;
 }
 
 // Helper function to get week number and year from a date
@@ -946,10 +946,17 @@ watch(individualLogs, () => {
   }
 
   const editLog = (logData) => {
+    // Add order ID to log data if not present (for case selection in form)
+    const logWithOrder = {
+      ...logData,
+      order: logData.order || order.value?._id || null,
+      caseName: logData.caseName || order.value?.caseName || ''
+    };
+    
     // Navigate to the daily log form with the log data for editing
     router.push({ 
       name: 'addDailyLog', 
-      query: { editLog: JSON.stringify(logData) }
+      query: { editLog: JSON.stringify(logWithOrder) }
     });
   }
 
