@@ -32,6 +32,7 @@ import listGcAgents from '@/components/agents/listGcAgents.vue';
 import editGcAgent from '@/components/agents/editGcAgent.vue';
 import WeekConfigManager from '@/components/weekConfiguration/WeekConfigManager.vue';
 import CasesProgress from '@/components/casesProgress.vue';
+import ExcelImport from '@/components/ExcelImport.vue';
 
 
 const routes = [
@@ -69,6 +70,7 @@ const routes = [
       { path: 'order-dashboard', name: 'orderDashboard', component: orderDashboard, meta: { requiresAuth: true, roles: ['admin', 'manager'] } },
       { path: 'order-details', name: 'orderDetails', component: orderDetails, meta: { requiresAuth: true, roles: ['admin', 'manager'] } },
       { path: 'case-types', name: 'caseTypesManager', component: CaseTypesManager, meta: { requiresAuth: true, roles: ['admin', 'manager'] } },
+      { path: 'excel-import', name: 'excelImport', component: ExcelImport, meta: { requiresAuth: true, roles: ['admin', 'manager'] } },
       { path: 'agent-case-details', name: 'agentCaseDetails', component: agentCaseDetails },
       { path: 'assign-goals', name: 'assignGoals', component: assignGoals, meta: { requiresAuth: true, roles: ['admin', 'manager'] } },
       { 

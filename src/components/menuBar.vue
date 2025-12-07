@@ -270,6 +270,13 @@ async function logout() {
           @click="navigateTo('caseTypesManager')"
         ></v-list-item>
         <v-list-item
+          v-if="user?.user?.role === 'admin' || user?.user?.role === 'manager'" 
+          prepend-icon="mdi-file-excel"
+          title="Import Excel"
+          :active="route.name === 'excelImport'"
+          @click="navigateTo('excelImport')"
+        ></v-list-item>
+        <v-list-item
           v-if="user?.user?.role === 'admin'"
           prepend-icon="mdi-account-plus"
           :title="t('buttons.addGcAgent')"  
