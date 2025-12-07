@@ -153,6 +153,7 @@ async function logout() {
     v-model="isDrawerOpen"
     app
     :temporary="isMobile"
+    :permanent="!isMobile"
     :scrim="isMobile"
     :rail="!isMobile"
     width="256"
@@ -178,11 +179,11 @@ async function logout() {
       
       <!-- Home Button -->
       <v-list-item
+        class="mb-2"
         prepend-icon="mdi-home"
         :title="t('buttons.home')"
         :active="isHomeRoute"
         @click="navigateToHome"
-        class="mb-2"
       />
       
       <v-divider class="mb-2" />
@@ -367,3 +368,54 @@ async function logout() {
     </v-list>
   </v-navigation-drawer>
 </template>
+
+<style scoped>
+/* Ensure navigation drawer is fixed and doesn't scroll with page */
+:deep(.v-navigation-drawer) {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  height: 100vh !important;
+  max-height: 100vh !important;
+  overflow-y: auto;
+  z-index: 1000 !important;
+  transform: none !important;
+}
+
+/* Ensure app bar is also fixed on mobile */
+:deep(.v-app-bar) {
+  position: fixed !important;
+  top: 0 !important;
+  z-index: 1001 !important;
+}
+
+/* Ensure the drawer content can scroll if menu is long */
+:deep(.v-navigation-drawer__content) {
+  overflow-y: auto;
+  height: 100%;
+  max-height: 100vh;
+}
+
+/* Prevent any transform or translate that might cause scrolling */
+:deep(.v-navigation-drawer--rail) {
+  position: fixed !important;
+  transform: none !important;
+}
+
+:deep(.v-navigation-drawer--expanded) {
+  position: fixed !important;
+  transform: none !important;
+}
+</style>
+
+<style>
+/* Global styles to ensure drawer stays fixed - not scoped */
+.v-navigation-drawer {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  height: 100vh !important;
+  max-height: 100vh !important;
+  z-index: 1000 !important;
+}
+</style>
