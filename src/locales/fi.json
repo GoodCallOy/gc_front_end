@@ -56,7 +56,32 @@
       "results": "Tulokset",
       "unit": "Yksikkö",
       "amountMade": "Tulot"
+    },
+    "dailyLogForm": {
+      "selectAgent": "Valitse agentti",
+      "selectCase": "Valitse tapaus",
+      "noCasesAssigned": "Tälle agentille ei ole määritetty tapauksia tälle kuukaudelle",
+      "caseUnit": "Tapauksen yksikkö",
+      "callTime": "Puheluaika",
+      "completedCalls": "Valmiit puhelut",
+      "outboundCalls": "Lähtevät puhelut",
+      "answeredCalls": "Vastatut puhelut",
+      "responseRate": "Vastausprosentti",
+      "aLeads": "A-liidit",
+      "bLeads": "B-liidit",
+      "cLeads": "C-liidit",
+      "dLeads": "D-liidit",
+      "noPotential": "Ei potentiaalia",
+      "interviews": "Haastattelut",
+      "hours": "Tunnit",
+      "bookedInterviews": "Varatut haastattelut",
+      "completedInterviews": "Valmiit haastattelut",
+      "resultAnalysis": "Tulosten analyysi",
+      "results": "Tulokset",
+      "comments": "Kommentit",
+      "date": "Päivämäärä",
+      "updateLog": "Päivitä loki",
+      "addLog": "Lisää loki"
     }
-
   }
   

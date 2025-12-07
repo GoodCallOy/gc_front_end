@@ -6,7 +6,7 @@
         :items="gcAgents"
         item-title="name"
         item-value="_id"
-        label="Select Agent"
+        :label="$t('dailyLogForm.selectAgent')"
         :disabled="isCaller"
         required
       />
@@ -16,53 +16,53 @@
         :items="filteredOrders"
         item-title="caseName"
         item-value="_id"
-        label="Select Case"
-        :hint="filteredOrders.length === 0 && form.agent ? 'No cases assigned to this agent for the current month' : ''"
+        :label="$t('dailyLogForm.selectCase')"
+        :hint="filteredOrders.length === 0 && form.agent ? $t('dailyLogForm.noCasesAssigned') : ''"
         persistent-hint
         required
       />
 
-      <v-text-field v-model="form.caseUnit" label="Case Unit" required />
-      <v-text-field v-model.number="form.call_time" label="Call Time" type="number" required />
-      <v-text-field v-model.number="form.completed_calls" label="Completed Calls" type="number" required />
-      <v-text-field v-model.number="form.outgoing_calls" label="Outbound Calls" type="number" required />
-      <v-text-field v-model.number="form.answered_calls" label="Answered Calls" type="number" required />
+      <v-text-field v-model="form.caseUnit" :label="$t('dailyLogForm.caseUnit')" required />
+      <v-text-field v-model.number="form.call_time" :label="$t('dailyLogForm.callTime')" type="number" required />
+      <v-text-field v-model.number="form.completed_calls" :label="$t('dailyLogForm.completedCalls')" type="number" required />
+      <v-text-field v-model.number="form.outgoing_calls" :label="$t('dailyLogForm.outboundCalls')" type="number" required />
+      <v-text-field v-model.number="form.answered_calls" :label="$t('dailyLogForm.answeredCalls')" type="number" required />
 
       <v-text-field
         :value="formattedResponseRate"
-        label="Response Rate"
+        :label="$t('dailyLogForm.responseRate')"
         readonly
         persistent-placeholder
       />
 
       <!-- Conditional Kuuki / Hourly / Daily fields -->
       <template v-if="showLeadFields">
-        <v-text-field v-model.number="form.aLeads" label="A-leads" type="number" min="0" />
-        <v-text-field v-model.number="form.bLeads" label="B-leads" type="number" min="0" />
-        <v-text-field v-model.number="form.cLeads" label="C-leads" type="number" min="0" />
-        <v-text-field v-model.number="form.dLeads" label="D-leads" type="number" min="0" />
-        <v-text-field v-model.number="form.noPotential" label="No potential" type="number" min="0" />
+        <v-text-field v-model.number="form.aLeads" :label="$t('dailyLogForm.aLeads')" type="number" min="0" />
+        <v-text-field v-model.number="form.bLeads" :label="$t('dailyLogForm.bLeads')" type="number" min="0" />
+        <v-text-field v-model.number="form.cLeads" :label="$t('dailyLogForm.cLeads')" type="number" min="0" />
+        <v-text-field v-model.number="form.dLeads" :label="$t('dailyLogForm.dLeads')" type="number" min="0" />
+        <v-text-field v-model.number="form.noPotential" :label="$t('dailyLogForm.noPotential')" type="number" min="0" />
       </template>
 
       <!-- Conditional Interviews fields -->
       <template v-if="showInterviewFields">
-        <v-text-field v-model.number="form.interviews" label="Interviews" type="number" min="0" />
-        <v-text-field v-model.number="form.hours" label="Hours" type="number" min="0" />
-        <v-text-field v-model.number="form.bookedInterviews" label="Booked Interviews" type="number" min="0" />
-        <v-text-field v-model.number="form.completedInterviews" label="Completed Interviews" type="number" min="0" />
-        <v-text-field v-model.number="form.resultAnalysis" label="Result Analysis" type="number" min="0" />
+        <v-text-field v-model.number="form.interviews" :label="$t('dailyLogForm.interviews')" type="number" min="0" />
+        <v-text-field v-model.number="form.hours" :label="$t('dailyLogForm.hours')" type="number" min="0" />
+        <v-text-field v-model.number="form.bookedInterviews" :label="$t('dailyLogForm.bookedInterviews')" type="number" min="0" />
+        <v-text-field v-model.number="form.completedInterviews" :label="$t('dailyLogForm.completedInterviews')" type="number" min="0" />
+        <v-text-field v-model.number="form.resultAnalysis" :label="$t('dailyLogForm.resultAnalysis')" type="number" min="0" />
       </template>
      
       <v-text-field
         v-model.number="form.quantityCompleted"
-        label="Results"
+        :label="$t('dailyLogForm.results')"
         type="number"
         required
       />
 
       <v-textarea
         v-model="form.comments"
-        label="Comments"
+        :label="$t('dailyLogForm.comments')"
         auto-grow
         rows="2"
         max-rows="5"
@@ -70,13 +70,13 @@
 
       <v-text-field
         v-model="form.date"
-        label="Date"
+        :label="$t('dailyLogForm.date')"
         type="date"
         required
       />
 
       <v-btn type="submit" :disabled="!formValid" color="primary" class="mt-4">
-        {{ isEditing ? 'Update Log' : 'Add Log' }}
+        {{ isEditing ? $t('dailyLogForm.updateLog') : $t('dailyLogForm.addLog') }}
       </v-btn>
     </v-form>
   </v-card>

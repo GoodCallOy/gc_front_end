@@ -73,8 +73,32 @@
       "results": "Results",
       "unit": "Unit",
       "amountMade": "Amount Made"
-
-
+    },
+    "dailyLogForm": {
+      "selectAgent": "Select Agent",
+      "selectCase": "Select Case",
+      "noCasesAssigned": "No cases assigned to this agent for the current month",
+      "caseUnit": "Case Unit",
+      "callTime": "Call Time",
+      "completedCalls": "Completed Calls",
+      "outboundCalls": "Outbound Calls",
+      "answeredCalls": "Answered Calls",
+      "responseRate": "Response Rate",
+      "aLeads": "A-leads",
+      "bLeads": "B-leads",
+      "cLeads": "C-leads",
+      "dLeads": "D-leads",
+      "noPotential": "No potential",
+      "interviews": "Interviews",
+      "hours": "Hours",
+      "bookedInterviews": "Booked Interviews",
+      "completedInterviews": "Completed Interviews",
+      "resultAnalysis": "Result Analysis",
+      "results": "Results",
+      "comments": "Comments",
+      "date": "Date",
+      "updateLog": "Update Log",
+      "addLog": "Add Log"
     }
   }
   
