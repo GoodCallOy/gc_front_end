@@ -15,15 +15,28 @@
 
     <!-- Agent Statistics Header -->
     <v-card v-if="userOrders.length > 0" class="mx-auto my-4 pa-4 elevation-4" style="background-color: #eeeff1;">
-      <v-row>
-        <v-col cols="4">
-          <h2 class="text-h5">Agent Statistics - {{ getFormattedDateRange() }}</h2>
+      <v-row align="center">
+        <v-col cols="12" md="3">
+          <div class="text-h5">{{ t('agentDashboard.agentStatistics') }} - {{ getFormattedDateRange() }}</div>
         </v-col>
-        <v-col cols="4">
-          <h2 class="text-h6">Revenue Generated: €{{ revenueGenerated.revenue }}</h2>
+        <v-col cols="12" md="3">
+          <div class="text-h5">{{ t('agentDashboard.revenue') }}: €{{ revenueGenerated.revenue }}</div>
         </v-col>
-        <v-col cols="4">
-          <h2 class="text-h6">Total Units: {{ revenueGenerated.totalUnits }}</h2>
+        <v-col cols="12" md="6">
+          <div class="d-flex flex-wrap" style="gap: 20px;">
+            <div class="text-body-1">
+              {{ t('agentCaseCard.interviews') }}: {{ revenueGenerated.unitsByType.interviews }}
+            </div>
+            <div class="text-body-1">
+              {{ t('agentCaseCard.hours') }}: {{ revenueGenerated.unitsByType.hours }}
+            </div>
+            <div class="text-body-1">
+              {{ t('agentCaseCard.meetings') }}: {{ revenueGenerated.unitsByType.meetings }}
+            </div>
+            <div class="text-body-1">
+              {{ t('dailyLogForm.aLeads') }}: {{ revenueGenerated.unitsByType.aLeads }}
+            </div>
+          </div>
         </v-col>
       </v-row>
     </v-card>
@@ -37,7 +50,7 @@
 
     <!-- Show cases if assigned -->
     <div v-else>
-      <h1 class="text-h4 mb-4" style="width: 90vw;"> Cases for {{ selectedGcAgent ? selectedGcAgent.name : '—' }}</h1>
+      <h1 class="text-h4 mb-4" style="width: 90vw;"> {{ t('agentDashboard.casesFor') }} {{ selectedGcAgent ? selectedGcAgent.name : '—' }}</h1>
       <div class="grid-container ">
         <agentCaseCard
         v-for="(userOrder, index) in userOrders"
@@ -53,7 +66,7 @@
 
   <!-- Weekly Totals Table -->
   <v-card v-if="userOrders.length > 0 && weeklyTotals.length > 0" class="mx-auto my-4 pa-4 elevation-4" style="background-color: #eeeff1;">
-    <h3 class="text-h6 mb-3">Weekly Summary</h3>
+    <h3 class="text-h6 mb-3">{{ t('agentDashboard.weeklySummary') }}</h3>
     <v-data-table
       :headers="weeklyHeaders"
       :items="weeklyTotals"
@@ -71,7 +84,7 @@
 
   <!-- Individual Logs Tables by Week -->
   <v-card v-if="userOrders.length > 0 && weeklyLogGroups.length > 0" class="mx-auto my-4 pa-4 elevation-4" style="background-color: #eeeff1;">
-    <h3 class="text-h6 mb-3">Daily Entries by Week</h3>
+    <h3 class="text-h6 mb-3">{{ t('agentDashboard.dailyEntriesByWeek') }}</h3>
     <div v-for="weekGroup in weeklyLogGroups" :key="weekGroup.weekKey" class="mb-6">
       <h4 class="text-subtitle-1 mb-2">{{ weekGroup.weekTitle }}</h4>
       <v-data-table
@@ -94,7 +107,7 @@
               icon
               size="small"
               color="grey"
-              title="Edit Log"
+              :title="t('agentDashboard.editLog')"
               @click="editLog(item.originalLog)"
               class="mr-2"
             >
@@ -104,7 +117,7 @@
               icon
               size="small"
               color="red"
-              title="Delete Log"
+              :title="t('agentDashboard.deleteLog')"
               @click="deleteLog(item.originalLog)"
             >
               <v-icon>mdi-delete</v-icon>
@@ -225,7 +238,16 @@ const revenueGenerated = computed(() => {
   
   if (!selectedGcAgent.value || !Array.isArray(stats) || !dateRange) {
     console.log('⚠️ Revenue Calculation: Missing required data');
-    return { totalUnits: 0, revenue: '0.00' };
+    return { 
+      totalUnits: 0, 
+      revenue: '0.00',
+      unitsByType: {
+        interviews: 0,
+        hours: 0,
+        meetings: 0,
+        aLeads: 0
+      }
+    };
   }
   
   const agentId = String(selectedGcAgent.value._id ?? selectedGcAgent.value.id);
@@ -384,6 +406,14 @@ const revenueGenerated = computed(() => {
   let totalRevenue = 0;
   const revenueBreakdown = [];
   
+  // Track units by type
+  const unitsByType = {
+    interviews: 0,
+    hours: 0,
+    meetings: 0,
+    aLeads: 0
+  };
+  
   uniqueLogs.forEach((log, index) => {
     const logId = String(log._id || log.id || '');
     const isTargetLog = logId === targetLogId;
@@ -410,7 +440,7 @@ const revenueGenerated = computed(() => {
     const logQuantityCompleted = Number(log.quantityCompleted) || 0;
     totalUnits += logQuantityCompleted;
     
-    // Find the case for this log to get the correct price per unit
+    // Find the case for this log to get the correct price per unit and case unit type
     const logCase = findOrderForLog(log, agentCases);
     
     if (isTargetLog) {
@@ -439,6 +469,20 @@ const revenueGenerated = computed(() => {
       const pricePerUnit = Number(logCase.pricePerUnit) || 0;
       const logRevenue = logQuantityCompleted * pricePerUnit;
       totalRevenue += logRevenue;
+      
+      // Track units by case unit type
+      const caseUnit = String(logCase.caseUnit || '').toLowerCase();
+      if (caseUnit === 'interviews') {
+        unitsByType.interviews += logQuantityCompleted;
+      } else if (caseUnit === 'hours') {
+        unitsByType.hours += logQuantityCompleted;
+      } else if (caseUnit === 'meetings') {
+        unitsByType.meetings += logQuantityCompleted;
+      }
+      
+      // Track A-leads from the log entry
+      const aLeads = Number(log.aLeads || 0);
+      unitsByType.aLeads += aLeads;
       
       const breakdown = {
         logIndex: index + 1,
@@ -479,11 +523,21 @@ const revenueGenerated = computed(() => {
   console.log('📊 Revenue Calculation Summary:', {
     totalLogsProcessed: uniqueLogs.length,
     totalUnits,
+    unitsByType,
     totalRevenue: revenue,
     breakdown: revenueBreakdown
   });
   
-  return { totalUnits, revenue };
+  return { 
+    totalUnits, 
+    revenue,
+    unitsByType: {
+      interviews: unitsByType.interviews,
+      hours: unitsByType.hours,
+      meetings: unitsByType.meetings,
+      aLeads: unitsByType.aLeads
+    }
+  };
 });
 
 // Helper function to get week number and year from a date
@@ -632,7 +686,7 @@ const weeklyTotals = computed(() => {
     
     // Convert cases set to sorted array for display
     const casesList = Array.from(group.cases).sort();
-    const casesDisplay = casesList.length > 0 ? casesList.join(', ') : 'No cases';
+    const casesDisplay = casesList.length > 0 ? casesList.join(', ') : t('agentDashboard.noCases');
 
     // Format custom week dates for display
     const startDate = new Date(group.weekInfo.start);
@@ -641,9 +695,9 @@ const weeklyTotals = computed(() => {
     const endStr = endDate.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit' });
     
     result.push({
-      date: `Week ${group.weekInfo.weekNumber} (${startStr} - ${endStr})`,
+      date: `${t('agentDashboard.week')} ${group.weekInfo.weekNumber} (${startStr} - ${endStr})`,
       cases: casesDisplay,
-      caseUnit: 'All Cases',
+      caseUnit: t('agentDashboard.allCases'),
       callTime: formatNumber(group.totals.callTime),
       outgoingCalls: group.totals.outgoingCalls,
       answeredCalls: group.totals.answeredCalls,
@@ -766,7 +820,7 @@ const weeklyLogGroups = computed(() => {
         weekGroups[weekKey] = {
           weekKey,
           weekInfo: customWeek,
-          weekTitle: `Week ${customWeek.weekNumber} (${startStr} - ${endStr})`,
+          weekTitle: `${t('agentDashboard.week')} ${customWeek.weekNumber} (${startStr} - ${endStr})`,
           logs: []
         };
       }
@@ -785,8 +839,8 @@ const weeklyLogGroups = computed(() => {
 
 // Headers for weekly totals table
 const weeklyHeaders = computed(() => [
-  { title: 'Week', key: 'date', sortable: true },
-  { title: 'Cases', key: 'cases', sortable: true },
+  { title: t('agentDashboard.week'), key: 'date', sortable: true },
+  { title: t('agentDashboard.cases'), key: 'cases', sortable: true },
   { title: t('agentTables.callTime'), key: 'callTime', sortable: true, class: 'd-none d-md-table-cell' },
   { title: t('agentTables.outgoingCalls'), key: 'outgoingCalls', sortable: true, class: 'd-none d-lg-table-cell' },
   { title: t('agentTables.answeredCalls'), key: 'answeredCalls', sortable: true, class: 'd-none d-lg-table-cell' },
@@ -799,7 +853,7 @@ const weeklyHeaders = computed(() => [
 // Headers for individual logs table
 const individualHeaders = computed(() => [
   { title: t('agentTables.date'), key: 'date', sortable: true },
-  { title: 'Case', key: 'caseName', sortable: true },
+  { title: t('agentTables.case'), key: 'caseName', sortable: true },
   { title: t('agentTables.unit'), key: 'caseUnit', sortable: true, class: 'd-none d-md-table-cell' },
   { title: t('agentTables.callTime'), key: 'callTime', sortable: true, class: 'd-none d-lg-table-cell' },
   { title: t('agentTables.outgoingCalls'), key: 'outgoingCalls', sortable: true, class: 'd-none d-xl-table-cell' },
@@ -966,7 +1020,7 @@ const editLog = (logData) => {
 
 // Delete log function
 const deleteLog = async (logData) => {
-  if (!confirm('Are you sure you want to delete this log entry? This action cannot be undone.')) {
+  if (!confirm(t('agentDashboard.confirmDeleteLog'))) {
     return;
   }
   
@@ -976,11 +1030,11 @@ const deleteLog = async (logData) => {
     if (response.status === 200) {
       // Refresh the data to reflect the deletion
       await store.dispatch('fetchDailyLogs');
-      console.log('Log deleted successfully');
+      console.log(t('agentDashboard.logDeletedSuccessfully'));
     }
   } catch (error) {
     console.error('Error deleting log:', error);
-    alert('Failed to delete log entry. Please try again.');
+    alert(t('agentDashboard.failedToDeleteLog'));
   }
 };
 

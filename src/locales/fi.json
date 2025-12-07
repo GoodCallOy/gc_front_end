@@ -217,6 +217,36 @@
       "confirmDelete": "Haluatko varmasti poistaa tämän tilauksen?",
       "failedToSaveGoals": "Tavoitteiden tallennus epäonnistui!",
       "unknownAgent": "Tuntematon agentti"
+    },
+    "agentDashboard": {
+      "agentStatistics": "Agenttitilastot",
+      "revenue": "Liikevaihto",
+      "revenueGenerated": "Tuotettu liikevaihto",
+      "totalUnits": "Yksiköt yhteensä",
+      "casesFor": "Tapaukset",
+      "weeklySummary": "Viikkoyhteenveto",
+      "dailyEntriesByWeek": "Päivittäiset merkinnät viikoittain",
+      "week": "Viikko",
+      "cases": "Tapaukset",
+      "allCases": "Kaikki tapaukset",
+      "noCases": "Ei tapauksia",
+      "editLog": "Muokkaa lokia",
+      "deleteLog": "Poista loki",
+      "confirmDeleteLog": "Haluatko varmasti poistaa tämän lokimerkinnän? Tätä toimintoa ei voi perua.",
+      "failedToDeleteLog": "Lokimerkinnän poistaminen epäonnistui. Yritä uudelleen.",
+      "logDeletedSuccessfully": "Loki poistettu onnistuneesti"
+    },
+    "agentCaseCard": {
+      "showOrder": "Näytä tilaus",
+      "myGoal": "Oma tavoite",
+      "myRevenueGoal": "Oma liikevaihtotavoite",
+      "myCurrentRevenue": "Oma nykyinen liikevaihto",
+      "callers": "Soittajat",
+      "deadline": "Määräaika",
+      "none": "Ei mitään",
+      "meetings": "Tapaamiset",
+      "hours": "Tunnit",
+      "interviews": "Haastattelut"
     }
   }
   

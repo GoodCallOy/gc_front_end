@@ -234,6 +234,36 @@
       "confirmDelete": "Are you sure you want to delete this order?",
       "failedToSaveGoals": "Failed to save goals!",
       "unknownAgent": "Unknown Agent"
+    },
+    "agentDashboard": {
+      "agentStatistics": "Agent Stats",
+      "revenue": "Revenue",
+      "revenueGenerated": "Revenue Generated",
+      "totalUnits": "Total Units",
+      "casesFor": "Cases for",
+      "weeklySummary": "Weekly Summary",
+      "dailyEntriesByWeek": "Daily Entries by Week",
+      "week": "Week",
+      "cases": "Cases",
+      "allCases": "All Cases",
+      "noCases": "No cases",
+      "editLog": "Edit Log",
+      "deleteLog": "Delete Log",
+      "confirmDeleteLog": "Are you sure you want to delete this log entry? This action cannot be undone.",
+      "failedToDeleteLog": "Failed to delete log entry. Please try again.",
+      "logDeletedSuccessfully": "Log deleted successfully"
+    },
+    "agentCaseCard": {
+      "showOrder": "Show order",
+      "myGoal": "My goal",
+      "myRevenueGoal": "My revenue goal",
+      "myCurrentRevenue": "My current revenue",
+      "callers": "Callers",
+      "deadline": "Deadline",
+      "none": "None",
+      "meetings": "Meetings",
+      "hours": "Hours",
+      "interviews": "Interviews"
     }
   }
   
