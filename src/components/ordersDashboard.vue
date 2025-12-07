@@ -15,15 +15,15 @@
       <v-row class="mb-2" align="center">
         <v-col cols="12" md="8">
           <v-tabs v-model="activeTab" density="comfortable">
-            <v-tab value="tables">Tables</v-tab>
-            <v-tab value="cards">Cards</v-tab>
+            <v-tab value="tables">{{ t('ordersDashboard.tabs.tables') }}</v-tab>
+            <v-tab value="cards">{{ t('ordersDashboard.tabs.cards') }}</v-tab>
           </v-tabs>
         </v-col>
         <v-col cols="12" md="4">
           <v-select
             v-model="selectedCaseType"
             :items="caseTypeOptions"
-            label="Filter by Case Type"
+            :label="t('ordersDashboard.filterByCaseType')"
             clearable
             density="comfortable"
             hide-details
@@ -36,26 +36,26 @@
     <v-card class="mb-4 pa-2 revenue-summary" elevation="2">
       <v-row align="center" justify="center">
         <v-col cols="6" class="text-center">
-          <div class="text-subtitle-2 font-weight-bold text-primary">Estimated Revenue</div>
+          <div class="text-subtitle-2 font-weight-bold text-primary">{{ t('ordersDashboard.revenue.estimated') }}</div>
           <div class="text-h6 font-weight-bold">€{{ estimatedRevenueTotal.toFixed(2) }}</div>
         </v-col>
         <v-col cols="6" class="text-center">
-          <div class="text-subtitle-2 font-weight-bold text-success">Current Revenue</div>
+          <div class="text-subtitle-2 font-weight-bold text-success">{{ t('ordersDashboard.revenue.current') }}</div>
           <div class="text-h6 font-weight-bold">€{{ currentRevenueTotal.toFixed(2) }}</div>
         </v-col>
       </v-row>
     </v-card>
     
-    <h1 class="text-h4 mb-4" style="width: 100%;">All Cases - {{ getFormattedDateRange() }}</h1>
+    <h1 class="text-h4 mb-4" style="width: 100%;">{{ t('ordersDashboard.allCases') }} - {{ getFormattedDateRange() }}</h1>
 
     <v-window v-model="activeTab">
       <v-window-item value="tables">
         <div v-for="group in groupedOrdersByCaseType" :key="group.caseType" class="mb-6">
           <v-card elevation="2" class="mb-2">
             <v-card-title class="text-h6">
-              {{ group.caseType || 'Unspecified' }}
+              {{ group.caseType === 'Unspecified' ? t('ordersDashboard.unspecified') : (group.caseType || t('ordersDashboard.unspecified')) }}
               <v-chip size="small" class="ml-2">
-                {{ group.items.length }} {{ group.items.length === 1 ? 'case' : 'cases' }}
+                {{ group.items.length }} {{ group.items.length === 1 ? t('ordersDashboard.case') : t('ordersDashboard.cases') }}
               </v-chip>
             </v-card-title>
           </v-card>
@@ -88,15 +88,15 @@
               <tr v-if="item.isMultiMonth && item.monthlyBreakdown">
                 <td :colspan="tableHeaders.length">
                   <div class="pa-4 bg-grey-lighten-4">
-                    <h3 class="text-h6 mb-3">Monthly Breakdown</h3>
+                    <h3 class="text-h6 mb-3">{{ t('ordersDashboard.monthlyBreakdown.title') }}</h3>
                     <v-table density="compact">
                       <thead>
                         <tr>
-                          <th>Month</th>
-                          <th>Date Range</th>
-                          <th>Quantity Completed</th>
-                          <th>Revenue (€)</th>
-                          <th>Remaining</th>
+                          <th>{{ t('ordersDashboard.monthlyBreakdown.month') }}</th>
+                          <th>{{ t('ordersDashboard.monthlyBreakdown.dateRange') }}</th>
+                          <th>{{ t('ordersDashboard.monthlyBreakdown.quantityCompleted') }}</th>
+                          <th>{{ t('ordersDashboard.monthlyBreakdown.revenue') }}</th>
+                          <th>{{ t('ordersDashboard.monthlyBreakdown.remaining') }}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -108,7 +108,7 @@
                           <td>{{ Math.max(0, item.totalQuantity - getTotalCompletedUpToMonth(item.monthlyBreakdown, month.monthKey)) }}</td>
                         </tr>
                         <tr class="font-weight-bold">
-                          <td colspan="2">Total</td>
+                          <td colspan="2">{{ t('ordersDashboard.monthlyBreakdown.total') }}</td>
                           <td>{{ getTotalQuantity(item.monthlyBreakdown) }}</td>
                           <td>€{{ formatCurrency(getTotalRevenue(item.monthlyBreakdown)) }}</td>
                           <td>{{ Math.max(0, item.totalQuantity - getTotalQuantity(item.monthlyBreakdown)) }}</td>
@@ -123,7 +123,7 @@
               <span>
                 {{ item.caseName }}
                 <v-chip v-if="item.isMultiMonth" size="x-small" color="primary" class="ml-2">
-                  Multi-Month
+                  {{ t('ordersDashboard.multiMonth') }}
                 </v-chip>
               </span>
             </template>
@@ -154,9 +154,9 @@
         <div v-for="group in groupedOrdersByCaseTypeForCards" :key="`cards-${group.caseType}`" class="mb-6">
           <v-card elevation="2" class="mb-2">
             <v-card-title class="text-h6">
-              {{ group.caseType || 'Unspecified' }}
+              {{ group.caseType === 'Unspecified' ? t('ordersDashboard.unspecified') : (group.caseType || t('ordersDashboard.unspecified')) }}
               <v-chip size="small" class="ml-2">
-                {{ group.items.length }} {{ group.items.length === 1 ? 'case' : 'cases' }}
+                {{ group.items.length }} {{ group.items.length === 1 ? t('ordersDashboard.case') : t('ordersDashboard.cases') }}
               </v-chip>
             </v-card-title>
           </v-card>
@@ -180,6 +180,7 @@
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useStore } from 'vuex'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { goToNextMonth, goToPreviousMonth, formattedDateRange, isCurrentMonth, getMonthWeeks } from '@/js/dateUtils';
 import DashboardCard01 from '@/partials/dashboard/caseCard2.vue'
 import DateHeader from '@/components/DateHeader.vue'
@@ -187,21 +188,22 @@ import { orderSpansMultipleMonths, calculateMonthlyProgress } from '@/js/statsUt
 
 const store = useStore()
 const router = useRouter()
+const { t } = useI18n()
 const activeTab = ref('tables')
 
-const tableHeaders = ([
+const tableHeaders = computed(() => [
   { title: '', key: 'data-table-expand', sortable: false, width: '40px' },
-  { title: 'Case Name', key: 'caseName' },
-  { title: 'Status', key: 'orderStatus' },
-  { title: 'Callers', key: 'callers', sortable: false },
-  { title: 'Price/Unit (€)', key: 'pricePerUnit' },
-  { title: 'Unit', key: 'caseUnit' },
-  { title: 'Quantity', key: 'quantity', sortable: false },
-  { title: 'Total Qty', key: 'totalQuantity' },
-  { title: 'Goal (€)', key: 'goal', sortable: false },
-  { title: 'Revenue (€)', key: 'revenue', sortable: false },
-  { title: 'Start', key: 'startDate' },
-  { title: 'Deadline', key: 'deadline' },
+  { title: t('ordersDashboard.tableHeaders.caseName'), key: 'caseName' },
+  { title: t('ordersDashboard.tableHeaders.status'), key: 'orderStatus' },
+  { title: t('ordersDashboard.tableHeaders.callers'), key: 'callers', sortable: false },
+  { title: t('ordersDashboard.tableHeaders.pricePerUnit'), key: 'pricePerUnit' },
+  { title: t('ordersDashboard.tableHeaders.unit'), key: 'caseUnit' },
+  { title: t('ordersDashboard.tableHeaders.quantity'), key: 'quantity', sortable: false },
+  { title: t('ordersDashboard.tableHeaders.totalQty'), key: 'totalQuantity' },
+  { title: t('ordersDashboard.tableHeaders.goal'), key: 'goal', sortable: false },
+  { title: t('ordersDashboard.tableHeaders.revenue'), key: 'revenue', sortable: false },
+  { title: t('ordersDashboard.tableHeaders.start'), key: 'startDate' },
+  { title: t('ordersDashboard.tableHeaders.deadline'), key: 'deadline' },
 ])
 
 const orders = computed(() => store.getters['orders'])
@@ -483,7 +485,7 @@ const getFormattedDateRange = () => {
       return `${mm}-${dd}`
     }
 
-    return `${fmt(minStart)} through ${fmt(maxEnd)}`
+    return `${fmt(minStart)} ${t('ordersDashboard.dateFormat.through')} ${fmt(maxEnd)}`
   }
 
   // Fallback to existing formatted month range
@@ -550,7 +552,7 @@ function computeOrderRevenue(order) {
 function getCallerNames(order) {
   if (!order.assignedCallers || !Array.isArray(order.assignedCallers)) return ''
   return order.assignedCallers
-    .map(id => gcAgents.value.find(agent => agent._id === id)?.name || 'Unknown')
+    .map(id => gcAgents.value.find(agent => agent._id === id)?.name || t('ordersDashboard.unknown'))
     .join(', ')
 }
 
@@ -574,9 +576,10 @@ function navigateToOrderDetails(order) {
 }
 
 function getMonthName(monthNum) {
-  const months = ['January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December']
-  return months[monthNum - 1] || ''
+  const monthKeys = ['january', 'february', 'march', 'april', 'may', 'june',
+    'july', 'august', 'september', 'october', 'november', 'december']
+  const key = monthKeys[monthNum - 1]
+  return key ? t(`ordersDashboard.months.${key}`) : ''
 }
 
 function formatDateDetailed(dateStr) {

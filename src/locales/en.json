@@ -99,6 +99,62 @@
       "date": "Date",
       "updateLog": "Update Log",
       "addLog": "Add Log"
+    },
+    "ordersDashboard": {
+      "tabs": {
+        "tables": "Tables",
+        "cards": "Cards"
+      },
+      "filterByCaseType": "Filter by Case Type",
+      "revenue": {
+        "estimated": "Estimated Revenue",
+        "current": "Current Revenue"
+      },
+      "allCases": "All Cases",
+      "unspecified": "Unspecified",
+      "case": "case",
+      "cases": "cases",
+      "multiMonth": "Multi-Month",
+      "tableHeaders": {
+        "caseName": "Case Name",
+        "status": "Status",
+        "callers": "Callers",
+        "pricePerUnit": "Price/Unit (€)",
+        "unit": "Unit",
+        "quantity": "Quantity",
+        "totalQty": "Total Qty",
+        "goal": "Goal (€)",
+        "revenue": "Revenue (€)",
+        "start": "Start",
+        "deadline": "Deadline"
+      },
+      "monthlyBreakdown": {
+        "title": "Monthly Breakdown",
+        "month": "Month",
+        "dateRange": "Date Range",
+        "quantityCompleted": "Quantity Completed",
+        "revenue": "Revenue (€)",
+        "remaining": "Remaining",
+        "total": "Total"
+      },
+      "months": {
+        "january": "January",
+        "february": "February",
+        "march": "March",
+        "april": "April",
+        "may": "May",
+        "june": "June",
+        "july": "July",
+        "august": "August",
+        "september": "September",
+        "october": "October",
+        "november": "November",
+        "december": "December"
+      },
+      "dateFormat": {
+        "through": "through"
+      },
+      "unknown": "Unknown"
     }
   }
   

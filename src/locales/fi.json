@@ -82,6 +82,62 @@
       "date": "Päivämäärä",
       "updateLog": "Päivitä loki",
       "addLog": "Lisää loki"
+    },
+    "ordersDashboard": {
+      "tabs": {
+        "tables": "Taulukot",
+        "cards": "Kortit"
+      },
+      "filterByCaseType": "Suodata tapauksen tyypin mukaan",
+      "revenue": {
+        "estimated": "Arvioitu liikevaihto",
+        "current": "Nykyinen liikevaihto"
+      },
+      "allCases": "Kaikki tapaukset",
+      "unspecified": "Määrittämätön",
+      "case": "tapaus",
+      "cases": "tapausta",
+      "multiMonth": "Monikuukautinen",
+      "tableHeaders": {
+        "caseName": "Tapauksen nimi",
+        "status": "Tila",
+        "callers": "Soittajat",
+        "pricePerUnit": "Hinta/yksikkö (€)",
+        "unit": "Yksikkö",
+        "quantity": "Määrä",
+        "totalQty": "Yhteensä määrä",
+        "goal": "Tavoite (€)",
+        "revenue": "Liikevaihto (€)",
+        "start": "Alku",
+        "deadline": "Määräaika"
+      },
+      "monthlyBreakdown": {
+        "title": "Kuukausittainen erittely",
+        "month": "Kuukausi",
+        "dateRange": "Päivämääräalue",
+        "quantityCompleted": "Valmistunut määrä",
+        "revenue": "Liikevaihto (€)",
+        "remaining": "Jäljellä",
+        "total": "Yhteensä"
+      },
+      "months": {
+        "january": "Tammikuu",
+        "february": "Helmikuu",
+        "march": "Maaliskuu",
+        "april": "Huhtikuu",
+        "may": "Toukokuu",
+        "june": "Kesäkuu",
+        "july": "Heinäkuu",
+        "august": "Elokuu",
+        "september": "Syyskuu",
+        "october": "Lokakuu",
+        "november": "Marraskuu",
+        "december": "Joulukuu"
+      },
+      "dateFormat": {
+        "through": "läpi"
+      },
+      "unknown": "Tuntematon"
     }
   }
   
