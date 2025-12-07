@@ -138,6 +138,83 @@
         "through": "läpi"
       },
       "unknown": "Tuntematon"
+    },
+    "assignGoals": {
+      "buttons": {
+        "addAgent": "Lisää agentti",
+        "addCustomer": "Lisää asiakas",
+        "addCampaign": "Lisää kampanja",
+        "editCampaign": "Muokkaa kampanjaa",
+        "bulkCopyCampaigns": "Kopioi kampanjat joukkona",
+        "saveGoals": "Tallenna tavoitteet",
+        "close": "Sulje",
+        "addCase": "Lisää tapaus",
+        "createOrder": "Luo tilaus",
+        "saveChanges": "Tallenna muutokset"
+      },
+      "tableHeaders": {
+        "caseName": "Tapauksen nimi",
+        "totalGoals": "Tavoitteet yhteensä",
+        "goalsDistributed": "Jaetut tavoitteet",
+        "priceUnit": "Hinnan yksikkö",
+        "copy": "Kopioi",
+        "edit": "Muokkaa",
+        "delete": "Poista"
+      },
+      "assignGoalsFor": "Määritä tavoitteet",
+      "noOrderSelected": "Ei valittua tilausta",
+      "noAgentsAssigned": "Tälle tilaukselle ei ole määritetty agentteja.",
+      "thisMonth": "Tämä kuukausi:",
+      "totalGoals": "tavoitteet yhteensä",
+      "otherOrders": "Muut tilaukset:",
+      "totalRevenueAcrossAllOrders": "Liikevaihto yhteensä kaikista tilauksista:",
+      "modals": {
+        "editOrder": "Muokkaa tilausta",
+        "addNewOrder": "Lisää uusi tilaus",
+        "addAgent": "Lisää agentti",
+        "addCase": "Lisää tapaus"
+      },
+      "formLabels": {
+        "selectCase": "Valitse tapaus",
+        "caseUnit": "Tapauksen yksikkö",
+        "pricePerUnit": "Hinta per yksikkö (€)",
+        "totalQuantity": "Määrä yhteensä",
+        "startDate": "Aloituspäivä",
+        "deadline": "Määräaika",
+        "orderStatus": "Tilauksen tila",
+        "caseType": "Tapauksen tyyppi",
+        "estimatedRevenue": "Arvioitu liikevaihto (€)",
+        "selectManagers": "Valitse esimiehet",
+        "assignCallers": "Määritä soittajat",
+        "projectStartFee": "Projektin aloitusmaksu (€)",
+        "projectManagementFee": "Projektinhallintamaksu (€)",
+        "goal": "Tavoite",
+        "rate": "Hinta (€)",
+        "name": "Nimi",
+        "email": "Sähköposti",
+        "role": "Rooli",
+        "active": "Aktiivinen",
+        "caseName": "Tapauksen nimi",
+        "contactName": "Yhteyshenkilön nimi",
+        "contactTitle": "Yhteyshenkilön titteli"
+      },
+      "validation": {
+        "caseUnitRequired": "Tapauksen yksikkö on pakollinen",
+        "pricePerUnitRequired": "Hinta per yksikkö on pakollinen",
+        "quantityRequired": "Määrä on pakollinen",
+        "startDateRequired": "Aloituspäivä on pakollinen",
+        "deadlineRequired": "Määräaika on pakollinen",
+        "orderStatusRequired": "Tilauksen tila on pakollinen",
+        "caseTypeRequired": "Tapauksen tyyppi on pakollinen",
+        "estimatedRevenueRequired": "Arvioitu liikevaihto on pakollinen",
+        "nameRequired": "Nimi on pakollinen",
+        "emailRequired": "Sähköposti on pakollinen",
+        "emailInvalid": "Sähköpostin on oltava kelvollinen",
+        "roleRequired": "Rooli on pakollinen"
+      },
+      "confirmDelete": "Haluatko varmasti poistaa tämän tilauksen?",
+      "failedToSaveGoals": "Tavoitteiden tallennus epäonnistui!",
+      "unknownAgent": "Tuntematon agentti"
     }
   }
   

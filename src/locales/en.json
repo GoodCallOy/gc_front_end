@@ -155,6 +155,83 @@
         "through": "through"
       },
       "unknown": "Unknown"
+    },
+    "assignGoals": {
+      "buttons": {
+        "addAgent": "Add Agent",
+        "addCustomer": "Add Customer",
+        "addCampaign": "Add Campaign",
+        "editCampaign": "Edit Campaign",
+        "bulkCopyCampaigns": "Bulk Copy Campaigns",
+        "saveGoals": "Save goals",
+        "close": "Close",
+        "addCase": "Add Case",
+        "createOrder": "Create Order",
+        "saveChanges": "Save Changes"
+      },
+      "tableHeaders": {
+        "caseName": "Case Name",
+        "totalGoals": "Total Goals",
+        "goalsDistributed": "Goals Distributed",
+        "priceUnit": "Price Unit",
+        "copy": "Copy",
+        "edit": "Edit",
+        "delete": "Delete"
+      },
+      "assignGoalsFor": "Assign Goals for",
+      "noOrderSelected": "No order selected",
+      "noAgentsAssigned": "No agents assigned to this order.",
+      "thisMonth": "This month:",
+      "totalGoals": "total goals",
+      "otherOrders": "Other orders:",
+      "totalRevenueAcrossAllOrders": "Total revenue across all orders:",
+      "modals": {
+        "editOrder": "Edit Order",
+        "addNewOrder": "Add New Order",
+        "addAgent": "Add Agent",
+        "addCase": "Add Case"
+      },
+      "formLabels": {
+        "selectCase": "Select Case",
+        "caseUnit": "Case Unit",
+        "pricePerUnit": "Price per Unit (€)",
+        "totalQuantity": "Total Quantity",
+        "startDate": "Start Date",
+        "deadline": "Deadline",
+        "orderStatus": "Order Status",
+        "caseType": "Case Type",
+        "estimatedRevenue": "Estimated Revenue (€)",
+        "selectManagers": "Select Managers",
+        "assignCallers": "Assign Callers",
+        "projectStartFee": "Project Start Fee (€)",
+        "projectManagementFee": "Project Management Fee (€)",
+        "goal": "Goal",
+        "rate": "Rate (€)",
+        "name": "Name",
+        "email": "Email",
+        "role": "Role",
+        "active": "Active",
+        "caseName": "Case Name",
+        "contactName": "Contact Name",
+        "contactTitle": "Contact Title"
+      },
+      "validation": {
+        "caseUnitRequired": "Case Unit is required",
+        "pricePerUnitRequired": "Price per unit is required",
+        "quantityRequired": "Quantity is required",
+        "startDateRequired": "Start date is required",
+        "deadlineRequired": "Deadline is required",
+        "orderStatusRequired": "Order status is required",
+        "caseTypeRequired": "Case type is required",
+        "estimatedRevenueRequired": "Estimated revenue is required",
+        "nameRequired": "Name is required",
+        "emailRequired": "Email is required",
+        "emailInvalid": "Email must be valid",
+        "roleRequired": "Role is required"
+      },
+      "confirmDelete": "Are you sure you want to delete this order?",
+      "failedToSaveGoals": "Failed to save goals!",
+      "unknownAgent": "Unknown Agent"
     }
   }
   
