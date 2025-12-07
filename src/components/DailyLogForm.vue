@@ -75,9 +75,21 @@
         required
       />
 
-      <v-btn type="submit" :disabled="!formValid" color="primary" class="mt-4">
-        {{ isEditing ? $t('dailyLogForm.updateLog') : $t('dailyLogForm.addLog') }}
-      </v-btn>
+      <div class="d-flex align-center mt-4" style="gap: 12px;">
+        <v-btn type="submit" :disabled="!formValid" color="primary">
+          {{ isEditing ? $t('dailyLogForm.updateLog') : $t('dailyLogForm.addLog') }}
+        </v-btn>
+        <v-alert
+          v-if="showSuccessMessage"
+          type="success"
+          density="compact"
+          variant="tonal"
+          class="mb-0"
+          style="flex: 1;"
+        >
+          {{ successMessage }}
+        </v-alert>
+      </div>
     </v-form>
   </v-card>
 </template>
@@ -129,7 +141,9 @@ export default {
       resultAnalysis: this.logToEdit?.resultAnalysis || 0,
     },
     formValid: true,
-    originalLogId: null // Store the ID of the log being edited
+    originalLogId: null, // Store the ID of the log being edited
+    showSuccessMessage: false,
+    successMessage: ''
     }
   },
   computed: {
@@ -333,11 +347,21 @@ async mounted() {
                 // Update existing log
                 await axios.put(`${urls.backEndURL}/dailyLogs/${this.originalLogId}`, payload);
                 console.log('Log updated successfully');
+                this.showSuccessMessage = true;
+                this.successMessage = this.$t('dailyLogForm.logUpdatedSuccessfully') || 'Log updated successfully!';
             } else {
                 // Create new log
                 await axios.post(`${urls.backEndURL}/dailyLogs`, payload);
                 console.log('Log created successfully');
+                this.showSuccessMessage = true;
+                this.successMessage = this.$t('dailyLogForm.logCreatedSuccessfully') || 'Log created successfully!';
             }
+
+            // Hide success message after 3 seconds
+            setTimeout(() => {
+                this.showSuccessMessage = false;
+                this.successMessage = '';
+            }, 3000);
 
            // Clear form fields but keep agent selection
                 const currentAgent = this.form.agent;
@@ -370,6 +394,9 @@ async mounted() {
                 this.$emit('saved');
         } catch (err) {
             console.error('Failed to save log', err);
+            // Hide success message if there was an error
+            this.showSuccessMessage = false;
+            this.successMessage = '';
         }
     }
   },

@@ -81,7 +81,9 @@
       "comments": "Kommentit",
       "date": "Päivämäärä",
       "updateLog": "Päivitä loki",
-      "addLog": "Lisää loki"
+      "addLog": "Lisää loki",
+      "logCreatedSuccessfully": "Loki luotu onnistuneesti!",
+      "logUpdatedSuccessfully": "Loki päivitetty onnistuneesti!"
     },
     "ordersDashboard": {
       "tabs": {

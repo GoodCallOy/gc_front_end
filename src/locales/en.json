@@ -98,7 +98,9 @@
       "comments": "Comments",
       "date": "Date",
       "updateLog": "Update Log",
-      "addLog": "Add Log"
+      "addLog": "Add Log",
+      "logCreatedSuccessfully": "Log created successfully!",
+      "logUpdatedSuccessfully": "Log updated successfully!"
     },
     "ordersDashboard": {
       "tabs": {
