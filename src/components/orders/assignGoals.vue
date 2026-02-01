@@ -309,38 +309,39 @@
             type="number"
         />
         <div v-if="form.assignedCallers.length" class="mt-4">
-        <v-list>
+          <v-list>
             <v-list-item
-            v-for="agentId in form.assignedCallers"
-            :key="agentId"
+              v-for="agentId in form.assignedCallers"
+              :key="agentId"
             >
-            <v-list-item-content>
+              <v-list-item-content>
                 <v-list-item-title>
-                {{ agentName(agentId) }}
+                  {{ agentName(agentId) }}
                 </v-list-item-title>
-            </v-list-item-content>
-            <v-list-item-action>
+              </v-list-item-content>
+              <v-list-item-action>
                 <v-text-field
-                v-model.number="agentGoals[agentId]"
-                label="Goal"
-                type="number"
-                min="0"
-                style="max-width: 100px"
+                  v-model.number="agentGoals[agentId]"
+                  label="Goal"
+                  type="number"
+                  min="0"
+                  style="max-width: 100px"
                 />
-              <v-text-field
-                v-model.number="agentRates[agentId]"
-                label="Rate (€)"
-                type="number"
-                min="0"
-                style="max-width: 120px"
-              />
-            </v-list-item-action>
+                <v-text-field
+                  v-model.number="agentRates[agentId]"
+                  label="Rate (€)"
+                  type="number"
+                  min="0"
+                  style="max-width: 120px"
+                />
+              </v-list-item-action>
             </v-list-item>
-        </v-list>
-        <v-btn type="submit" color="primary" class="mt-4">
-            {{ isEditMode ? 'Save Changes' : 'Create Order' }}
-        </v-btn>
+          </v-list>
         </div>
+
+        <v-btn type="submit" color="primary" class="mt-4">
+          {{ isEditMode ? 'Save Changes' : 'Create Order' }}
+        </v-btn>
 
         </v-form>
 

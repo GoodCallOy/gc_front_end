@@ -14,16 +14,24 @@ module.exports = defineConfig({
     ],
   },
   devServer: isDev
-    ? {
-        server: {
-          type: 'https',
-          options: {
-            key: fs.readFileSync('C:/Users/j_dan/server.key'),
-            cert: fs.readFileSync('C:/Users/j_dan/server.cert'),
-          },
-        },
-        port: 8080,
-      }
+    ? (() => {
+        const keyPath = 'C:/Users/Jason/server.key';
+        const certPath = 'C:/Users/Jason/server.cert';
+        const hasCertificates = fs.existsSync(keyPath) && fs.existsSync(certPath);
+        
+        return {
+          server: hasCertificates
+            ? {
+                type: 'https',
+                options: {
+                  key: fs.readFileSync(keyPath),
+                  cert: fs.readFileSync(certPath),
+                },
+              }
+            : undefined,
+          port: 8080,
+        };
+      })()
     : {},
   pluginOptions: {
     vuetify: {},

@@ -119,42 +119,42 @@
         clearable
       />
       <div v-if="form.assignedCallers.length" class="mt-4">
-  <div>
-    <strong>Assigned Goals: {{ assignedGoalsCount }} / {{ form.totalQuantity || 0 }}</strong>
-    </div>
-      <v-list>
-        <v-list-item
-          v-for="agentId in form.assignedCallers"
-          :key="agentId"
-        >
-          <v-list-item-content>
-            <v-list-item-title>
-              {{ agentName(agentId) }}
-            </v-list-item-title>
-          </v-list-item-content>
-          <v-list-item-action>
-            <v-text-field
-              v-model.number="agentGoals[agentId]"
-              label="Goal"
-              type="number"
-              min="0"
-              style="max-width: 100px"
-            />
-          </v-list-item-action>
-        </v-list-item>
-      </v-list>
-       <v-btn 
-         type="submit" 
-         color="primary" 
-         class="mt-4"
-         :disabled="!isFormValid || isSubmitting"
-         :loading="isSubmitting"
-       >
-         {{ isEditMode ? 'Update Case' : 'Create Case' }}
-       </v-btn>
-       <span class="ml-3" v-if="saveMessage">{{ saveMessage }}</span>
-    </div>
-     
+        <div>
+          <strong>Assigned Goals: {{ assignedGoalsCount }} / {{ form.totalQuantity || 0 }}</strong>
+        </div>
+        <v-list>
+          <v-list-item
+            v-for="agentId in form.assignedCallers"
+            :key="agentId"
+          >
+            <v-list-item-content>
+              <v-list-item-title>
+                {{ agentName(agentId) }}
+              </v-list-item-title>
+            </v-list-item-content>
+            <v-list-item-action>
+              <v-text-field
+                v-model.number="agentGoals[agentId]"
+                label="Goal"
+                type="number"
+                min="0"
+                style="max-width: 100px"
+              />
+            </v-list-item-action>
+          </v-list-item>
+        </v-list>
+      </div>
+      <v-btn
+        type="submit"
+        color="primary"
+        class="mt-4"
+        :disabled="!isFormValid || isSubmitting"
+        :loading="isSubmitting"
+      >
+        {{ isEditMode ? 'Update Case' : 'Create Case' }}
+      </v-btn>
+      <span class="ml-3" v-if="saveMessage">{{ saveMessage }}</span>
+
     </v-form>
     
 

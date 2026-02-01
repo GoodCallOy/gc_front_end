@@ -769,7 +769,7 @@ async function loadMonthWeeks() {
   /* Keep at 4 columns on ultra-wide as well to match 90% width */
   @media (max-width: 1400px) {
     .grid-container {
-      grid-template-columns: repeat(5, 1fr) !important; /* 3 columns for medium screens like Surface Pro 6 */
+      grid-template-columns: repeat(4, 1fr) !important; /* 3 columns for medium screens like Surface Pro 6 */
       width: 100% !important;
     }
   }
