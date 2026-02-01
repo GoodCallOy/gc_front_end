@@ -112,7 +112,11 @@
     {{ t('assignGoals.assignGoalsFor') }} ({{ selectedOrder && selectedOrder.caseName || t('assignGoals.noOrderSelected') }})
   </h3>
 
-  <v-col v-if="selectedOrder?.agentSummary?.length" cols="12" class="pa-0">
+  <div v-if="rightPanelLoading" class="d-flex align-center justify-center pa-8">
+    <v-progress-circular indeterminate color="primary" size="48" />
+  </div>
+
+  <v-col v-else-if="selectedOrder?.agentSummary?.length" cols="12" class="pa-0">
     <v-row>
       <v-col
         v-for="agent in selectedOrder.agentSummary"
@@ -185,7 +189,7 @@
     </v-row>
   </v-col>
 
-  <div v-else class="text-grey pa-4">{{ t('assignGoals.noAgentsAssigned') }}</div>
+  <div v-else-if="!rightPanelLoading" class="text-grey pa-4">{{ t('assignGoals.noAgentsAssigned') }}</div>
 </v-col>
     </v-row>
   </v-container>
@@ -472,6 +476,7 @@ const agentForm = ref(null);
 const caseForm = ref(null);
 const selectedOrder = ref(null)
 const selectedOrderId = ref(null)
+const rightPanelLoading = ref(false)
 const isEditMode = ref(false);
 
 const showEditOrderModal = ref(false);
@@ -1156,102 +1161,106 @@ const selectOrder = async (order, event) => {
 
   selectedOrderId.value = item._id;
   selectedOrder.value = item;
+  rightPanelLoading.value = true;
 
   console.log('Selected order:', item);
   console.log('Selected order ID:', selectedOrderId.value);
   try {
-    console.log('[AssignGoals] Selected order full payload ->\n', JSON.stringify(item, null, 2));
-  } catch {}
-  console.log('[AssignGoals] Selected case summary', {
-    orderId: String(item?._id),
-    caseName: item?.caseName,
-    caseId: item?.caseId,
-    agentGoals: item?.agentGoals,
-    agentRates: item?.agentRates,
-    agentPrices: item?.agentPrices,
-    agentAssignments: item?.agentAssignments,
-    assignedCallers: item?.assignedCallers,
-  });
-
-  // clear local goals cache
-  Object.keys(agentGoals).forEach(k => (agentGoals[k] = 0));
-
-  // full-month window from the order's start date
-  const { from, to } = monthBoundsFrom(item.startDate);
-
-  console.log('Calculating goals for order:', item._id, 'from', from, 'to', to);
-  
-  const agentStats = await fetchAgentRevenueAggregates(from, to);
-  console.log('Agent stats:', agentStats);
-  
-  selectedOrder.value.agentSummary = [];
-
-  const orderId   = String(selectedOrder.value._id);
-  const price     = Number(selectedOrder.value.pricePerUnit) || 0;
-  const goalsObj  = selectedOrder.value.agentGoals || {};
-  const ratesObj  = selectedOrder.value.agentRates || {};
-  const pricesObj = selectedOrder.value.agentPrices || {};
-  const assignments = Array.isArray(selectedOrder.value.agentAssignments)
-    ? selectedOrder.value.agentAssignments
-    : [];
-  const assignedIds = [...new Set(
-    (selectedOrder.value.assignedCallers || []).map(x => String(x?._id ?? x?.id ?? x))
-  )];
-
-  console.log('[AssignGoals] Incoming agent data sources', {
-    goalsObj,
-    ratesObj,
-    pricesObj,
-    assignments,
-    assignedIds,
-  });
-
-  // build a fast lookup from agentStats
-  const statsAgents = agentStats?.agents || [];
-  const byId = new Map(statsAgents.map(a => [ String(a.agentId), a ]));
-
-  // build agentSummary only for agents on this order
-  selectedOrder.value.agentSummary = assignedIds.map(agentId => {
-    const bucket = byId.get(agentId);               // this agent's month bucket (may be undefined)
-    const name   = bucket?.agentName || t('assignGoals.unknownAgent');
-    const AgentOrders =  bucket?.orders || {};     
-
-  
-    const goalForThisOrder = Number(goalsObj[agentId]) || 0;
-    const rateFromMap = Number(ratesObj[agentId]) || 0;
-    const rateFromAssignments = Number(assignments.find(a => String(a.id) === agentId)?.rate) || 0;
-    const rateFromPrices = Number(pricesObj[agentId]) || 0;
-    const rateForThisOrder = rateFromMap || rateFromAssignments || rateFromPrices || 0;
-
-    console.log('[AssignGoals] Agent rate resolution', {
-      agentId,
-      name,
-      rateFromMap,
-      rateFromAssignments,
-      rateFromPrices,
-      chosenRate: rateForThisOrder,
+    try {
+      console.log('[AssignGoals] Selected order full payload ->\n', JSON.stringify(item, null, 2));
+    } catch {}
+    console.log('[AssignGoals] Selected case summary', {
+      orderId: String(item?._id),
+      caseName: item?.caseName,
+      caseId: item?.caseId,
+      agentGoals: item?.agentGoals,
+      agentRates: item?.agentRates,
+      agentPrices: item?.agentPrices,
+      agentAssignments: item?.agentAssignments,
+      assignedCallers: item?.assignedCallers,
     });
 
-    // prefer the order entry from bucket.orders if present; fallback to goal*price
-    const orderEntry = bucket?.orders?.find(o => String(o.orderId) === orderId);
-    const revenueForThisOrder = Number(orderEntry?.revenue) || (goalForThisOrder * price);
+    // clear local goals cache
+    Object.keys(agentGoals).forEach(k => (agentGoals[k] = 0));
 
-    return {
-      AgentOrders: AgentOrders,
-      id: agentId,
-      name,
-      goalForThisOrder,
-      rateForThisOrder,
-      revenueForThisOrder,
-      revenueForThisOrderFormatted: currency(revenueForThisOrder),
+    // full-month window from the order's start date
+    const { from, to } = monthBoundsFrom(item.startDate);
 
-      // optional: include month totals from the stats bucket
-      monthRevenue: Number(bucket?.totals?.revenue ?? bucket?.totalRevenue) || 0,
-      monthOrders:  Number(bucket?.totals?.orders)  || (bucket?.orders?.length ?? 0),
-    };
-  });
+    console.log('Calculating goals for order:', item._id, 'from', from, 'to', to);
 
-  console.log('Agent summary:', selectedOrder.value.agentSummary);
+    const agentStats = await fetchAgentRevenueAggregates(from, to);
+    console.log('Agent stats:', agentStats);
+
+    selectedOrder.value.agentSummary = [];
+
+    const orderId   = String(selectedOrder.value._id);
+    const price     = Number(selectedOrder.value.pricePerUnit) || 0;
+    const goalsObj  = selectedOrder.value.agentGoals || {};
+    const ratesObj  = selectedOrder.value.agentRates || {};
+    const pricesObj = selectedOrder.value.agentPrices || {};
+    const assignments = Array.isArray(selectedOrder.value.agentAssignments)
+      ? selectedOrder.value.agentAssignments
+      : [];
+    const assignedIds = [...new Set(
+      (selectedOrder.value.assignedCallers || []).map(x => String(x?._id ?? x?.id ?? x))
+    )];
+
+    console.log('[AssignGoals] Incoming agent data sources', {
+      goalsObj,
+      ratesObj,
+      pricesObj,
+      assignments,
+      assignedIds,
+    });
+
+    // build a fast lookup from agentStats
+    const statsAgents = agentStats?.agents || [];
+    const byId = new Map(statsAgents.map(a => [ String(a.agentId), a ]));
+
+    // build agentSummary only for agents on this order
+    selectedOrder.value.agentSummary = assignedIds.map(agentId => {
+      const bucket = byId.get(agentId);               // this agent's month bucket (may be undefined)
+      const name   = bucket?.agentName || t('assignGoals.unknownAgent');
+      const AgentOrders =  bucket?.orders || {};
+
+      const goalForThisOrder = Number(goalsObj[agentId]) || 0;
+      const rateFromMap = Number(ratesObj[agentId]) || 0;
+      const rateFromAssignments = Number(assignments.find(a => String(a.id) === agentId)?.rate) || 0;
+      const rateFromPrices = Number(pricesObj[agentId]) || 0;
+      const rateForThisOrder = rateFromMap || rateFromAssignments || rateFromPrices || 0;
+
+      console.log('[AssignGoals] Agent rate resolution', {
+        agentId,
+        name,
+        rateFromMap,
+        rateFromAssignments,
+        rateFromPrices,
+        chosenRate: rateForThisOrder,
+      });
+
+      // prefer the order entry from bucket.orders if present; fallback to goal*price
+      const orderEntry = bucket?.orders?.find(o => String(o.orderId) === orderId);
+      const revenueForThisOrder = Number(orderEntry?.revenue) || (goalForThisOrder * price);
+
+      return {
+        AgentOrders: AgentOrders,
+        id: agentId,
+        name,
+        goalForThisOrder,
+        rateForThisOrder,
+        revenueForThisOrder,
+        revenueForThisOrderFormatted: currency(revenueForThisOrder),
+
+        // optional: include month totals from the stats bucket
+        monthRevenue: Number(bucket?.totals?.revenue ?? bucket?.totalRevenue) || 0,
+        monthOrders:  Number(bucket?.totals?.orders)  || (bucket?.orders?.length ?? 0),
+      };
+    });
+
+    console.log('Agent summary:', selectedOrder.value.agentSummary);
+  } finally {
+    rightPanelLoading.value = false;
+  }
 };
 
 
