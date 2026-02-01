@@ -339,8 +339,8 @@
           </v-list>
         </div>
 
-        <v-btn type="submit" color="primary" class="mt-4">
-            {{ isEditMode ? t('assignGoals.buttons.saveChanges') : t('assignGoals.buttons.createOrder') }}
+        <v-btn type="submit" color="primary" class="mt-4" :disabled="!addOrderFormValid">
+          {{ isEditMode ? t('assignGoals.buttons.saveChanges') : t('assignGoals.buttons.createOrder') }}
         </v-btn>
 
         </v-form>
@@ -811,6 +811,17 @@ const estimatedRevenue = computed(() => {
   const qty = Number(form.value?.totalQuantity ?? 0)
   return price * qty
 })
+
+// Add Order modal: button enabled only when case, caseUnit, pricePerUnit, totalQuantity are filled
+const addOrderFormValid = computed(() => {
+  const f = form.value;
+  return !!(
+    f?.caseId &&
+    f?.caseUnit &&
+    f?.pricePerUnit != null && f?.pricePerUnit !== '' &&
+    f?.totalQuantity != null && f?.totalQuantity !== ''
+  );
+});
 
 // If you also want to keep `form.estimatedRevenue` synced:
 watch(estimatedRevenue, (val) => {
