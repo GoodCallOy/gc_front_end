@@ -6,7 +6,7 @@
         :items="gcAgents"
         item-title="name"
         item-value="_id"
-        label="Select Agent"
+        :label="$t('dailyLogForm.selectAgent')"
         :disabled="isCaller"
         required
       />
@@ -16,53 +16,53 @@
         :items="filteredOrders"
         item-title="caseName"
         item-value="_id"
-        label="Select Case"
-        :hint="filteredOrders.length === 0 && form.agent ? 'No cases assigned to this agent for the current month' : ''"
+        :label="$t('dailyLogForm.selectCase')"
+        :hint="filteredOrders.length === 0 && form.agent ? $t('dailyLogForm.noCasesAssigned') : ''"
         persistent-hint
         required
       />
 
-      <v-text-field v-model="form.caseUnit" label="Case Unit" required />
-      <v-text-field v-model.number="form.call_time" label="Call Time" type="number" required />
-      <v-text-field v-model.number="form.completed_calls" label="Completed Calls" type="number" required />
-      <v-text-field v-model.number="form.outgoing_calls" label="Outbound Calls" type="number" required />
-      <v-text-field v-model.number="form.answered_calls" label="Answered Calls" type="number" required />
+      <v-text-field v-model="form.caseUnit" :label="$t('dailyLogForm.caseUnit')" required />
+      <v-text-field v-model.number="form.call_time" :label="$t('dailyLogForm.callTime')" type="number" required />
+      <v-text-field v-model.number="form.completed_calls" :label="$t('dailyLogForm.completedCalls')" type="number" required />
+      <v-text-field v-model.number="form.outgoing_calls" :label="$t('dailyLogForm.outboundCalls')" type="number" required />
+      <v-text-field v-model.number="form.answered_calls" :label="$t('dailyLogForm.answeredCalls')" type="number" required />
 
       <v-text-field
         :value="formattedResponseRate"
-        label="Response Rate"
+        :label="$t('dailyLogForm.responseRate')"
         readonly
         persistent-placeholder
       />
 
       <!-- Conditional Kuuki / Hourly / Daily fields -->
       <template v-if="showLeadFields">
-        <v-text-field v-model.number="form.aLeads" label="A-leads" type="number" min="0" />
-        <v-text-field v-model.number="form.bLeads" label="B-leads" type="number" min="0" />
-        <v-text-field v-model.number="form.cLeads" label="C-leads" type="number" min="0" />
-        <v-text-field v-model.number="form.dLeads" label="D-leads" type="number" min="0" />
-        <v-text-field v-model.number="form.noPotential" label="No potential" type="number" min="0" />
+        <v-text-field v-model.number="form.aLeads" :label="$t('dailyLogForm.aLeads')" type="number" min="0" />
+        <v-text-field v-model.number="form.bLeads" :label="$t('dailyLogForm.bLeads')" type="number" min="0" />
+        <v-text-field v-model.number="form.cLeads" :label="$t('dailyLogForm.cLeads')" type="number" min="0" />
+        <v-text-field v-model.number="form.dLeads" :label="$t('dailyLogForm.dLeads')" type="number" min="0" />
+        <v-text-field v-model.number="form.noPotential" :label="$t('dailyLogForm.noPotential')" type="number" min="0" />
       </template>
 
       <!-- Conditional Interviews fields -->
       <template v-if="showInterviewFields">
-        <v-text-field v-model.number="form.interviews" label="Interviews" type="number" min="0" />
-        <v-text-field v-model.number="form.hours" label="Hours" type="number" min="0" />
-        <v-text-field v-model.number="form.bookedInterviews" label="Booked Interviews" type="number" min="0" />
-        <v-text-field v-model.number="form.completedInterviews" label="Completed Interviews" type="number" min="0" />
-        <v-text-field v-model.number="form.resultAnalysis" label="Result Analysis" type="number" min="0" />
+        <v-text-field v-model.number="form.interviews" :label="$t('dailyLogForm.interviews')" type="number" min="0" />
+        <v-text-field v-model.number="form.hours" :label="$t('dailyLogForm.hours')" type="number" min="0" />
+        <v-text-field v-model.number="form.bookedInterviews" :label="$t('dailyLogForm.bookedInterviews')" type="number" min="0" />
+        <v-text-field v-model.number="form.completedInterviews" :label="$t('dailyLogForm.completedInterviews')" type="number" min="0" />
+        <v-text-field v-model.number="form.resultAnalysis" :label="$t('dailyLogForm.resultAnalysis')" type="number" min="0" />
       </template>
      
       <v-text-field
         v-model.number="form.quantityCompleted"
-        label="Results"
+        :label="$t('dailyLogForm.results')"
         type="number"
         required
       />
 
       <v-textarea
         v-model="form.comments"
-        label="Comments"
+        :label="$t('dailyLogForm.comments')"
         auto-grow
         rows="2"
         max-rows="5"
@@ -70,14 +70,26 @@
 
       <v-text-field
         v-model="form.date"
-        label="Date"
+        :label="$t('dailyLogForm.date')"
         type="date"
         required
       />
 
-      <v-btn type="submit" :disabled="!formValid" color="primary" class="mt-4">
-        {{ isEditing ? 'Update Log' : 'Add Log' }}
-      </v-btn>
+      <div class="d-flex align-center mt-4" style="gap: 12px;">
+        <v-btn type="submit" :disabled="!formValid" color="primary">
+          {{ isEditing ? $t('dailyLogForm.updateLog') : $t('dailyLogForm.addLog') }}
+        </v-btn>
+        <v-alert
+          v-if="showSuccessMessage"
+          type="success"
+          density="compact"
+          variant="tonal"
+          class="mb-0"
+          style="flex: 1;"
+        >
+          {{ successMessage }}
+        </v-alert>
+      </div>
     </v-form>
   </v-card>
 </template>
@@ -129,7 +141,9 @@ export default {
       resultAnalysis: this.logToEdit?.resultAnalysis || 0,
     },
     formValid: true,
-    originalLogId: null // Store the ID of the log being edited
+    originalLogId: null, // Store the ID of the log being edited
+    showSuccessMessage: false,
+    successMessage: ''
     }
   },
   computed: {
@@ -191,8 +205,8 @@ export default {
     return this.ordersWithCaseName.find(o => o._id === this.form.order) || null
   },
   showLeadFields() {
-    const t = String(this.selectedOrder?.caseType || '').toLowerCase()
-    return t.includes('kuuki') || t.includes('hour') || t.includes('daily')
+    // Show lead fields for all cases
+    return true
   },
   showInterviewFields() {
     const t = String(this.selectedOrder?.caseType || '').toLowerCase()
@@ -223,6 +237,9 @@ async mounted() {
    await this.fetchAllData();
     console.log('Orders fetched:', this.orders);
     
+    // Wait for next tick to ensure computed properties are updated
+    await this.$nextTick();
+    
     // Check for edit log data in query parameters
     if (this.route.query.editLog) {
       try {
@@ -230,19 +247,41 @@ async mounted() {
         console.log('Editing log:', logData);
         
         // Populate form with log data
-        this.form.agent = logData.agent || '';
+        // Handle agent - can be object with _id or just ID string
+        const agentId = logData.agent?._id || logData.agent?.id || logData.agent || '';
+        this.form.agent = agentId;
         this.form.agentName = logData.agentName || '';
-        this.form.order = logData.order || '';
         
-        // Resolve case name properly - try to find it from the order if not available in log data
-        let resolvedCaseName = logData.caseName || '';
-        if (!resolvedCaseName && logData.order) {
-          const order = this.ordersWithCaseName.find(o => o._id === logData.order);
-          if (order) {
-            resolvedCaseName = order.caseName;
+        // Wait another tick after setting agent so filteredOrders updates
+        await this.$nextTick();
+        
+        // Find the order by caseName if order ID is not available
+        let orderId = logData.order?._id || logData.order?.id || logData.order || '';
+        const caseName = logData.caseName || '';
+        
+        // If we have caseName but no order ID, try to find the order by caseName
+        if (!orderId && caseName) {
+          console.log('Looking for order with caseName:', caseName);
+          console.log('Available orders:', this.ordersWithCaseName);
+          const matchingOrder = this.ordersWithCaseName.find(o => {
+            // Check if order's caseName matches
+            const orderCaseName = o.caseName || '';
+            const matches = orderCaseName === caseName || orderCaseName.toLowerCase() === caseName.toLowerCase();
+            if (matches) {
+              console.log('Matched order:', o);
+            }
+            return matches;
+          });
+          if (matchingOrder) {
+            orderId = matchingOrder._id;
+            console.log('Found order by caseName:', matchingOrder);
+          } else {
+            console.warn('No matching order found for caseName:', caseName);
           }
         }
-        this.form.caseName = resolvedCaseName;
+        
+        this.form.order = orderId;
+        this.form.caseName = caseName;
         
         this.form.caseUnit = logData.caseUnit || '';
         this.form.call_time = logData.call_time || 0;
@@ -308,11 +347,21 @@ async mounted() {
                 // Update existing log
                 await axios.put(`${urls.backEndURL}/dailyLogs/${this.originalLogId}`, payload);
                 console.log('Log updated successfully');
+                this.showSuccessMessage = true;
+                this.successMessage = this.$t('dailyLogForm.logUpdatedSuccessfully') || 'Log updated successfully!';
             } else {
                 // Create new log
                 await axios.post(`${urls.backEndURL}/dailyLogs`, payload);
                 console.log('Log created successfully');
+                this.showSuccessMessage = true;
+                this.successMessage = this.$t('dailyLogForm.logCreatedSuccessfully') || 'Log created successfully!';
             }
+
+            // Hide success message after 3 seconds
+            setTimeout(() => {
+                this.showSuccessMessage = false;
+                this.successMessage = '';
+            }, 3000);
 
            // Clear form fields but keep agent selection
                 const currentAgent = this.form.agent;
@@ -345,6 +394,9 @@ async mounted() {
                 this.$emit('saved');
         } catch (err) {
             console.error('Failed to save log', err);
+            // Hide success message if there was an error
+            this.showSuccessMessage = false;
+            this.successMessage = '';
         }
     }
   },

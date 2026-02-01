@@ -4,11 +4,11 @@
         <div class="d-flex align-center justify-space-around responsive-toolbar">
 
             <v-btn color="primary" @click="openAddAgentModal">
-                Add Agent
+                {{ t('assignGoals.buttons.addAgent') }}
             </v-btn>
 
             <v-btn color="primary" @click="openAddCaseModal">
-                Add Customer
+                {{ t('assignGoals.buttons.addCustomer') }}
             </v-btn>
 
             <!-- Date Range Display (center) -->
@@ -23,7 +23,7 @@
             </div>
 
             <v-btn color="primary" @click="openAddOrderModal">
-                Add Campaign
+                {{ t('assignGoals.buttons.addCampaign') }}
             </v-btn>
 
             <v-btn
@@ -31,7 +31,7 @@
                 :disabled="!selectedOrder"
                 @click="openEditOrderModal"
             >
-                Edit Campaign
+                {{ t('assignGoals.buttons.editCampaign') }}
             </v-btn>
 
             <v-btn
@@ -40,7 +40,7 @@
                 :loading="bulkCopying"
                 @click="bulkCopyOrdersToNextMonth"
             >
-                Bulk Copy Campaigns
+                {{ t('assignGoals.buttons.bulkCopyCampaigns') }}
             </v-btn>
         </div>
     </v-card>
@@ -109,7 +109,7 @@
      <!-- Agent Assignment -->
 <v-col cols="12" md="5" class="pa-4">
   <h3 class="text-h6 mb-2">
-    Assign Goals for ({{ selectedOrder && selectedOrder.caseName || 'No order selected' }})
+    {{ t('assignGoals.assignGoalsFor') }} ({{ selectedOrder && selectedOrder.caseName || t('assignGoals.noOrderSelected') }})
   </h3>
 
   <v-col v-if="selectedOrder?.agentSummary?.length" cols="12" class="pa-0">
@@ -132,7 +132,7 @@
                 type="number"
                 dense
                 hide-details
-                label="Goal"
+                :label="t('assignGoals.formLabels.goal')"
                 style="max-width: 100px;"
               />
               <v-text-field
@@ -140,19 +140,19 @@
                 type="number"
                 dense
                 hide-details
-                label="Rate (€)"
+                :label="t('assignGoals.formLabels.rate')"
                 style="max-width: 120px;"
               />
             </v-col>
 
             <!-- Right: monthly/other orders -->
             <v-col cols="12" md="7" class="pa-4">
-              <div class="text-caption mb-1 text-grey">This month:</div>
+              <div class="text-caption mb-1 text-grey">{{ t('assignGoals.thisMonth') }}</div>
               <div class="mb-2">
-                {{ agent.goalForThisOrder }} total goals
+                {{ agent.goalForThisOrder }} {{ t('assignGoals.totalGoals') }}
               </div>
 
-              <div class="text-caption mb-1 text-grey">Other orders:</div>
+              <div class="text-caption mb-1 text-grey">{{ t('assignGoals.otherOrders') }}</div>
               <ul class="pl-3">
                 <li
                   v-for="o in agent.AgentOrders"
@@ -166,7 +166,7 @@
               </ul>
 
               <div class="mt-2 font-bold">
-                Total revenue across all orders:
+                {{ t('assignGoals.totalRevenueAcrossAllOrders') }}
                 {{ agent.monthRevenueFormatted || currency(agent.monthRevenue || 0) }}
               </div>
             </v-col>
@@ -177,7 +177,7 @@
   :loading="savingGoals"
   @click="submitGoals"
 >
-  Save goals
+  {{ t('assignGoals.buttons.saveGoals') }}
 </v-btn>
           </v-row>
         </v-card>
@@ -185,7 +185,7 @@
     </v-row>
   </v-col>
 
-  <div v-else class="text-grey pa-4">No agents assigned to this order.</div>
+  <div v-else class="text-grey pa-4">{{ t('assignGoals.noAgentsAssigned') }}</div>
 </v-col>
     </v-row>
   </v-container>
@@ -194,7 +194,7 @@
     <v-dialog v-model="showAddOrderModal" max-width="600">
     <v-card>
         <v-card-title>
-            {{ isEditMode ? 'Edit Order' : 'Add New Order' }}
+            {{ isEditMode ? t('assignGoals.modals.editOrder') : t('assignGoals.modals.addNewOrder') }}
         </v-card-title>
         <v-card-text>
         <!-- Your add order form goes here -->
@@ -206,70 +206,70 @@
             :items="caseOptions"
             item-value="value"
             item-title="title"
-            label="Select Case"
+            :label="t('assignGoals.formLabels.selectCase')"
             clearable
         />
 
         <v-select
             v-model="form.caseUnit"
             :items="caseUnits"
-            label="caseUnit"
-            :rules="[v => !!v || 'Case Unit is required']"
+            :label="t('assignGoals.formLabels.caseUnit')"
+            :rules="[v => !!v || t('assignGoals.validation.caseUnitRequired')]"
             required
         />
 
         <v-text-field
             v-model.number="form.pricePerUnit"
-            label="Price per Unit (€)"
+            :label="t('assignGoals.formLabels.pricePerUnit')"
             type="number"
-            :rules="[v => !!v || 'Price per unit is required']"
+            :rules="[v => !!v || t('assignGoals.validation.pricePerUnitRequired')]"
             required
         />
         <v-text-field
             v-model.number="form.totalQuantity"
-            label="Total Quantity"
+            :label="t('assignGoals.formLabels.totalQuantity')"
             type="number"
-            :rules="[v => !!v || 'Quantity is required']"
+            :rules="[v => !!v || t('assignGoals.validation.quantityRequired')]"
             required
         />
 
         <v-text-field
             v-model="form.startDate"
-            label="startDate"
+            :label="t('assignGoals.formLabels.startDate')"
             type="date"
-            :rules="[v => !!v || 'Start date is required']"
+            :rules="[v => !!v || t('assignGoals.validation.startDateRequired')]"
             required
         />
 
         <v-text-field
             v-model="form.deadline"
-            label="Deadline"
+            :label="t('assignGoals.formLabels.deadline')"
             type="date"
-            :rules="[v => !!v || 'Deadline is required']"
+            :rules="[v => !!v || t('assignGoals.validation.deadlineRequired')]"
             required
         />
 
         <v-select
             v-model="form.orderStatus"
             :items="orderStatuses"
-            label="Order Status"
-            :rules="[v => !!v || 'Order status is required']"
+            :label="t('assignGoals.formLabels.orderStatus')"
+            :rules="[v => !!v || t('assignGoals.validation.orderStatusRequired')]"
             required
         />
 
         <v-select
             v-model="form.caseType"
             :items="caseTypes"
-            label="Case Type"
-            :rules="[v => !!v || 'Case type is required']"
+            :label="t('assignGoals.formLabels.caseType')"
+            :rules="[v => !!v || t('assignGoals.validation.caseTypeRequired')]"
             required
         />
 
         <v-text-field
             :model-value="estimatedRevenue"
-            label="Estimated Revenue (€)"
+            :label="t('assignGoals.formLabels.estimatedRevenue')"
             type="number"
-            :rules="[v => !!v || 'Estimated revenue is required']"
+            :rules="[v => !!v || t('assignGoals.validation.estimatedRevenueRequired')]"
             required
         />
 
@@ -278,7 +278,7 @@
             :items="agentOptions"
             item-value="value"
             item-title="title"
-            label="Select Managers"
+            :label="t('assignGoals.formLabels.selectManagers')"
             multiple
             chips
             closable-chips
@@ -290,7 +290,7 @@
             :items="agentOptions"
             item-value="value"
             item-title="title"
-            label="Assign Callers"
+            :label="t('assignGoals.formLabels.assignCallers')"
             multiple
             chips
             closable-chips
@@ -299,13 +299,13 @@
 
         <v-text-field
             v-model.number="form.ProjectStartFee"
-            label="Project Start Fee (€)"
+            :label="t('assignGoals.formLabels.projectStartFee')"
             type="number"
         />
 
         <v-text-field
             v-model.number="form.ProjectManagmentFee"
-            label="Project Managment Fee (€)"
+            :label="t('assignGoals.formLabels.projectManagementFee')"
             type="number"
         />
         <div v-if="form.assignedCallers.length" class="mt-4">
@@ -321,26 +321,26 @@
               </v-list-item-content>
               <v-list-item-action>
                 <v-text-field
-                  v-model.number="agentGoals[agentId]"
-                  label="Goal"
-                  type="number"
-                  min="0"
-                  style="max-width: 100px"
+                v-model.number="agentGoals[agentId]"
+                :label="t('assignGoals.formLabels.goal')"
+                type="number"
+                min="0"
+                style="max-width: 100px"
                 />
-                <v-text-field
-                  v-model.number="agentRates[agentId]"
-                  label="Rate (€)"
-                  type="number"
-                  min="0"
-                  style="max-width: 120px"
-                />
-              </v-list-item-action>
+              <v-text-field
+                v-model.number="agentRates[agentId]"
+                :label="t('assignGoals.formLabels.rate')"
+                type="number"
+                min="0"
+                style="max-width: 120px"
+              />
+            </v-list-item-action>
             </v-list-item>
           </v-list>
         </div>
 
         <v-btn type="submit" color="primary" class="mt-4">
-          {{ isEditMode ? 'Save Changes' : 'Create Order' }}
+            {{ isEditMode ? t('assignGoals.buttons.saveChanges') : t('assignGoals.buttons.createOrder') }}
         </v-btn>
 
         </v-form>
@@ -351,45 +351,45 @@
         </v-card-text>
         <v-card-actions>
         <v-spacer />
-        <v-btn text @click="closeAddOrderModal">Close</v-btn>
+        <v-btn text @click="closeAddOrderModal">{{ t('assignGoals.buttons.close') }}</v-btn>
         </v-card-actions>
     </v-card>
     </v-dialog>
 
     <v-dialog v-model="showAddAgentModal" max-width="600">
     <v-card>
-        <v-card-title>Add Agent</v-card-title>
+        <v-card-title>{{ t('assignGoals.modals.addAgent') }}</v-card-title>
         <v-card-text>
         <div class="d-flex flex-column align-center" style="justify-content: center;">
             <v-form ref="agentForm" style="width: 60%;" @submit.prevent="submitAgentForm">
                 <v-text-field
                     v-model="agent.name"
-                    label="Name"
-                    :rules="[v => !!v || 'Name is required']"
+                    :label="t('assignGoals.formLabels.name')"
+                    :rules="[v => !!v || t('assignGoals.validation.nameRequired')]"
                     required
                 />
 
                 <v-text-field
                     v-model="agent.email"
-                    label="Email"
-                    :rules="[v => !!v || 'Email is required', v => /.+@.+\..+/.test(v) || 'Email must be valid']"
+                    :label="t('assignGoals.formLabels.email')"
+                    :rules="[v => !!v || t('assignGoals.validation.emailRequired'), v => /.+@.+\..+/.test(v) || t('assignGoals.validation.emailInvalid')]"
                     required
                 />
 
                 <v-select
                     v-model="agent.role"
                     :items="roles"
-                    label="Role"
-                    :rules="[v => !!v || 'Role is required']"
+                    :label="t('assignGoals.formLabels.role')"
+                    :rules="[v => !!v || t('assignGoals.validation.roleRequired')]"
                     required
                 />
 
                 <v-switch
                     v-model="agent.active"
-                    label="Active"
+                    :label="t('assignGoals.formLabels.active')"
                 />
 
-                <v-btn type="submit" color="primary">Add Agent</v-btn>
+                <v-btn type="submit" color="primary">{{ t('assignGoals.buttons.addAgent') }}</v-btn>
                 <v-alert
                     v-if="message"
                     :type="alertType"
@@ -403,48 +403,48 @@
         </v-card-text>
         <v-card-actions>
         <v-spacer />
-        <v-btn text @click="closeAddAgentModal">Close</v-btn>
+        <v-btn text @click="closeAddAgentModal">{{ t('assignGoals.buttons.close') }}</v-btn>
         </v-card-actions>
     </v-card>
     </v-dialog>
 
     <v-dialog v-model="showAddCaseModal" max-width="600">
     <v-card>
-        <v-card-title>Add Case</v-card-title>
+        <v-card-title>{{ t('assignGoals.modals.addCase') }}</v-card-title>
         <v-card-text>
         <!-- Your edit case form goes here -->
         <div class="d-flex flex-column align-center">
             <v-form ref="caseForm" style="width: 60%;" @submit.prevent="submitCaseForm">
                 <v-text-field
                     v-model="gcCase.name"
-                    label="Case Name"
-                    :rules="[v => !!v || 'Name is required']"
+                    :label="t('assignGoals.formLabels.caseName')"
+                    :rules="[v => !!v || t('assignGoals.validation.nameRequired')]"
                     required
                 />
 
                 <v-text-field
                     v-model="gcCase.contactInfo.contactName"
-                    label="Contact Name"
+                    :label="t('assignGoals.formLabels.contactName')"
                 />
 
                 <v-text-field
                     v-model="gcCase.contactInfo.contactTitle"
-                    label="Contact Title"
+                    :label="t('assignGoals.formLabels.contactTitle')"
                 />
 
                 <v-text-field
                     v-model="gcCase.contactInfo.email"
-                    label="Email"
-                    :rules="[v => !v || /.+@.+\..+/.test(v) || 'Invalid email']"
+                    :label="t('assignGoals.formLabels.email')"
+                    :rules="[v => !v || /.+@.+\..+/.test(v) || t('assignGoals.validation.emailInvalid')]"
                 />
 
-                <v-btn type="submit" color="primary">Add Case</v-btn>
+                <v-btn type="submit" color="primary">{{ t('assignGoals.buttons.addCase') }}</v-btn>
             </v-form>
         </div>
         </v-card-text>
         <v-card-actions>
         <v-spacer />
-        <v-btn text @click="closeAddCaseModal">Close</v-btn>
+        <v-btn text @click="closeAddCaseModal">{{ t('assignGoals.buttons.close') }}</v-btn>
         </v-card-actions>
     </v-card>
     </v-dialog>
@@ -457,12 +457,14 @@
 import { ref, onMounted, computed, reactive, watch, toRaw } from 'vue'
 import { useRouter } from 'vue-router'
 import { useStore } from 'vuex'
+import { useI18n } from 'vue-i18n'
 import { goToNextMonth, goToPreviousMonth, formattedDateRange, isCurrentMonth } from '@/js/dateUtils';
 import axios from 'axios'
 import urls from '@/js/config.js'
 
 const store = useStore()
 const router = useRouter()
+const { t } = useI18n()
 const formRef = ref(null)
 const agentGoals = reactive({});
 const agentRates = reactive({});
@@ -761,14 +763,14 @@ const caseTypes = computed(() => {
   return list
 })
 
-const orderHeaders = ([
-  { title: 'Case Name', key: 'caseName' },
-  { title: 'Total Goals', key: 'totalQuantity' },
-  { title: 'Goals Distributed', key: 'goalsDistributed', sortable: false },
-  { title: 'Price Unit', key: 'caseUnit' },
-  { title: 'Copy', key: 'copy', sortable: false },
-  { title: 'Edit', key: 'edit', sortable: false },
-  { title: 'Delete', key: 'actions', sortable: false }
+const orderHeaders = computed(() => [
+  { title: t('assignGoals.tableHeaders.caseName'), key: 'caseName' },
+  { title: t('assignGoals.tableHeaders.totalGoals'), key: 'totalQuantity' },
+  { title: t('assignGoals.tableHeaders.goalsDistributed'), key: 'goalsDistributed', sortable: false },
+  { title: t('assignGoals.tableHeaders.priceUnit'), key: 'caseUnit' },
+  { title: t('assignGoals.tableHeaders.copy'), key: 'copy', sortable: false },
+  { title: t('assignGoals.tableHeaders.edit'), key: 'edit', sortable: false },
+  { title: t('assignGoals.tableHeaders.delete'), key: 'actions', sortable: false }
 ])
 
 const agent = ref({
@@ -1199,8 +1201,8 @@ const selectOrder = async (order, event) => {
 
   // build agentSummary only for agents on this order
   selectedOrder.value.agentSummary = assignedIds.map(agentId => {
-    const bucket = byId.get(agentId);               // this agent’s month bucket (may be undefined)
-    const name   = bucket?.agentName || 'Unknown Agent';
+    const bucket = byId.get(agentId);               // this agent's month bucket (may be undefined)
+    const name   = bucket?.agentName || t('assignGoals.unknownAgent');
     const AgentOrders =  bucket?.orders || {};     
 
   
@@ -1244,7 +1246,7 @@ const selectOrder = async (order, event) => {
 
 
 const deleteOrder = async (orderId) => {
-  const confirmDelete = confirm('Are you sure you want to delete this order?')
+  const confirmDelete = confirm(t('assignGoals.confirmDelete'))
   if (!confirmDelete) return
 
   await axios.delete(`${urls.backEndURL}/orders/${orderId}`)
@@ -1284,7 +1286,7 @@ const assignGoals = async () => {
     if (updated) selectedOrder.value = updated;
   } catch (err) {
     console.error('Failed to update order:', err.response?.data || err.message);
-    alert('Failed to save goals!');
+    alert(t('assignGoals.failedToSaveGoals'));
   }
 };
 

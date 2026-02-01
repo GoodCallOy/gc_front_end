@@ -15,15 +15,28 @@
 
     <!-- Agent Statistics Header -->
     <v-card v-if="userOrders.length > 0" class="mx-auto my-4 pa-4 elevation-4" style="background-color: #eeeff1;">
-      <v-row>
-        <v-col cols="4">
-          <h2 class="text-h5">Agent Statistics - {{ getFormattedDateRange() }}</h2>
+      <v-row align="center">
+        <v-col cols="12" md="3">
+          <div class="text-h5">{{ t('agentDashboard.agentStatistics') }} - {{ getFormattedDateRange() }}</div>
         </v-col>
-        <v-col cols="4">
-          <h2 class="text-h6">Revenue Generated: €{{ revenueGenerated.revenue }}</h2>
+        <v-col cols="12" md="3">
+          <div class="text-h5">{{ t('agentDashboard.revenue') }}: €{{ revenueGenerated.revenue }}</div>
         </v-col>
-        <v-col cols="4">
-          <h2 class="text-h6">Total Units: {{ revenueGenerated.totalUnits }}</h2>
+        <v-col cols="12" md="6">
+          <div class="d-flex flex-wrap" style="gap: 20px;">
+            <div class="text-body-1">
+              {{ t('agentCaseCard.interviews') }}: {{ revenueGenerated.unitsByType.interviews }}
+            </div>
+            <div class="text-body-1">
+              {{ t('agentCaseCard.hours') }}: {{ revenueGenerated.unitsByType.hours }}
+            </div>
+            <div class="text-body-1">
+              {{ t('agentCaseCard.meetings') }}: {{ revenueGenerated.unitsByType.meetings }}
+            </div>
+            <div class="text-body-1">
+              {{ t('dailyLogForm.aLeads') }}: {{ revenueGenerated.unitsByType.aLeads }}
+            </div>
+          </div>
         </v-col>
       </v-row>
     </v-card>
@@ -37,7 +50,7 @@
 
     <!-- Show cases if assigned -->
     <div v-else>
-      <h1 class="text-h4 mb-4" style="width: 90vw;"> Cases for {{ selectedGcAgent ? selectedGcAgent.name : '—' }}</h1>
+      <h1 class="text-h4 mb-4" style="width: 90vw;"> {{ t('agentDashboard.casesFor') }} {{ selectedGcAgent ? selectedGcAgent.name : '—' }}</h1>
       <div class="grid-container ">
         <agentCaseCard
         v-for="(userOrder, index) in userOrders"
@@ -53,7 +66,7 @@
 
   <!-- Weekly Totals Table -->
   <v-card v-if="userOrders.length > 0 && weeklyTotals.length > 0" class="mx-auto my-4 pa-4 elevation-4" style="background-color: #eeeff1;">
-    <h3 class="text-h6 mb-3">Weekly Summary</h3>
+    <h3 class="text-h6 mb-3">{{ t('agentDashboard.weeklySummary') }}</h3>
     <v-data-table
       :headers="weeklyHeaders"
       :items="weeklyTotals"
@@ -71,7 +84,7 @@
 
   <!-- Individual Logs Tables by Week -->
   <v-card v-if="userOrders.length > 0 && weeklyLogGroups.length > 0" class="mx-auto my-4 pa-4 elevation-4" style="background-color: #eeeff1;">
-    <h3 class="text-h6 mb-3">Daily Entries by Week</h3>
+    <h3 class="text-h6 mb-3">{{ t('agentDashboard.dailyEntriesByWeek') }}</h3>
     <div v-for="weekGroup in weeklyLogGroups" :key="weekGroup.weekKey" class="mb-6">
       <h4 class="text-subtitle-1 mb-2">{{ weekGroup.weekTitle }}</h4>
       <v-data-table
@@ -94,7 +107,7 @@
               icon
               size="small"
               color="grey"
-              title="Edit Log"
+              :title="t('agentDashboard.editLog')"
               @click="editLog(item.originalLog)"
               class="mr-2"
             >
@@ -104,7 +117,7 @@
               icon
               size="small"
               color="red"
-              title="Delete Log"
+              :title="t('agentDashboard.deleteLog')"
               @click="deleteLog(item.originalLog)"
             >
               <v-icon>mdi-delete</v-icon>
@@ -174,17 +187,71 @@ function formatDateToDDMMYYYY(dateString) {
   return `${day}/${month}/${year}`;
 }
 
+// Helper function to check if an order is a test case
+function isTestCase(order) {
+  if (!order) return false;
+  const caseType = String(order.caseType || '').toLowerCase();
+  if (caseType.includes('test')) return true;
+  const caseName = String(order.caseName || '').toLowerCase();
+  if (caseName.includes('test')) return true;
+  if (order.isTest === true || order.test === true) return true;
+  return false;
+}
+
+// Helper function to find the correct order for a log
+// Handles cases where multiple orders have the same caseName but different prices
+// Always uses the most recent order (by deadline) to ensure latest pricePerUnit
+function findOrderForLog(log, availableOrders) {
+  if (!log || !availableOrders || !availableOrders.length) return null;
+  
+  const matchingOrders = availableOrders.filter(order => order.caseName === log.caseName);
+  
+  if (matchingOrders.length === 0) return null;
+  if (matchingOrders.length === 1) return matchingOrders[0];
+  
+  // Multiple orders match - always use the most recent one (by deadline) to get latest pricePerUnit
+  // Sort by deadline descending (most recent first), then by startDate descending as fallback
+  return matchingOrders.sort((a, b) => {
+    const deadlineA = new Date(a.deadline || a.startDate || 0);
+    const deadlineB = new Date(b.deadline || b.startDate || 0);
+    if (deadlineB.getTime() !== deadlineA.getTime()) {
+      return deadlineB - deadlineA; // Most recent deadline first
+    }
+    // If deadlines are equal, sort by startDate
+    const startA = new Date(a.startDate || 0);
+    const startB = new Date(b.startDate || 0);
+    return startB - startA; // Most recent startDate first
+  })[0];
+}
 
 // Revenue calculation for all agent cases
 const revenueGenerated = computed(() => {
   const stats = caseStats.value;
   const dateRange = currentDateRange.value;
   
+  console.log('💰 Revenue Calculation Started');
+  console.log('📊 Inputs:', {
+    statsCount: stats?.length || 0,
+    dateRange,
+    agent: selectedGcAgent.value?.name || 'N/A'
+  });
+  
   if (!selectedGcAgent.value || !Array.isArray(stats) || !dateRange) {
-    return { totalUnits: 0, revenue: '0.00' };
+    console.log('⚠️ Revenue Calculation: Missing required data');
+    return { 
+      totalUnits: 0, 
+      revenue: '0.00',
+      unitsByType: {
+        interviews: 0,
+        hours: 0,
+        meetings: 0,
+        aLeads: 0
+      }
+    };
   }
   
   const agentId = String(selectedGcAgent.value._id ?? selectedGcAgent.value.id);
+  console.log('👤 Agent ID:', agentId);
   
   // Filter logs to only include those within the selected date range AND for the specific agent
   const [startDate, endDate] = dateRange;
@@ -192,69 +259,285 @@ const revenueGenerated = computed(() => {
   const monthEnd = new Date(endDate);
   monthEnd.setHours(23, 59, 59, 999);
   
+  console.log('📅 Date Range:', {
+    start: startDate,
+    end: endDate,
+    monthStart: monthStart.toISOString(),
+    monthEnd: monthEnd.toISOString()
+  });
+  
+  // Check if target log exists in stats
+  const targetLogId = '6932e3779ba092ac6bfc8fb6';
+  const targetLog = stats.find(log => String(log._id || log.id || '') === targetLogId);
+  if (targetLog) {
+    console.log('🎯 TARGET LOG FOUND in stats:', {
+      _id: targetLog._id,
+      date: targetLog.date,
+      agent: targetLog.agent,
+      agentId: targetLog.agent?._id || targetLog.agent?.id || targetLog.agent || targetLog.agentId,
+      caseName: targetLog.caseName,
+      quantityCompleted: targetLog.quantityCompleted,
+      fullLog: targetLog
+    });
+  } else {
+    console.log('⚠️ TARGET LOG NOT FOUND in stats array');
+  }
+  
   const filteredStats = stats.filter(log => {
+    const logId = String(log._id || log.id || '');
+    const isTargetLog = logId === targetLogId;
+    
     const logDate = new Date(log.date);
     const isInDateRange = logDate >= monthStart && logDate <= monthEnd;
     
     // Check if this log belongs to the specific agent
-    const logAgentId = log.agent?._id || log.agent || log.agentId;
+    const logAgentId = log.agent?._id || log.agent?.id || log.agent || log.agentId;
     const isAgentLog = String(logAgentId) === String(agentId);
+    
+    if (isTargetLog) {
+      console.log('🎯 TARGET LOG filtering check:', {
+        logDate: logDate.toISOString(),
+        monthStart: monthStart.toISOString(),
+        monthEnd: monthEnd.toISOString(),
+        isInDateRange,
+        logAgentId: String(logAgentId),
+        expectedAgentId: String(agentId),
+        isAgentLog,
+        willBeIncluded: isInDateRange && isAgentLog
+      });
+    }
     
     return isInDateRange && isAgentLog;
   });
+
+  console.log(`🔍 Filtered ${filteredStats.length} logs after date/agent filtering (from ${stats.length} total)`);
+  
+  // Check if target log made it through filtering
+  const targetLogInFiltered = filteredStats.find(log => String(log._id || log.id || '') === targetLogId);
+  if (targetLogInFiltered) {
+    console.log('✅ TARGET LOG passed date/agent filtering');
+  } else if (targetLog) {
+    console.log('❌ TARGET LOG was filtered out during date/agent filtering');
+  }
 
   // Add deduplication to prevent double counting
   const uniqueLogs = [];
   const seenLogs = new Set();
   
   filteredStats.forEach(log => {
+    const logId = String(log._id || log.id || '');
+    const isTargetLog = logId === targetLogId;
+    
     // Create a unique key for deduplication
     const logKey = `${log.date}_${log.agentName || log.agent}_${log.caseName}_${log._id || log.id}`;
     
     if (!seenLogs.has(logKey)) {
       seenLogs.add(logKey);
       uniqueLogs.push(log);
+      if (isTargetLog) {
+        console.log('✅ TARGET LOG added to uniqueLogs:', { logKey, log });
+      }
+    } else {
+      if (isTargetLog) {
+        console.log('❌ TARGET LOG marked as duplicate and skipped:', {
+          date: log.date,
+          caseName: log.caseName,
+          agent: log.agentName || log.agent,
+          _id: log._id || log.id,
+          logKey
+        });
+      }
+      console.log('🚫 Duplicate log skipped:', {
+        date: log.date,
+        caseName: log.caseName,
+        agent: log.agentName || log.agent,
+        _id: log._id || log.id
+      });
     }
   });
+
+  console.log(`✅ After deduplication: ${uniqueLogs.length} unique logs`);
   
-  // Helper function to check if an order is a test case
-  function isTestCase(order) {
-    if (!order) return false;
-    const caseType = String(order.caseType || '').toLowerCase();
-    if (caseType.includes('test')) return true;
-    const caseName = String(order.caseName || '').toLowerCase();
-    if (caseName.includes('test')) return true;
-    if (order.isTest === true || order.test === true) return true;
-    return false;
+  // Check if target log is in uniqueLogs
+  const targetLogInUnique = uniqueLogs.find(log => String(log._id || log.id || '') === targetLogId);
+  if (targetLogInUnique) {
+    console.log('✅ TARGET LOG is in uniqueLogs');
+  } else if (targetLogInFiltered) {
+    console.log('❌ TARGET LOG was removed during deduplication');
   }
 
   // Calculate total units and revenue from deduplicated logs for ALL cases the agent is assigned to (excluding test cases)
-  const agentCases = orders.value.filter(order => 
-    order.assignedCallers && order.assignedCallers.includes(agentId) && !isTestCase(order)
+  const agentCases = orders.value.filter(order => {
+    if (!order.assignedCallers) return false;
+    
+    // Handle both object and string formats for assignedCallers
+    const isAssigned = order.assignedCallers.some(caller => {
+      const callerId = caller?._id || caller?.id || caller;
+      return String(callerId) === String(agentId);
+    });
+    
+    const isTest = isTestCase(order);
+    
+    return isAssigned && !isTest;
+  });
+  
+  console.log(`📦 Found ${agentCases.length} agent cases (excluding test cases):`, 
+    agentCases.map(c => ({ name: c.caseName, pricePerUnit: c.pricePerUnit, caseUnit: c.caseUnit, _id: c._id }))
   );
+  
+  // Check if target log's case is in agentCases
+  if (targetLogInUnique) {
+    const targetCaseName = targetLogInUnique.caseName;
+    const targetCaseInAgentCases = agentCases.find(c => c.caseName === targetCaseName);
+    if (targetCaseInAgentCases) {
+      console.log('✅ TARGET LOG case found in agentCases:', {
+        caseName: targetCaseName,
+        order: targetCaseInAgentCases
+      });
+    } else {
+      console.log('❌ TARGET LOG case NOT found in agentCases:', {
+        caseName: targetCaseName,
+        availableCases: agentCases.map(c => c.caseName)
+      });
+    }
+  }
   
   let totalUnits = 0;
   let totalRevenue = 0;
+  const revenueBreakdown = [];
   
-  uniqueLogs.forEach(log => {
+  // Track units by type
+  const unitsByType = {
+    interviews: 0,
+    hours: 0,
+    meetings: 0,
+    aLeads: 0
+  };
+  
+  uniqueLogs.forEach((log, index) => {
+    const logId = String(log._id || log.id || '');
+    const isTargetLog = logId === targetLogId;
+    
+    if (isTargetLog) {
+      console.log('🎯 TARGET LOG in revenue calculation loop:', {
+        index: index + 1,
+        caseName: log.caseName,
+        quantityCompleted: log.quantityCompleted,
+        agentCases: agentCases.map(c => c.caseName)
+      });
+    }
+    
     // Check if log case name indicates test
     const caseName = String(log.caseName || '').toLowerCase();
-    if (caseName.includes('test')) return;
+    if (caseName.includes('test')) {
+      if (isTargetLog) {
+        console.log('❌ TARGET LOG skipped: test case name');
+      }
+      console.log(`🚫 Log ${index + 1}: Skipped (test case) - ${log.caseName}`);
+      return;
+    }
     
     const logQuantityCompleted = Number(log.quantityCompleted) || 0;
     totalUnits += logQuantityCompleted;
     
-    // Find the case for this log to get the correct price per unit
-    const logCase = agentCases.find(c => c.caseName === log.caseName);
+    // Find the case for this log to get the correct price per unit and case unit type
+    const logCase = findOrderForLog(log, agentCases);
+    
+    if (isTargetLog) {
+      const matchingOrders = agentCases.filter(c => c.caseName === log.caseName);
+      console.log('🎯 TARGET LOG case matching:', {
+        logCaseName: log.caseName,
+        logDate: log.date,
+        allMatchingOrders: matchingOrders.map(o => ({
+          _id: o._id,
+          caseName: o.caseName,
+          pricePerUnit: o.pricePerUnit,
+          startDate: o.startDate,
+          deadline: o.deadline
+        })),
+        selectedOrder: logCase ? {
+          _id: logCase._id,
+          caseName: logCase.caseName,
+          pricePerUnit: logCase.pricePerUnit,
+          startDate: logCase.startDate,
+          deadline: logCase.deadline
+        } : 'NOT FOUND'
+      });
+    }
+    
     if (logCase && !isTestCase(logCase)) {
-      const pricePerUnit = logCase.pricePerUnit || 0;
-      totalRevenue += logQuantityCompleted * pricePerUnit;
+      const pricePerUnit = Number(logCase.pricePerUnit) || 0;
+      const logRevenue = logQuantityCompleted * pricePerUnit;
+      totalRevenue += logRevenue;
+      
+      // Track units by case unit type
+      const caseUnit = String(logCase.caseUnit || '').toLowerCase();
+      if (caseUnit === 'interviews') {
+        unitsByType.interviews += logQuantityCompleted;
+      } else if (caseUnit === 'hours') {
+        unitsByType.hours += logQuantityCompleted;
+      } else if (caseUnit === 'meetings') {
+        unitsByType.meetings += logQuantityCompleted;
+      }
+      
+      // Track A-leads from the log entry
+      const aLeads = Number(log.aLeads || 0);
+      unitsByType.aLeads += aLeads;
+      
+      const breakdown = {
+        logIndex: index + 1,
+        date: log.date,
+        caseName: log.caseName,
+        quantityCompleted: logQuantityCompleted,
+        pricePerUnit: pricePerUnit,
+        revenue: logRevenue,
+        logId: log._id || log.id,
+        orderId: logCase._id
+      };
+      
+      revenueBreakdown.push(breakdown);
+      if (isTargetLog) {
+        console.log('✅ TARGET LOG included in revenue:', breakdown);
+      }
+      console.log(`💰 Log ${index + 1}:`, breakdown);
+    } else {
+      if (isTargetLog) {
+        console.log('❌ TARGET LOG excluded from revenue:', {
+          logCaseName: log.caseName,
+          foundCase: logCase ? { name: logCase.caseName, isTest: isTestCase(logCase) } : 'NOT FOUND',
+          quantityCompleted: logQuantityCompleted,
+          logId: log._id || log.id
+        });
+      }
+      console.warn(`⚠️ Log ${index + 1}: No matching case found or is test case:`, {
+        logCaseName: log.caseName,
+        foundCase: logCase ? { name: logCase.caseName, isTest: isTestCase(logCase) } : 'NOT FOUND',
+        quantityCompleted: logQuantityCompleted,
+        logId: log._id || log.id
+      });
     }
   });
   
   const revenue = totalRevenue.toFixed(2);
   
-  return { totalUnits, revenue };
+  console.log('📊 Revenue Calculation Summary:', {
+    totalLogsProcessed: uniqueLogs.length,
+    totalUnits,
+    unitsByType,
+    totalRevenue: revenue,
+    breakdown: revenueBreakdown
+  });
+  
+  return { 
+    totalUnits, 
+    revenue,
+    unitsByType: {
+      interviews: unitsByType.interviews,
+      hours: unitsByType.hours,
+      meetings: unitsByType.meetings,
+      aLeads: unitsByType.aLeads
+    }
+  };
 });
 
 // Helper function to get week number and year from a date
@@ -379,7 +662,7 @@ const weeklyTotals = computed(() => {
       const logQuantityCompleted = log.quantityCompleted || 0;
       
       // Find the case for this log to get the correct price per unit
-      const logCase = agentCases.find(c => c.caseName === log.caseName);
+      const logCase = findOrderForLog(log, agentCases);
       const pricePerUnit = logCase?.pricePerUnit || 0;
       const logAmountMade = logQuantityCompleted * pricePerUnit;
       
@@ -403,7 +686,7 @@ const weeklyTotals = computed(() => {
     
     // Convert cases set to sorted array for display
     const casesList = Array.from(group.cases).sort();
-    const casesDisplay = casesList.length > 0 ? casesList.join(', ') : 'No cases';
+    const casesDisplay = casesList.length > 0 ? casesList.join(', ') : t('agentDashboard.noCases');
 
     // Format custom week dates for display
     const startDate = new Date(group.weekInfo.start);
@@ -412,9 +695,9 @@ const weeklyTotals = computed(() => {
     const endStr = endDate.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit' });
     
     result.push({
-      date: `Week ${group.weekInfo.weekNumber} (${startStr} - ${endStr})`,
+      date: `${t('agentDashboard.week')} ${group.weekInfo.weekNumber} (${startStr} - ${endStr})`,
       cases: casesDisplay,
-      caseUnit: 'All Cases',
+      caseUnit: t('agentDashboard.allCases'),
       callTime: formatNumber(group.totals.callTime),
       outgoingCalls: group.totals.outgoingCalls,
       answeredCalls: group.totals.answeredCalls,
@@ -487,7 +770,7 @@ const individualLogs = computed(() => {
       const quantityCompleted = log.quantityCompleted || 0;
       
       // Find the case for this log to get the correct case unit and price per unit
-      const logCase = agentCases.find(c => c.caseName === log.caseName);
+      const logCase = findOrderForLog(log, agentCases);
       const caseUnit = logCase?.caseUnit || 'N/A';
       const pricePerUnit = logCase?.pricePerUnit || 0;
       const amountMade = (quantityCompleted * pricePerUnit).toFixed(2);
@@ -537,7 +820,7 @@ const weeklyLogGroups = computed(() => {
         weekGroups[weekKey] = {
           weekKey,
           weekInfo: customWeek,
-          weekTitle: `Week ${customWeek.weekNumber} (${startStr} - ${endStr})`,
+          weekTitle: `${t('agentDashboard.week')} ${customWeek.weekNumber} (${startStr} - ${endStr})`,
           logs: []
         };
       }
@@ -556,8 +839,8 @@ const weeklyLogGroups = computed(() => {
 
 // Headers for weekly totals table
 const weeklyHeaders = computed(() => [
-  { title: 'Week', key: 'date', sortable: true },
-  { title: 'Cases', key: 'cases', sortable: true },
+  { title: t('agentDashboard.week'), key: 'date', sortable: true },
+  { title: t('agentDashboard.cases'), key: 'cases', sortable: true },
   { title: t('agentTables.callTime'), key: 'callTime', sortable: true, class: 'd-none d-md-table-cell' },
   { title: t('agentTables.outgoingCalls'), key: 'outgoingCalls', sortable: true, class: 'd-none d-lg-table-cell' },
   { title: t('agentTables.answeredCalls'), key: 'answeredCalls', sortable: true, class: 'd-none d-lg-table-cell' },
@@ -570,7 +853,7 @@ const weeklyHeaders = computed(() => [
 // Headers for individual logs table
 const individualHeaders = computed(() => [
   { title: t('agentTables.date'), key: 'date', sortable: true },
-  { title: 'Case', key: 'caseName', sortable: true },
+  { title: t('agentTables.case'), key: 'caseName', sortable: true },
   { title: t('agentTables.unit'), key: 'caseUnit', sortable: true, class: 'd-none d-md-table-cell' },
   { title: t('agentTables.callTime'), key: 'callTime', sortable: true, class: 'd-none d-lg-table-cell' },
   { title: t('agentTables.outgoingCalls'), key: 'outgoingCalls', sortable: true, class: 'd-none d-xl-table-cell' },
@@ -737,7 +1020,7 @@ const editLog = (logData) => {
 
 // Delete log function
 const deleteLog = async (logData) => {
-  if (!confirm('Are you sure you want to delete this log entry? This action cannot be undone.')) {
+  if (!confirm(t('agentDashboard.confirmDeleteLog'))) {
     return;
   }
   
@@ -747,11 +1030,11 @@ const deleteLog = async (logData) => {
     if (response.status === 200) {
       // Refresh the data to reflect the deletion
       await store.dispatch('fetchDailyLogs');
-      console.log('Log deleted successfully');
+      console.log(t('agentDashboard.logDeletedSuccessfully'));
     }
   } catch (error) {
     console.error('Error deleting log:', error);
-    alert('Failed to delete log entry. Please try again.');
+    alert(t('agentDashboard.failedToDeleteLog'));
   }
 };
 

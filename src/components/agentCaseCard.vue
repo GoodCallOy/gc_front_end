@@ -7,7 +7,7 @@
                     class="font-medium text-sm text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-200 flex py-1 px-3"
                     @click="showCase"
                 >
-                    Show order
+                    {{ t('agentCaseCard.showOrder') }}
                 </a>
             </li>
         </EditMenu>
@@ -18,7 +18,7 @@
         <v-row align="center" class="mt-2">
             <v-col cols="12">
                 <v-card-subtitle class="text-caption">
-                    My goal: {{ myAgentUnits }}/{{ displayMyGoal }}
+                    {{ t('agentCaseCard.myGoal') }}: {{ myAgentUnits }}/{{ displayMyGoal }}
                 </v-card-subtitle>
             </v-col>
 
@@ -26,13 +26,13 @@
         <v-row align="center" class="mt-2">
             <v-col cols="12">
                 <v-card-subtitle class="text-caption">
-                    My revenue goal: €{{ myRevenue }}
+                    {{ t('agentCaseCard.myRevenueGoal') }}: €{{ myRevenue }}
                 </v-card-subtitle>
             </v-col>
         </v-row>
     
       <div class="pt-5">
-        My current revenue:
+        {{ t('agentCaseCard.myCurrentRevenue') }}:
         <div class="value"> 
          €{{ totalAgentUnitsValue || 0 }}
          <span :class="['percentage', percentageClass]"> {{ percentage || 0 }}%</span>
@@ -40,20 +40,20 @@
         
       </div>
         <div>
-          <strong>{{ order.caseUnit }}: </strong>
+          <strong>{{ translateCaseUnit(order.caseUnit) }}: </strong>
           <span v-if="order.assignedCallers.length">
            {{ myAgentUnits }} / {{ totalProjectGoal }}
           </span>
-          <span v-else>None</span>
+          <span v-else>{{ t('agentCaseCard.none') }}</span>
         </div>
         <div>
-          <strong>Callers: </strong>
+          <strong>{{ t('agentCaseCard.callers') }}: </strong>
           <span v-if="order.assignedCallers.length">
             {{ getCallerNames(order, agents) }}
           </span>
-          <span v-else>None</span>
+          <span v-else>{{ t('agentCaseCard.none') }}</span>
         </div>
-        <div><strong>Deadline:</strong> {{ formatDate(order.deadline) }}</div>
+        <div><strong>{{ t('agentCaseCard.deadline') }}:</strong> {{ formatDate(order.deadline) }}</div>
     </div>
   </template>
   
@@ -61,6 +61,7 @@
   <script>
   import { ref, computed, watchEffect } from 'vue'
   import { useStore } from 'vuex'
+  import { useI18n } from 'vue-i18n'
   import EditMenu from '../components/DropdownEditMenu.vue'
   
   
@@ -80,6 +81,7 @@
     },
     setup(props) {
       const store = useStore()
+      const { t } = useI18n()
 
       const percentage = computed(() => {
         if (myGoal.value === 0) return 0;
@@ -220,7 +222,19 @@
       watchEffect(() => {
       })
 
+      // Function to translate caseUnit values
+      const translateCaseUnit = (caseUnit) => {
+        if (!caseUnit) return '';
+        const unit = String(caseUnit).toLowerCase();
+        if (unit === 'meetings') return t('agentCaseCard.meetings');
+        if (unit === 'hours') return t('agentCaseCard.hours');
+        if (unit === 'interviews') return t('agentCaseCard.interviews');
+        return caseUnit; // Return original if no translation found
+      }
+
       return {
+        t,
+        translateCaseUnit,
         percentage,
         percentageClass,
         myAgentId,

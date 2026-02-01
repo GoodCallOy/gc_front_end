@@ -168,7 +168,12 @@
   
   const goalTypes = ['hours', 'interviews', 'meetings']
   const orderStatuses = ['pending', 'in-progress', 'completed', 'cancelled', 'on-hold']
-  const agentName = id => agents.value.find(a => a._id === id)?.name || id;
+  const agentName = id => {
+    // Handle both object and string formats
+    const agentId = id?._id || id?.id || id;
+    const agent = agents.value.find(a => String(a._id) === String(agentId));
+    return agent?.name || agentId || 'Unknown';
+  };
 
   const revenueGenerated = computed(() => {
   // Make this reactive to both caseStats and currentDateRange
@@ -179,9 +184,17 @@
     return { totalUnits: 0, revenue: '0.00' };
   }
   
-  // Get agent ID for filtering
-  const agentId = order.value.assignedCallers?.[0];
-  if (!agentId) return { totalUnits: 0, revenue: '0.00' };
+  // Get agent ID for filtering - handle both object and string formats
+  const firstCaller = order.value.assignedCallers?.[0];
+  const agentId = firstCaller?._id || firstCaller?.id || firstCaller;
+  if (!agentId) {
+    console.log('⚠️ Revenue: No agent ID found in assignedCallers:', order.value.assignedCallers);
+    return { totalUnits: 0, revenue: '0.00' };
+  }
+  
+  const agentIdStr = String(agentId);
+  console.log('💰 Revenue Calculation - Agent ID:', agentIdStr);
+  console.log('💰 Revenue Calculation - Assigned callers:', order.value.assignedCallers);
   
   // Filter logs to only include those within the selected date range AND for the specific agent
   const [startDate, endDate] = dateRange;
@@ -189,16 +202,31 @@
   const monthEnd = new Date(endDate);
   monthEnd.setHours(23, 59, 59, 999);
   
+  console.log('💰 Revenue Calculation - Date range:', { startDate, endDate, monthStart, monthEnd });
+  console.log('💰 Revenue Calculation - Total stats:', stats.length);
+  
   const filteredStats = stats.filter(log => {
     const logDate = new Date(log.date);
     const isInDateRange = logDate >= monthStart && logDate <= monthEnd;
     
-    // Check if this log belongs to the specific agent
-    const logAgentId = log.agent?._id || log.agent || log.agentId;
-    const isAgentLog = String(logAgentId) === String(agentId);
+    // Check if this log belongs to the specific agent - handle multiple formats
+    const logAgentId = log.agent?._id || log.agent?.id || log.agent || log.agentId;
+    const logAgentIdStr = String(logAgentId || '');
+    const isAgentLog = logAgentIdStr === agentIdStr;
+    
+    if (isInDateRange && isAgentLog) {
+      console.log('✅ Revenue: Matching log found:', {
+        date: log.date,
+        caseName: log.caseName,
+        agentId: logAgentIdStr,
+        quantityCompleted: log.quantityCompleted
+      });
+    }
     
     return isInDateRange && isAgentLog;
   });
+  
+  console.log('💰 Revenue Calculation - Filtered stats count:', filteredStats.length);
 
   // Add deduplication to prevent double counting
   const uniqueLogs = [];
@@ -213,17 +241,6 @@
       uniqueLogs.push(log);
     }
   });
-  
-  // Helper function to check if an order is a test case
-  function isTestCase(order) {
-    if (!order) return false;
-    const caseType = String(order.caseType || '').toLowerCase();
-    if (caseType.includes('test')) return true;
-    const caseName = String(order.caseName || '').toLowerCase();
-    if (caseName.includes('test')) return true;
-    if (order.isTest === true || order.test === true) return true;
-    return false;
-  }
 
   // Calculate total units and revenue from deduplicated logs for the current case only (excluding test cases)
   const currentCaseName = order.value.caseName;
@@ -299,6 +316,17 @@ function formatDateToDDMMYYYY(dateString) {
   return `${day}/${month}/${year}`;
 }
 
+// Helper function to check if an order is a test case
+function isTestCase(order) {
+  if (!order) return false;
+  const caseType = String(order.caseType || '').toLowerCase();
+  if (caseType.includes('test')) return true;
+  const caseName = String(order.caseName || '').toLowerCase();
+  if (caseName.includes('test')) return true;
+  if (order.isTest === true || order.test === true) return true;
+  return false;
+}
+
 // Helper function to get week number and year from a date
 function getWeekNumber(date) {
   const d = new Date(date);
@@ -335,13 +363,27 @@ const weeklyTotals = computed(() => {
     return [];
   }
 
-  // Get all cases the agent is assigned to
-  const agentId = order.value?.assignedCallers?.[0]; // Assuming single agent per case
-  if (!agentId) return [];
+  // Get all cases the agent is assigned to - handle both object and string formats
+  const firstCaller = order.value?.assignedCallers?.[0];
+  const agentId = firstCaller?._id || firstCaller?.id || firstCaller;
+  if (!agentId) {
+    console.log('⚠️ Weekly Totals: No agent ID found');
+    return [];
+  }
+  
+  const agentIdStr = String(agentId);
+  console.log('📊 Weekly Totals - Agent ID:', agentIdStr);
 
-  const agentCases = allOrders.filter(order => 
-    order.assignedCallers && order.assignedCallers.includes(agentId)
-  );
+  const agentCases = allOrders.filter(order => {
+    if (!order.assignedCallers) return false;
+    // Check if any assigned caller matches the agent ID (handle both object and string formats)
+    return order.assignedCallers.some(caller => {
+      const callerId = caller?._id || caller?.id || caller;
+      return String(callerId) === agentIdStr;
+    });
+  });
+  
+  console.log('📊 Weekly Totals - Agent cases found:', agentCases.length);
 
   // Filter logs to only include those within the selected date range AND for the specific agent AND current case
   const [startDate, endDate] = dateRange;
@@ -353,9 +395,10 @@ const weeklyTotals = computed(() => {
     const logDate = new Date(log.date);
     const isInDateRange = logDate >= monthStart && logDate <= monthEnd;
     
-    // Check if this log belongs to the specific agent
-    const logAgentId = log.agent?._id || log.agent || log.agentId;
-    const isAgentLog = String(logAgentId) === String(agentId);
+    // Check if this log belongs to the specific agent - handle multiple formats
+    const logAgentId = log.agent?._id || log.agent?.id || log.agent || log.agentId;
+    const logAgentIdStr = String(logAgentId || '');
+    const isAgentLog = logAgentIdStr === agentIdStr;
     
     // Check if this log is for the current case
     const currentCaseName = order.value.caseName;
@@ -381,7 +424,7 @@ const weeklyTotals = computed(() => {
   console.log('Weekly totals - Total stats:', stats.length);
   console.log('Weekly totals - Filtered stats:', filteredStats.length);
   console.log('Weekly totals - Unique logs:', uniqueLogs.length);
-  console.log('Weekly totals - Agent ID:', agentId);
+  console.log('Weekly totals - Agent ID:', agentIdStr);
 
   // Group logs by week using deduplicated logs
   const weeklyGroups = {};
@@ -476,18 +519,28 @@ const individualLogs = computed(() => {
     return [];
   }
 
-  // Get all cases the agent is assigned to
-  const agentId = order.value?.assignedCallers?.[0];
-  if (!agentId) return [];
+  // Get all cases the agent is assigned to - handle both object and string formats
+  const firstCaller = order.value?.assignedCallers?.[0];
+  const agentId = firstCaller?._id || firstCaller?.id || firstCaller;
+  if (!agentId) {
+    console.log('⚠️ Individual Logs: No agent ID found');
+    return [];
+  }
+  
+  const agentIdStr = String(agentId);
+  console.log('📋 Individual logs - Agent ID:', agentIdStr);
+  console.log('📋 Individual logs - All orders:', allOrders);
 
-  console.log('Individual logs - Agent ID:', agentId);
-  console.log('Individual logs - All orders:', allOrders);
+  const agentCases = allOrders.filter(order => {
+    if (!order.assignedCallers) return false;
+    // Check if any assigned caller matches the agent ID (handle both object and string formats)
+    return order.assignedCallers.some(caller => {
+      const callerId = caller?._id || caller?.id || caller;
+      return String(callerId) === agentIdStr;
+    });
+  });
 
-  const agentCases = allOrders.filter(order => 
-    order.assignedCallers && order.assignedCallers.includes(agentId)
-  );
-
-  console.log('Individual logs - Agent cases:', agentCases);
+  console.log('📋 Individual logs - Agent cases:', agentCases);
 
   // Filter logs to only include those within the selected date range AND for the specific agent AND current case
   const [startDate, endDate] = dateRange;
@@ -499,9 +552,10 @@ const individualLogs = computed(() => {
     const logDate = new Date(log.date);
     const isInDateRange = logDate >= monthStart && logDate <= monthEnd;
     
-    // Check if this log belongs to the specific agent
-    const logAgentId = log.agent?._id || log.agent || log.agentId;
-    const isAgentLog = String(logAgentId) === String(agentId);
+    // Check if this log belongs to the specific agent - handle multiple formats
+    const logAgentId = log.agent?._id || log.agent?.id || log.agent || log.agentId;
+    const logAgentIdStr = String(logAgentId || '');
+    const isAgentLog = logAgentIdStr === agentIdStr;
     
     // Check if this log is for the current case
     const currentCaseName = order.value.caseName;
@@ -598,8 +652,14 @@ const weeklyLogGroups = computed(() => {
 });
 
   function getCallerNames(order, agents) {
+      if (!order.assignedCallers || !Array.isArray(order.assignedCallers)) return 'No callers assigned';
       const agentNames = order.assignedCallers
-          .map(id => agents.find(agent => agent._id === id)?.name || 'Unknown')
+          .map(caller => {
+            // Handle both object and string formats
+            const callerId = caller?._id || caller?.id || caller;
+            const agent = agents.find(a => String(a._id) === String(callerId));
+            return agent?.name || 'Unknown';
+          })
           .join(', ')
       console.log('Agent Names:', agentNames);
       return agentNames
@@ -678,16 +738,33 @@ const weeklyLogGroups = computed(() => {
 
   // Function to fetch all case stats for the agent across all cases
   const fetchCaseStats = async () => {
-    if (!order.value || !orders.value) return;
+    if (!order.value || !orders.value) {
+      console.log('⚠️ fetchCaseStats: Missing order or orders');
+      return;
+    }
     
     try {
-      // Get all cases the agent is assigned to
-      const agentId = order.value.assignedCallers?.[0];
-      if (!agentId) return;
+      // Get all cases the agent is assigned to - handle both object and string formats
+      const firstCaller = order.value.assignedCallers?.[0];
+      const agentId = firstCaller?._id || firstCaller?.id || firstCaller;
+      if (!agentId) {
+        console.log('⚠️ fetchCaseStats: No agent ID found in assignedCallers:', order.value.assignedCallers);
+        return;
+      }
+      
+      const agentIdStr = String(agentId);
+      console.log('📥 fetchCaseStats - Agent ID:', agentIdStr);
 
-      const agentCases = orders.value.filter(order => 
-        order.assignedCallers && order.assignedCallers.includes(agentId)
-      );
+      const agentCases = orders.value.filter(order => {
+        if (!order.assignedCallers) return false;
+        // Check if any assigned caller matches the agent ID (handle both object and string formats)
+        return order.assignedCallers.some(caller => {
+          const callerId = caller?._id || caller?.id || caller;
+          return String(callerId) === agentIdStr;
+        });
+      });
+      
+      console.log('📥 fetchCaseStats - Agent cases found:', agentCases.length);
 
       // Fetch data for all cases the agent is assigned to
       const caseNames = agentCases.map(c => c.caseName);
