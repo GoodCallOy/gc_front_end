@@ -17,7 +17,7 @@
   
       <!-- List of Agent Cards styled like listGcAgents.vue -->
       <v-container class="py-2" style="width: 80%;">
-        <v-row dense>
+        <v-row dense align="stretch">
           <v-col
             v-for="(agent, index) in agentsWithStats"
             :key="index"
@@ -25,18 +25,37 @@
             sm="6"
             md="4"
             lg="3"
+            class="d-flex"
           >
-            <v-card class="h-100 d-flex flex-column">
-              <v-card-title class="text-truncate">
+            <v-card class="h-100 d-flex flex-column agent-card">
+              <v-card-title class="text-truncate text-center">
                 {{ agent.name || 'Unknown Agent' }}
               </v-card-title>
-              <v-card-subtitle class="text-truncate">
-                {{ agent.case || '—' }}
+              <v-card-subtitle v-if="agent.case" class="text-truncate">
+                {{ agent.case }}
               </v-card-subtitle>
+
+              <!-- Assigned cases and total revenue -->
+              <v-card-text class="pt-0 pb-1 flex-grow-1 agent-card-content">
+                <div v-if="getAgentCases(agent).length" class="text-body-2">
+                  <div class="font-weight-medium mb-1">Assigned cases</div>
+                  <ul class="mb-2 text-caption agent-case-list">
+                    <li v-for="c in getAgentCases(agent)" :key="c.caseName" class="text-truncate" :title="c.caseName">
+                      {{ c.caseName }}
+                    </li>
+                  </ul>
+                  <div class="font-weight-medium">
+                    Total revenue: €{{ formatCurrency(getAgentTotalRevenue(agent)) }}
+                  </div>
+                </div>
+                <div v-else class="text-caption text-grey">
+                  No cases assigned
+                </div>
+              </v-card-text>
 
               <v-spacer />
 
-              <v-card-actions>
+              <v-card-actions class="justify-center">
                 <v-btn size="small" color="primary" @click="viewAgent(agent)">View</v-btn>
                 <v-spacer />
                 <v-btn size="small" color="grey" @click="editAgent(agent)">Edit</v-btn>
@@ -59,19 +78,21 @@ import AgentCard from './agentCard.vue';
     components: { AgentCard }, // Register the component
     
     computed: {
-      ...mapGetters(['gcAgents', 'dailyLogs', 'currentPage', 'currentDateRange']),
+      ...mapGetters(['gcAgents', 'dailyLogs', 'currentPage', 'currentDateRange', 'orders']),
       
-      // Calculate combined stats from daily logs for each agent
+      // Calculate combined stats from daily logs for each agent (current month only)
       agentsWithStats() {
-        if (!this.gcAgents || !this.dailyLogs || !this.currentDateRange) {
-          return this.gcAgents || [];
+        if (!this.gcAgents || !this.dailyLogs) {
+          return (this.gcAgents || []).filter(agent => agent.active !== false);
         }
 
-        const [startDate, endDate] = this.currentDateRange;
-        const monthStart = new Date(startDate);
-        const monthEnd = new Date(endDate);
+        const now = new Date();
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
 
-        return this.gcAgents.map(agent => {
+        return this.gcAgents
+          .filter(agent => agent.active !== false)
+          .map(agent => {
           // Filter daily logs for this agent within the selected month
           const agentLogs = this.dailyLogs.filter(log => {
             const logAgentId = String(log?.agent?._id ?? log?.agent ?? '');
@@ -103,7 +124,7 @@ import AgentCard from './agentCard.vue';
             quantityCompleted: totalQuantityCompleted,
             response_rate: responseRate.toFixed(1),
             meetings: agentLogs.length, // Number of daily log entries (meetings)
-            case: agentLogs.length > 0 ? agentLogs[0].caseName || 'Unknown' : 'No activity'
+            case: agentLogs.length > 0 ? agentLogs[0].caseName || 'Unknown' : ''
           };
         });
       }
@@ -116,20 +137,18 @@ import AgentCard from './agentCard.vue';
       try {
         await Promise.all([
           this.fetchgcAgents(),
-          this.fetchDailyLogs()
+          this.fetchDailyLogs(),
+          this.fetchOrders()
         ]);
         
-        // Initialize date range if not set
-        if (!this.currentDateRange || this.currentDateRange.length < 2) {
-          const now = new Date();
-          const year = now.getFullYear();
-          const month = now.getMonth();
-          const firstDay = new Date(Date.UTC(year, month, 1));
-          const lastDay = new Date(Date.UTC(year, month + 1, 0));
-          const format = (date) => date.toISOString().split('T')[0];
-          const newRange = [format(firstDay), format(lastDay)];
-          this.updateDateRange(newRange);
-        }
+        // Always use current month for this page (stats are for current month only)
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = now.getMonth();
+        const firstDay = new Date(Date.UTC(year, month, 1));
+        const lastDay = new Date(Date.UTC(year, month + 1, 0));
+        const format = (date) => date.toISOString().split('T')[0];
+        this.updateDateRange([format(firstDay), format(lastDay)]);
         
         console.log('🔍 agentsWithStats on mount:', this.agentsWithStats);
       } catch (error) {
@@ -139,7 +158,63 @@ import AgentCard from './agentCard.vue';
 
     methods: {
       ...mapMutations(['setCurrentPage', 'setDateRange']),
-      ...mapActions(['fetchgcAgents', 'fetchDailyLogs']),
+      ...mapActions(['fetchgcAgents', 'fetchDailyLogs', 'fetchOrders']),
+
+      // True if order's startDate–deadline overlaps the current calendar month
+      orderOverlapsCurrentMonth(order) {
+        const now = new Date();
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+        const orderStart = new Date(order?.startDate || 0);
+        const orderEnd = new Date(order?.deadline || 0);
+        return orderStart <= monthEnd && orderEnd >= monthStart;
+      },
+
+      // Orders where this agent is in assignedCallers and order overlaps current month only
+      getAgentOrdersCurrentMonth(agent) {
+        const aid = String(agent?._id ?? agent?.id ?? '');
+        if (!aid) return [];
+        const all = this.orders || [];
+        return all.filter(
+          (order) =>
+            (order.assignedCallers || []).some((x) => String(x?._id ?? x?.id ?? x) === aid) &&
+            this.orderOverlapsCurrentMonth(order)
+        );
+      },
+
+      // Unique assigned cases for this agent in the current month (no duplicates by case name)
+      getAgentCases(agent) {
+        const orders = this.getAgentOrdersCurrentMonth(agent);
+        const seen = new Set();
+        return orders
+          .filter((order) => {
+            const name = order?.caseName || order?.caseId || '';
+            if (!name || seen.has(name)) return false;
+            seen.add(name);
+            return true;
+          })
+          .map((order) => ({ caseName: order.caseName || order.caseId || '—' }));
+      },
+
+      // Total revenue from assigned cases in current month: sum of (agent goal × pricePerUnit) per order
+      getAgentTotalRevenue(agent) {
+        const aid = String(agent?._id ?? agent?.id ?? '');
+        if (!aid) return 0;
+        const orders = this.getAgentOrdersCurrentMonth(agent);
+        return orders.reduce((sum, order) => {
+          const goal = Number(order?.agentGoals?.[aid] ?? 0);
+          const price = Number(order?.pricePerUnit ?? 0);
+          return sum + goal * price;
+        }, 0);
+      },
+
+      formatCurrency(n) {
+        try {
+          return new Intl.NumberFormat(undefined, { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n ?? 0);
+        } catch {
+          return n ?? 0;
+        }
+      },
 
       updatePage(newPage) {
         this.setCurrentPage(newPage);
@@ -185,12 +260,27 @@ import AgentCard from './agentCard.vue';
   </script>
   
   <style scoped>
-  /* Optional styles for cards */
-  .v-card {
+  .agent-card {
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: flex-start;
+    text-align: center;
+  }
+  .agent-card .v-card-title,
+  .agent-card .v-card-subtitle {
     justify-content: center;
+    width: 100%;
+  }
+  .agent-card-content {
+    text-align: center;
+    width: 100%;
+  }
+  .agent-case-list {
+    list-style-position: outside;
+    padding-left: 1.5rem;
+    margin-left: 0;
+    text-align: left;
   }
   </style>
   
