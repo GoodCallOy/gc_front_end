@@ -14,6 +14,16 @@
       </v-card>
 
       <h1 class="mb-3 mt-5">Agents Stats - {{ getFormattedDateRange() }}</h1>
+
+      <!-- Toggle: active agents only (default) vs all agents -->
+      <div class="d-flex align-center justify-center mb-4">
+        <span class="mr-2 text-body-2">{{ showAllAgents ? 'Show all agents' : 'Active agents only' }}</span>
+        <v-switch
+          v-model="showAllAgents"
+          color="primary"
+          hide-details
+        />
+      </div>
   
       <!-- List of Agent Cards styled like listGcAgents.vue -->
       <v-container class="py-2" style="width: 80%;">
@@ -76,23 +86,40 @@ import AgentCard from './agentCard.vue';
     name: 'agentsPage',
 
     components: { AgentCard }, // Register the component
+
+    data() {
+      return {
+        showAllAgents: false, // default: active agents only
+      };
+    },
     
     computed: {
       ...mapGetters(['gcAgents', 'dailyLogs', 'currentPage', 'currentDateRange', 'orders']),
       
       // Calculate combined stats from daily logs for each agent (current month only)
       agentsWithStats() {
-        if (!this.gcAgents || !this.dailyLogs) {
-          return (this.gcAgents || []).filter(agent => agent.active !== false);
+        let agents = this.showAllAgents
+          ? (this.gcAgents || [])
+          : (this.gcAgents || []).filter(agent => agent.active !== false);
+
+        // When showing all agents, put active agents first
+        if (this.showAllAgents && agents.length) {
+          agents = [...agents].sort((a, b) => {
+            const aActive = a.active !== false ? 0 : 1;
+            const bActive = b.active !== false ? 0 : 1;
+            return aActive - bActive;
+          });
+        }
+
+        if (!this.dailyLogs) {
+          return agents;
         }
 
         const now = new Date();
         const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
         const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
 
-        return this.gcAgents
-          .filter(agent => agent.active !== false)
-          .map(agent => {
+        return agents.map(agent => {
           // Filter daily logs for this agent within the selected month
           const agentLogs = this.dailyLogs.filter(log => {
             const logAgentId = String(log?.agent?._id ?? log?.agent ?? '');
@@ -266,6 +293,9 @@ import AgentCard from './agentCard.vue';
     align-items: center;
     justify-content: flex-start;
     text-align: center;
+    min-height: 360px;
+    width: 100%;
+    min-width: 0;
   }
   .agent-card .v-card-title,
   .agent-card .v-card-subtitle {
