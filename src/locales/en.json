@@ -253,7 +253,10 @@
       "deleteLog": "Delete Log",
       "confirmDeleteLog": "Are you sure you want to delete this log entry? This action cannot be undone.",
       "failedToDeleteLog": "Failed to delete log entry. Please try again.",
-      "logDeletedSuccessfully": "Log deleted successfully"
+      "logDeletedSuccessfully": "Log deleted successfully",
+      "editGoal": "Edit goal",
+      "editWeeklyGoal": "Edit weekly goal",
+      "saveGoal": "Save"
     },
     "agentCaseCard": {
       "showOrder": "Show order",

@@ -185,9 +185,44 @@
       density="comfortable"
       :items-per-page="25"
       style="width: 100%"
-    />
+    >
+      <template #item.actions="{ item }">
+        <v-btn
+          icon
+          variant="text"
+          size="small"
+          color="primary"
+          :title="t('agentDashboard.editGoal')"
+          @click="openEditWeeklyGoalDialog(item)"
+        >
+          <v-icon size="small">mdi-pencil</v-icon>
+        </v-btn>
+      </template>
+    </v-data-table>
     <p v-else class="text-body-2 text-grey">{{ t('agentDashboard.noWeeklyGoals') }}</p>
   </v-card>
+
+  <!-- Edit weekly goal dialog -->
+  <v-dialog v-model="editWeeklyGoalDialog" max-width="400" persistent>
+    <v-card>
+      <v-card-title>{{ t('agentDashboard.editWeeklyGoal') }}</v-card-title>
+      <v-card-text>
+        <v-text-field
+          v-model.number="editWeeklyGoalValue"
+          type="number"
+          min="0"
+          :label="t('agentWeeklyGoal.goal')"
+          density="comfortable"
+          hide-details
+        />
+      </v-card-text>
+      <v-card-actions>
+        <v-spacer />
+        <v-btn variant="text" @click="editWeeklyGoalDialog = false">Cancel</v-btn>
+        <v-btn color="primary" :loading="editWeeklyGoalSaving" @click="saveEditedWeeklyGoal">{{ t('agentDashboard.saveGoal') }}</v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
   </v-container>
   
 </template>
@@ -211,6 +246,10 @@ const caseStats = ref([])
 const monthWeeks = ref([])
 const agentWeeklyGoals = ref([])
 const casesViewTab = ref('table')
+const editWeeklyGoalDialog = ref(false)
+const editWeeklyGoalValue = ref(0)
+const editWeeklyGoalSaving = ref(false)
+const editingGoalRow = ref(null)
 const { t } = useI18n()
 
 const orders = computed(() => store.getters['orders'])
@@ -974,9 +1013,10 @@ const weeklyGoalsHeaders = computed(() => [
   { title: t('ordersDashboard.tableHeaders.caseName'), key: 'project', sortable: true },
   { title: t('agentWeeklyGoal.weekStarting'), key: 'weekStart', sortable: true },
   { title: t('agentWeeklyGoal.goal'), key: 'goal', sortable: true },
+  { title: '', key: 'actions', sortable: false, width: '56px' },
 ])
 
-// Table rows: all weekly goals for this agent for the current month (project, week start, goal)
+// Table rows: all weekly goals for this agent for the current month (project, week start, goal) + _raw for edit
 const weeklyGoalsTableRows = computed(() => {
   const goals = agentWeeklyGoals.value || []
   return goals.map((g) => {
@@ -988,6 +1028,7 @@ const weeklyGoalsTableRows = computed(() => {
       project: g?.case ?? g?.caseName ?? g?.case_name ?? '—',
       weekStart: weekStartFormatted,
       goal: g?.goal ?? 0,
+      _raw: g,
     }
   })
 })
@@ -1134,6 +1175,58 @@ async function fetchAgentWeeklyGoals() {
   } catch (err) {
     console.warn('AgentDashboard: Error fetching weekly goals:', err);
     agentWeeklyGoals.value = [];
+  }
+}
+
+function openEditWeeklyGoalDialog(row) {
+  const raw = (row?.raw ?? row)?._raw ?? row?._raw;
+  if (!raw) return;
+  editingGoalRow.value = row?.raw ?? row;
+  editWeeklyGoalValue.value = Number(raw?.goal ?? 0) || 0;
+  editWeeklyGoalDialog.value = true;
+}
+
+function toYYYYMMDD(val) {
+  if (!val) return '';
+  const d = new Date(val);
+  return isNaN(d.getTime()) ? '' : d.toISOString().split('T')[0];
+}
+
+async function saveEditedWeeklyGoal() {
+  const row = editingGoalRow.value;
+  const raw = row?._raw;
+  const agent = selectedGcAgent.value;
+  if (!raw || !agent) {
+    editWeeklyGoalDialog.value = false;
+    return;
+  }
+  const start = toYYYYMMDD(raw?.goal_date?.start ?? raw?.weekStartDate ?? raw?.week_start) || '';
+  const end = toYYYYMMDD(raw?.goal_date?.end ?? raw?.weekEndDate ?? raw?.week_end) || '';
+  const monthKey = raw?.monthKey ?? (start ? start.slice(0, 7) : '');
+  const orderId = raw?.orderId ?? raw?.order_id;
+  const caseName = raw?.case ?? raw?.caseName ?? raw?.case_name ?? '—';
+  if (!start || !end || !orderId) {
+    editWeeklyGoalDialog.value = false;
+    return;
+  }
+  editWeeklyGoalSaving.value = true;
+  try {
+    await axios.post(`${urls.backEndURL}/agentGoals/`, {
+      agent: agent.name,
+      agentId: agent._id ?? agent.id,
+      case: caseName,
+      orderId,
+      goal: Number(editWeeklyGoalValue.value) || 0,
+      type: 'Weekly',
+      goal_date: { start, end },
+      monthKey,
+    });
+    await fetchAgentWeeklyGoals();
+    editWeeklyGoalDialog.value = false;
+  } catch (err) {
+    console.error('Edit weekly goal error:', err);
+  } finally {
+    editWeeklyGoalSaving.value = false;
   }
 }
 

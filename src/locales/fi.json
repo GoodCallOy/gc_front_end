@@ -236,7 +236,10 @@
       "deleteLog": "Poista loki",
       "confirmDeleteLog": "Haluatko varmasti poistaa tämän lokimerkinnän? Tätä toimintoa ei voi perua.",
       "failedToDeleteLog": "Lokimerkinnän poistaminen epäonnistui. Yritä uudelleen.",
-      "logDeletedSuccessfully": "Loki poistettu onnistuneesti"
+      "logDeletedSuccessfully": "Loki poistettu onnistuneesti",
+      "editGoal": "Muokkaa tavoitetta",
+      "editWeeklyGoal": "Muokkaa viikkotavoitetta",
+      "saveGoal": "Tallenna"
     },
     "agentCaseCard": {
       "showOrder": "Näytä tilaus",
