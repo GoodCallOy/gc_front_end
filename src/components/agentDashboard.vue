@@ -1,5 +1,5 @@
 <template>
-  <v-container  style="width: 90%;" >
+  <v-container fluid class="agent-dashboard-container">
     <!-- Date Navigation Header -->
     <v-card elevation="1" class="mb-4">
       <div class="d-flex align-center justify-center pa-4">
@@ -50,17 +50,63 @@
 
     <!-- Show cases if assigned -->
     <div v-else>
-      <h1 class="text-h4 mb-4" style="width: 90vw;"> {{ t('agentDashboard.casesFor') }} {{ selectedGcAgent ? selectedGcAgent.name : '—' }}</h1>
-      <div class="grid-container ">
-        <agentCaseCard
-        v-for="(userOrder, index) in userOrders"
-        :key="index"
-        :order="userOrder"
-        :agents="gcAgents"
-        :dailyLogs="caseStats"
-        :currentUser="selectedGcAgent"
-        />
-      </div>
+      <h1 class="text-h4 mb-4">{{ t('agentDashboard.casesFor') }} {{ selectedGcAgent ? selectedGcAgent.name : '—' }}</h1>
+
+      <v-tabs v-model="casesViewTab" density="comfortable" class="mb-4">
+        <v-tab value="cards">{{ t('ordersDashboard.tabs.cards') }}</v-tab>
+        <v-tab value="table">{{ t('ordersDashboard.tabs.tables') }}</v-tab>
+      </v-tabs>
+
+      <v-window v-model="casesViewTab">
+        <v-window-item value="cards">
+          <div class="grid-container ">
+            <agentCaseCard
+              v-for="(userOrder, index) in userOrders"
+              :key="index"
+              :order="userOrder"
+              :agents="gcAgents"
+              :dailyLogs="caseStats"
+              :currentUser="selectedGcAgent"
+            />
+          </div>
+        </v-window-item>
+
+        <v-window-item value="table">
+          <v-card elevation="1">
+            <v-data-table
+              :headers="casesTableHeaders"
+              :items="casesTableRows"
+              item-value="_id"
+              class="elevation-0"
+              :items-per-page="25"
+              density="comfortable"
+              @click:row="(event, row) => goToCaseDetails(row?.item ?? row)"
+            >
+              <template #item.callers="{ item }">
+                {{ getCallerNames(item?.raw ?? item) }}
+              </template>
+              <template #item.myGoal="{ item }">
+                {{ (item?.raw ?? item)?.myGoal }}
+              </template>
+              <template #item.myUnits="{ item }">
+                {{ (item?.raw ?? item)?.myAgentUnits }} / {{ (item?.raw ?? item)?.totalQuantity }}
+              </template>
+              <template #item.myRevenueGoal="{ item }">
+                €{{ formatCurrency((item?.raw ?? item)?.myRevenueGoal) }}
+              </template>
+              <template #item.currentRevenue="{ item }">
+                €{{ formatCurrency((item?.raw ?? item)?.currentRevenue) }}
+              </template>
+              <template #item.percentage="{ item }">
+                {{ (item?.raw ?? item)?.percentage }}%
+              </template>
+              <template #item.deadline="{ item }">
+                {{ formatDateForTable((item?.raw ?? item)?.deadline) }}
+              </template>
+            </v-data-table>
+          </v-card>
+        </v-window-item>
+      </v-window>
     </div>
     
 
@@ -147,6 +193,7 @@ const route = useRoute()
 const userOrders = ref([])
 const caseStats = ref([])
 const monthWeeks = ref([])
+const casesViewTab = ref('table')
 const { t } = useI18n()
 
 const orders = computed(() => store.getters['orders'])
@@ -185,6 +232,31 @@ function formatDateToDDMMYYYY(dateString) {
   const year = date.getFullYear();
   
   return `${day}/${month}/${year}`;
+}
+
+function formatDateForTable(dateString) {
+  if (!dateString) return '';
+  const date = typeof dateString === 'string' && dateString.includes('T')
+    ? new Date(dateString.split('T')[0])
+    : new Date(dateString);
+  if (isNaN(date.getTime())) return dateString;
+  return date.toLocaleDateString();
+}
+
+function getCallerNames(order) {
+  if (!order?.assignedCallers || !Array.isArray(order.assignedCallers)) return '';
+  const agents = gcAgents.value || [];
+  return order.assignedCallers
+    .map(x => {
+      const id = x?._id ?? x?.id ?? x;
+      return agents.find(a => String(a._id ?? a.id) === String(id))?.name || t('assignGoals.unknownAgent') || '—';
+    })
+    .join(', ');
+}
+
+function goToCaseDetails(row) {
+  if (!row?._id) return;
+  router.push({ name: 'agentCaseDetails', query: { orderId: row._id } });
 }
 
 // Helper function to check if an order is a test case
@@ -865,6 +937,77 @@ const individualHeaders = computed(() => [
   { title: t('agentTables.edit'), key: 'actions', sortable: false, width: '100px' },
 ])
 
+// Headers for cases table view (agent dashboard)
+const casesTableHeaders = computed(() => [
+  { title: t('ordersDashboard.tableHeaders.caseName'), key: 'caseName', sortable: true },
+  { title: t('ordersDashboard.tableHeaders.status'), key: 'orderStatus', sortable: true },
+  { title: t('ordersDashboard.tableHeaders.callers'), key: 'callers', sortable: false },
+  { title: t('ordersDashboard.tableHeaders.unit'), key: 'caseUnit', sortable: true },
+  { title: t('ordersDashboard.tableHeaders.totalQty'), key: 'totalQuantity', sortable: true },
+  { title: t('agentCaseCard.myGoal'), key: 'myGoal', sortable: true },
+  { title: t('agentTables.results'), key: 'myUnits', sortable: true },
+  { title: t('agentCaseCard.myRevenueGoal'), key: 'myRevenueGoal', sortable: true },
+  { title: t('agentCaseCard.myCurrentRevenue'), key: 'currentRevenue', sortable: true },
+  { title: '%', key: 'percentage', sortable: true },
+  { title: t('ordersDashboard.tableHeaders.deadline'), key: 'deadline', sortable: true },
+])
+
+// Table rows for cases view: each order enriched with agent-specific stats
+const casesTableRows = computed(() => {
+  const orders = userOrders.value || [];
+  const agent = selectedGcAgent.value;
+  const stats = caseStats.value || [];
+  const dateRange = currentDateRange.value;
+
+  if (!agent || !Array.isArray(orders)) return [];
+
+  const agentId = String(agent._id ?? agent.id ?? '');
+  let from, to;
+  if (dateRange && dateRange.length >= 2) {
+    from = new Date(dateRange[0]);
+    to = new Date(dateRange[1]);
+    to.setHours(23, 59, 59, 999);
+  }
+
+  return orders.map((order) => {
+    const orderId = String(order._id ?? order.id ?? '');
+    const myGoal = Number(order?.agentGoals?.[agentId] ?? 0);
+    const pricePerUnit = Number(order?.pricePerUnit ?? 0);
+
+    const myAgentOrderLogs = stats.filter((log) => {
+      const logOrderId = String(log?.order?._id ?? log?.order ?? log?.orderId ?? '');
+      const logCaseName = log?.caseName ?? '';
+      const sameOrder = logOrderId === orderId || logCaseName === (order?.caseName ?? '');
+      const logAgentId = String(log?.agent?._id ?? log?.agent ?? log?.agentId ?? '');
+      if (logAgentId !== agentId || !sameOrder) return false;
+      if (from && to) {
+        const d = new Date(log?.date);
+        return d >= from && d <= to;
+      }
+      return true;
+    });
+
+    const myAgentUnits = myAgentOrderLogs.reduce(
+      (sum, l) => sum + (Number(l?.quantityCompleted) ?? 0),
+      0
+    );
+    const myRevenueGoal = myGoal * pricePerUnit;
+    const currentRevenue = myAgentUnits * pricePerUnit;
+    const percentage = myGoal > 0 ? Number(((myAgentUnits / myGoal) * 100).toFixed(1)) : 0;
+
+    return {
+      ...order,
+      _id: order._id ?? order.id,
+      myGoal,
+      myAgentUnits,
+      totalQuantity: Number(order?.totalQuantity ?? 0),
+      myRevenueGoal,
+      currentRevenue,
+      percentage,
+    };
+  });
+});
+
 const currentUser = computed(() => {
   return store.state.user?.user
       ?? JSON.parse(localStorage.getItem('auth_user') || 'null')
@@ -1103,13 +1246,23 @@ watch(currentDateRange, async (newRange) => {
     min-width: 85px;
   }
   
+  .agent-dashboard-container {
+    max-width: 1400px;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 24px;
+    padding-right: 24px;
+  }
+
   .grid-container {
     display: grid;
-    grid-template-columns: repeat(6, 1fr); /* 6 columns for smaller cards */
+    grid-template-columns: repeat(4, 1fr); /* 4 columns for smaller cards */
     gap: 12px;
-    width: 90vw;
+    width: 100%;
+    max-width: 100%;
     margin-bottom: 1rem;
-    flex-shrink: 0; /* ✅ Prevent it from collapsing or overlapping */
+    flex-shrink: 0;
+    box-sizing: border-box;
 
     /* Hide scrollbar for Webkit browsers (Chrome, Safari) */
     scrollbar-width: none; /* Firefox */
@@ -1143,6 +1296,10 @@ watch(currentDateRange, async (newRange) => {
     }
     
     /* Stack all container elements vertically on mobile */
+    .agent-dashboard-container {
+      padding-left: 16px !important;
+      padding-right: 16px !important;
+    }
     .v-container {
       display: flex !important;
       flex-direction: column !important;
