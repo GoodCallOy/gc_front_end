@@ -53,24 +53,11 @@
       <h1 class="text-h4 mb-4">{{ t('agentDashboard.casesFor') }} {{ selectedGcAgent ? selectedGcAgent.name : '—' }}</h1>
 
       <v-tabs v-model="casesViewTab" density="comfortable" class="mb-4">
-        <v-tab value="cards">{{ t('ordersDashboard.tabs.cards') }}</v-tab>
         <v-tab value="table">{{ t('ordersDashboard.tabs.tables') }}</v-tab>
+        <v-tab value="cards">{{ t('ordersDashboard.tabs.cards') }}</v-tab>
       </v-tabs>
 
       <v-window v-model="casesViewTab">
-        <v-window-item value="cards">
-          <div class="grid-container ">
-            <agentCaseCard
-              v-for="(userOrder, index) in userOrders"
-              :key="index"
-              :order="userOrder"
-              :agents="gcAgents"
-              :dailyLogs="caseStats"
-              :currentUser="selectedGcAgent"
-            />
-          </div>
-        </v-window-item>
-
         <v-window-item value="table">
           <v-card elevation="1">
             <v-data-table
@@ -92,10 +79,10 @@
                 {{ (item?.raw ?? item)?.myAgentUnits }} / {{ (item?.raw ?? item)?.totalQuantity }}
               </template>
               <template #item.myRevenueGoal="{ item }">
-                €{{ formatCurrency((item?.raw ?? item)?.myRevenueGoal) }}
+                {{ formatCurrency((item?.raw ?? item)?.myRevenueGoal) }}
               </template>
               <template #item.currentRevenue="{ item }">
-                €{{ formatCurrency((item?.raw ?? item)?.currentRevenue) }}
+                {{ formatCurrency((item?.raw ?? item)?.currentRevenue) }}
               </template>
               <template #item.percentage="{ item }">
                 {{ (item?.raw ?? item)?.percentage }}%
@@ -105,6 +92,19 @@
               </template>
             </v-data-table>
           </v-card>
+        </v-window-item>
+
+        <v-window-item value="cards">
+          <div class="grid-container ">
+            <agentCaseCard
+              v-for="(userOrder, index) in userOrders"
+              :key="index"
+              :order="userOrder"
+              :agents="gcAgents"
+              :dailyLogs="caseStats"
+              :currentUser="selectedGcAgent"
+            />
+          </div>
         </v-window-item>
       </v-window>
     </div>
@@ -173,6 +173,21 @@
       </v-data-table>
     </div>
   </v-card>
+
+  <!-- Weekly goals by project (per week) -->
+  <v-card v-if="userOrders.length > 0" class="mx-auto my-4 pa-4 elevation-4" style="background-color: #eeeff1;">
+    <h3 class="text-h6 mb-3">{{ t('agentDashboard.weeklyGoalsByCase') }}</h3>
+    <v-data-table
+      v-if="weeklyGoalsTableRows.length > 0"
+      :headers="weeklyGoalsHeaders"
+      :items="weeklyGoalsTableRows"
+      class="elevation-1"
+      density="comfortable"
+      :items-per-page="25"
+      style="width: 100%"
+    />
+    <p v-else class="text-body-2 text-grey">{{ t('agentDashboard.noWeeklyGoals') }}</p>
+  </v-card>
   </v-container>
   
 </template>
@@ -183,6 +198,7 @@ import { useStore } from 'vuex'
 import { useI18n } from 'vue-i18n';
 import { useRouter, useRoute } from 'vue-router';
 import { goToNextMonth, goToPreviousMonth, formattedDateRange, isCurrentMonth, getMonthWeeks } from '@/js/dateUtils';
+import { fetchAgentgoalsByAgentAndMonth } from '@/js/statsUtils';
 import agentCaseCard from './agentCaseCard.vue'
 import axios from 'axios'
 import urls from '@/js/config.js'
@@ -193,6 +209,7 @@ const route = useRoute()
 const userOrders = ref([])
 const caseStats = ref([])
 const monthWeeks = ref([])
+const agentWeeklyGoals = ref([])
 const casesViewTab = ref('table')
 const { t } = useI18n()
 
@@ -952,6 +969,29 @@ const casesTableHeaders = computed(() => [
   { title: t('ordersDashboard.tableHeaders.deadline'), key: 'deadline', sortable: true },
 ])
 
+// Headers for weekly goals by project table
+const weeklyGoalsHeaders = computed(() => [
+  { title: t('ordersDashboard.tableHeaders.caseName'), key: 'project', sortable: true },
+  { title: t('agentWeeklyGoal.weekStarting'), key: 'weekStart', sortable: true },
+  { title: t('agentWeeklyGoal.goal'), key: 'goal', sortable: true },
+])
+
+// Table rows: all weekly goals for this agent for the current month (project, week start, goal)
+const weeklyGoalsTableRows = computed(() => {
+  const goals = agentWeeklyGoals.value || []
+  return goals.map((g) => {
+    const start = g?.goal_date?.start ?? g?.weekStartDate ?? g?.weekStart ?? g?.week_start ?? ''
+    const weekStartFormatted = start
+      ? formatDateForTable(start)
+      : ''
+    return {
+      project: g?.case ?? g?.caseName ?? g?.case_name ?? '—',
+      weekStart: weekStartFormatted,
+      goal: g?.goal ?? 0,
+    }
+  })
+})
+
 // Table rows for cases view: each order enriched with agent-specific stats
 const casesTableRows = computed(() => {
   const orders = userOrders.value || [];
@@ -1073,6 +1113,30 @@ const fetchCaseStats = async () => {
   }
 }
 
+async function fetchAgentWeeklyGoals() {
+  const agent = selectedGcAgent.value;
+  const dateRange = currentDateRange.value;
+  if (!agent || !dateRange || dateRange.length < 1) {
+    agentWeeklyGoals.value = [];
+    return;
+  }
+  try {
+    const monthKey = dateRange[0].slice(0, 7); // "YYYY-MM"
+    // Prefer agent ID (backend spec uses agentId); fallback to name for path-style APIs
+    const agentId = String(agent._id ?? agent.id ?? '');
+    const name = agent.name || agent.username || '';
+    if (!agentId && !name) {
+      agentWeeklyGoals.value = [];
+      return;
+    }
+    const data = await fetchAgentgoalsByAgentAndMonth(agentId || name, monthKey, name || undefined);
+    agentWeeklyGoals.value = Array.isArray(data) ? data : [];
+  } catch (err) {
+    console.warn('AgentDashboard: Error fetching weekly goals:', err);
+    agentWeeklyGoals.value = [];
+  }
+}
+
 watch([orders, selectedGcAgent, currentDateRange], async ([allOrders, agent, dateRange]) => {
   userOrders.value = agent
     ? findOrdersForUser(allOrders, agent._id ?? agent.id)
@@ -1081,6 +1145,9 @@ watch([orders, selectedGcAgent, currentDateRange], async ([allOrders, agent, dat
   // Fetch case stats when agent or orders change
   if (agent) {
     await fetchCaseStats();
+    await fetchAgentWeeklyGoals();
+  } else {
+    agentWeeklyGoals.value = [];
   }
 }, { immediate: true });
 

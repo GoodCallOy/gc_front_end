@@ -226,6 +226,8 @@
       "casesFor": "Tapaukset",
       "weeklySummary": "Viikkoyhteenveto",
       "dailyEntriesByWeek": "Päivittäiset merkinnät viikoittain",
+      "weeklyGoalsByCase": "Viikkotavoitteet tapauksittain",
+      "noWeeklyGoals": "Ei viikkotavoitteita tälle kuukaudelle.",
       "week": "Viikko",
       "cases": "Tapaukset",
       "allCases": "Kaikki tapaukset",
@@ -247,6 +249,30 @@
       "meetings": "Tapaamiset",
       "hours": "Tunnit",
       "interviews": "Haastattelut"
+    },
+    "agentWeeklyGoal": {
+      "menuTitle": "Lisää viikkotavoite",
+      "title": "Lisää viikkotavoite tapaukselle",
+      "buttonForCase": "Lisää viikkotavoite tälle tapaukselle",
+      "noCasesAssigned": "Sinulla ei ole tapauksia. Ota yhteyttä esimieheen.",
+      "selectCase": "Valitse tapaus",
+      "caseRequired": "Tapaus vaaditaan",
+      "weekStarting": "Viikon alku (maanantai)",
+      "selectMonth": "Kuukausi",
+      "selectWeek": "Viikko",
+      "weekStartDate": "Viikon aloituspäivä",
+      "weekEndDate": "Viikon päätöspäivä",
+      "weekRequired": "Viikko vaaditaan",
+      "weekEndRequired": "Viikon päätöspäivä vaaditaan",
+      "weekEndAfterStart": "Päätöspäivän tulee olla sama tai aloituspäivän jälkeen",
+      "goal": "Tavoite",
+      "goalRequired": "Tavoite vaaditaan (0 tai enemmän)",
+      "goalsPerCase": "Tavoite per tapaus (jätä tyhjäksi ohittaaksesi)",
+      "submit": "Tallenna",
+      "success": "Viikkotavoite tallennettu.",
+      "successCount": "Tallennettu {n} viikkotavoite(tta).",
+      "errorCaseOrAgent": "Valitse tapaus. Sinun tulee olla linkitetty agenttina.",
+      "errorSubmit": "Tallennus epäonnistui. Yritä uudelleen."
     }
   }
   

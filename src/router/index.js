@@ -28,6 +28,7 @@ import assignGoals from '@/components/orders/assignGoals.vue';
 import CaseTypesManager from '@/components/orders/CaseTypesManager.vue';
 import agentDashboard from '@/components/agentDashboard.vue';
 import agentCaseDetails from '@/components/agentCaseDetails.vue';
+import agentWeeklyGoalForm from '@/components/agentWeeklyGoalForm.vue';
 import listGcAgents from '@/components/agents/listGcAgents.vue';
 import editGcAgent from '@/components/agents/editGcAgent.vue';
 import WeekConfigManager from '@/components/weekConfiguration/WeekConfigManager.vue';
@@ -72,6 +73,7 @@ const routes = [
       { path: 'case-types', name: 'caseTypesManager', component: CaseTypesManager, meta: { requiresAuth: true, roles: ['admin', 'manager'] } },
       { path: 'excel-import', name: 'excelImport', component: ExcelImport, meta: { requiresAuth: true, roles: ['admin', 'manager'] } },
       { path: 'agent-case-details', name: 'agentCaseDetails', component: agentCaseDetails },
+      { path: 'agent-weekly-goal', name: 'agentWeeklyGoal', component: agentWeeklyGoalForm, meta: { requiresAuth: true, roles: ['caller', 'admin', 'manager'] } },
       { path: 'assign-goals', name: 'assignGoals', component: assignGoals, meta: { requiresAuth: true, roles: ['admin', 'manager'] } },
       { 
         path: 'singleCase', 

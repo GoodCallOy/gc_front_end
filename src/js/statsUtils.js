@@ -192,17 +192,37 @@ export function populateCasesSortedByAgent(agentStats, selectedAgent) {
       new Date(now.getFullYear(), now.getMonth() + 1, 0)
     ];
   }
-  export async function fetchAgentgoalsByAgentAndMonth(agent, month) {
-    try {
-      // console.log('agent in function', agent)
-      // console.log('month in function', month)
-      
-      const response = await axios.get(`${urls.backEndURL}/agentgoals/${agent}?month=${month}`);
-      // console.log('AgentGoals array',response.data)
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching agent stats:', error);
+  /**
+   * Fetch weekly goals for an agent and month.
+   * @param {string} agentIdOrName - Agent ID or name for the request
+   * @param {string} monthKey - "YYYY-MM"
+   * @param {string} [agentName] - If provided, used for path-style fallback (some backends expect name in path)
+   * @returns {Promise<Array>} Array of goal objects (or empty array)
+   */
+  export async function fetchAgentgoalsByAgentAndMonth(agentIdOrName, monthKey, agentName) {
+    function toArray(data) {
+      if (Array.isArray(data)) return data;
+      if (data && Array.isArray(data.data)) return data.data;
+      if (data && Array.isArray(data.goals)) return data.goals;
+      if (data && Array.isArray(data.results)) return data.results;
+      return [];
     }
+    // 1) Try spec-style: GET agentGoals?agentId=xxx&monthKey=YYYY-MM
+    try {
+      const url = `${urls.backEndURL}/agentGoals?agentId=${encodeURIComponent(agentIdOrName)}&monthKey=${encodeURIComponent(monthKey)}`;
+      const response = await axios.get(url);
+      return toArray(response.data);
+    } catch (_) {}
+    // 2) Fallback: path-style GET agentgoals/:id?month= (try id then name)
+    for (const id of [agentIdOrName, agentName].filter(Boolean)) {
+      if (!id) continue;
+      try {
+        const fallbackUrl = `${urls.backEndURL}/agentgoals/${encodeURIComponent(id)}?month=${encodeURIComponent(monthKey)}`;
+        const response = await axios.get(fallbackUrl);
+        return toArray(response.data);
+      } catch (_) {}
+    }
+    return [];
   }
 
   /**

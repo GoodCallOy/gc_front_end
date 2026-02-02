@@ -24,7 +24,7 @@
           hide-details
         />
       </div>
-  
+
       <!-- List of Agent Cards styled like listGcAgents.vue -->
       <v-container class="py-2" style="width: 80%;">
         <v-row dense align="stretch">

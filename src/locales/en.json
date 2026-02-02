@@ -243,6 +243,8 @@
       "casesFor": "Cases for",
       "weeklySummary": "Weekly Summary",
       "dailyEntriesByWeek": "Daily Entries by Week",
+      "weeklyGoalsByCase": "Weekly goals by case",
+      "noWeeklyGoals": "No weekly goals for this month.",
       "week": "Week",
       "cases": "Cases",
       "allCases": "All Cases",
@@ -264,6 +266,30 @@
       "meetings": "Meetings",
       "hours": "Hours",
       "interviews": "Interviews"
+    },
+    "agentWeeklyGoal": {
+      "menuTitle": "Add weekly goal",
+      "title": "Add weekly goal for case",
+      "buttonForCase": "Add weekly goal for this case",
+      "noCasesAssigned": "You have no assigned cases. Contact your manager.",
+      "selectCase": "Select case",
+      "caseRequired": "Case is required",
+      "weekStarting": "Week starting (Monday)",
+      "selectMonth": "Month",
+      "selectWeek": "Week",
+      "weekStartDate": "Week start date",
+      "weekEndDate": "Week end date",
+      "weekRequired": "Week is required",
+      "weekEndRequired": "Week end date is required",
+      "weekEndAfterStart": "End date must be on or after start date",
+      "goal": "Goal",
+      "goalRequired": "Goal is required (0 or more)",
+      "goalsPerCase": "Goal per case (leave blank to skip)",
+      "submit": "Save",
+      "success": "Weekly goal saved.",
+      "successCount": "Saved {n} weekly goal(s).",
+      "errorCaseOrAgent": "Please select a case. You must be linked as an agent.",
+      "errorSubmit": "Failed to save. Please try again."
     }
   }
   

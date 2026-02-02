@@ -14,11 +14,19 @@
     </v-card>
 
     <v-card v-if="order" class="pa-4"   >
-      <v-row justify="space-between">
+      <v-row justify="space-between" align="center">
         <v-col>
           <h2>Case Details</h2>
         </v-col>
-        
+        <v-col cols="auto">
+          <v-btn
+            color="primary"
+            variant="tonal"
+            :to="{ name: 'agentWeeklyGoal', query: { orderId: order._id } }"
+          >
+            {{ t('agentWeeklyGoal.buttonForCase') }}
+          </v-btn>
+        </v-col>
       </v-row>
 
 

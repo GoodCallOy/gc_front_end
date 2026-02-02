@@ -236,9 +236,26 @@ async function logout() {
           @click="navigateTo('agents')"
         ></v-list-item>  
       </v-list-group>
-      <!-- Orders -->
+
+      <!-- Caller flat menu: Add daily log + Add weekly goal at top level (no Orders submenu) -->
+      <v-list-item
+        v-if="user?.user?.role === 'caller' && isCallerLinkedToAgent"
+        prepend-icon="mdi-account-plus"
+        :title="t('buttons.addDailyLog')"
+        :active="route.name === 'addDailyLog'"
+        @click="navigateTo('addDailyLog')"
+      />
+      <v-list-item
+        v-if="user?.user?.role === 'caller' && isCallerLinkedToAgent"
+        prepend-icon="mdi-calendar-week"
+        :title="t('agentWeeklyGoal.menuTitle')"
+        :active="route.name === 'agentWeeklyGoal'"
+        @click="navigateTo('agentWeeklyGoal')"
+      />
+
+      <!-- Orders (admin/manager only – submenu) -->
       <v-list-group
-        v-if="user?.user?.role === 'admin' || user?.user?.role === 'manager' || (user?.user?.role === 'caller' && isCallerLinkedToAgent)"
+        v-if="user?.user?.role === 'admin' || user?.user?.role === 'manager'"
         v-model="ordersOpen"
         prepend-icon="mdi-clipboard-text-outline "
       >
@@ -249,29 +266,24 @@ async function logout() {
           />
         </template>
         <v-list-item
-          v-if="user?.user?.role === 'admin' || user?.user?.role === 'manager'" 
           prepend-icon="mdi-folder-plus"
-          :title="t('buttons.addCaseForm')"  
+          :title="t('buttons.addCaseForm')"
           :active="route.name === 'addCaseForm'"
-          @click="navigateTo('addCaseForm')" 
+          @click="navigateTo('addCaseForm')"
         ></v-list-item>
         <v-list-item
-          v-if="user?.user?.role === 'admin' || user?.user?.role === 'manager'" 
           prepend-icon="mdi-folder-plus"
-          :title="t('buttons.addOrderForm')"  
+          :title="t('buttons.addOrderForm')"
           :active="route.name === 'addOrderForm'"
           @click="navigateTo('addOrderForm')"
-   
         ></v-list-item>
         <v-list-item
-          v-if="user?.user?.role === 'admin' || user?.user?.role === 'manager'" 
           prepend-icon="mdi-format-list-bulleted"
           title="Case Types"
           :active="route.name === 'caseTypesManager'"
           @click="navigateTo('caseTypesManager')"
         ></v-list-item>
         <v-list-item
-          v-if="user?.user?.role === 'admin' || user?.user?.role === 'manager'" 
           prepend-icon="mdi-file-excel"
           title="Import Excel"
           :active="route.name === 'excelImport'"
@@ -280,35 +292,32 @@ async function logout() {
         <v-list-item
           v-if="user?.user?.role === 'admin'"
           prepend-icon="mdi-account-plus"
-          :title="t('buttons.addGcAgent')"  
+          :title="t('buttons.addGcAgent')"
           :active="route.name === 'addGcAgent'"
-          @click="navigateTo('addGcAgent')"        
+          @click="navigateTo('addGcAgent')"
         ></v-list-item>
         <v-list-item
           v-if="user?.user?.role === 'admin'"
           prepend-icon="mdi-account-plus"
-          :title="t('buttons.listGcAgents')"  
+          :title="t('buttons.listGcAgents')"
           :active="route.name === 'listGcAgents'"
-          @click="navigateTo('listGcAgents')" 
+          @click="navigateTo('listGcAgents')"
         ></v-list-item>
         <v-list-item
-          v-if="user?.user?.role === 'admin' || user?.user?.role === 'manager'"
           prepend-icon="mdi-calendar-week"
-          title="Week Configuration"  
+          title="Week Configuration"
           :active="route.name === 'weekConfig'"
-          @click="navigateTo('weekConfig')" 
+          @click="navigateTo('weekConfig')"
         ></v-list-item>
         <v-list-item
-          v-if="user?.user?.role === 'admin' || user?.user?.role === 'manager' || (user?.user?.role === 'caller' && isCallerLinkedToAgent)"
           prepend-icon="mdi-account-plus"
-          :title="t('buttons.addDailyLog')"  
+          :title="t('buttons.addDailyLog')"
           :active="route.name === 'addDailyLog'"
           @click="navigateTo('addDailyLog')"
         ></v-list-item>
         <v-list-item
-          v-if="user?.user?.role === 'admin' || user?.user?.role === 'manager'"
           prepend-icon="mdi-account-plus"
-          :title="t('buttons.orderProgress')"  
+          :title="t('buttons.orderProgress')"
           :active="route.name === 'orderProgress'"
           @click="navigateTo('OrderProgressTable')"
         ></v-list-item>
