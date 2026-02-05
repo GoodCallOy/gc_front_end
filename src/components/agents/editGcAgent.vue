@@ -118,6 +118,9 @@ function loadFormData(source) {
   editUser.role = source.role || 'caller'
   // keep as string for the input; send null when empty
   editUser.linkedUserId = source.linkedUserId ? String(source.linkedUserId) : ''
+
+  // Pre-select the currently linked agent (if any) in the "Link to agent" field
+  selectedAgentId.value = source.linkedUserId ? String(source.linkedUserId) : null
 }
 
 function onSelectAgent(id) {
@@ -169,13 +172,16 @@ watch(selectedUser, (u) => {
 
 const agentOptions = computed(() =>
   (agents.value || [])
-    .map(u => {
-      const id = String(u._id ?? u.id ?? '')
-      const name = u.name || 'Unnamed'
-      const email = u.email || ''
-      const active = u.active ? 'Active' : '🔴'
-      const role = u.role || ''
-      return { value: id, title: email ? `${name} (${email}, ${role}, ${active})` : name }
+    .map(a => {
+      const id = String(a._id ?? a.id ?? '')
+      const name = a.name || 'Unnamed'
+      const email = a.email || ''
+      const active = a.active ? 'Active' : 'Inactive'
+      const role = a.role || ''
+      return {
+        value: id,
+        title: email ? `${name} (${email}, ${role}, ${active})` : `${name} (${role}, ${active})`,
+      }
     })
     .filter(o => o.value)
 )
@@ -197,10 +203,29 @@ async function submitForm() {
   const valid = await formRef.value?.validate?.()
   if (valid === false) return
 
+  if (!selectedUser.value) {
+    alertType.value = 'error'
+    message.value = 'No user selected.'
+    return
+  }
+
+  // Build payload from the editable fields plus any immutable backend identifiers
+  const base = selectedUser.value
   const payload = {
-    ...selectedUser.value,
-    linkedUserId: selectedAgentId.value ?? null,
+    // identifiers that backend may rely on
+    _id: base._id ?? editUser.id,
+    id: base.id ?? editUser.id,
+    googleId: base.googleId ?? editUser.googleId,
+    access: base.access ?? editUser.access,
+    avatar: base.avatar ?? editUser.avatar,
+
+    // editable fields from the form
+    name: editUser.name,
+    email: editUser.email,
     role: editUser.role,
+
+    // link this auth user to a gcAgent
+    linkedUserId: selectedAgentId.value ?? null,
   }
   console.log('Submitting payload:', payload)
   console.log('Submitting for user ID:', selectedUserId.value)
@@ -214,7 +239,8 @@ async function submitForm() {
     )
     alertType.value = 'success'
     message.value = 'Agent updated.'
-    // refresh store
+    // refresh stores so listGcAgents and other views see updated link
+    try { await store.dispatch('fetchUsers', true) } catch {}
     try { await store.dispatch('fetchgcAgents', true) } catch {}
     console.log('Agent updated:', data)
     // keep you on the page; or router.back() if you prefer

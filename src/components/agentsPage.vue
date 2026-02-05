@@ -66,9 +66,28 @@
               <v-spacer />
 
               <v-card-actions class="justify-center">
-                <v-btn size="small" color="primary" @click="viewAgent(agent)">View</v-btn>
+                <!-- Role chip -->
+                <v-chip
+                  size="small"
+                  class="mr-2"
+                  :color="agent.active !== false ? 'success' : 'grey'"
+                >
+                  {{ agent.role || 'caller' }}
+                </v-chip>
+
+                <!-- Linked status chip -->
+                <v-chip
+                  size="small"
+                  class="mr-2"
+                  :color="agent.linkedUserId ? 'success' : 'grey'"
+                >
+                  {{ agent.linkedUserId ? 'Linked' : 'Unlinked' }}
+                </v-chip>
+
                 <v-spacer />
-                <v-btn size="small" color="grey" @click="editAgent(agent)">Edit</v-btn>
+
+                <v-btn size="small" color="grey" class="ml-2" @click="editAgent(agent)">Edit</v-btn>
+                <v-btn size="small" color="primary" class="ml-2" @click="viewAgent(agent)">View</v-btn>
               </v-card-actions>
             </v-card>
           </v-col>

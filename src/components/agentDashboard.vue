@@ -195,15 +195,6 @@
         :items-per-page="10"
         style="width: 100%"
       >
-        <template #item.project="{ item }">
-          <span
-            class="text-primary"
-            style="cursor: pointer; text-decoration: underline;"
-            @click.stop="editOrderFromWeeklyGoal(item)"
-          >
-            {{ item.project }}
-          </span>
-        </template>
         <template #item.actions="{ item }">
           <div class="d-flex align-center">
             <v-icon
@@ -1414,19 +1405,6 @@ async function deleteWeeklyGoal(row) {
     console.error('Delete weekly goal error:', err);
     alert(t('agentDashboard.failedToDeleteWeeklyGoal'));
   }
-}
-
-function editOrderFromWeeklyGoal(row) {
-  const raw = row?._raw ?? row?.raw ?? row;
-  if (!raw) return;
-
-  const orderId = raw?.orderId ?? raw?.order_id;
-  if (!orderId) {
-    console.warn('editOrderFromWeeklyGoal: no orderId on goal row', raw);
-    return;
-  }
-
-  router.push({ name: 'editOrderForm', params: { id: orderId } });
 }
 
 watch([orders, selectedGcAgent, currentDateRange], async ([allOrders, agent, dateRange]) => {
