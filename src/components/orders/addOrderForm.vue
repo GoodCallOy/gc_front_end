@@ -26,14 +26,14 @@
         v-model.number="form.pricePerUnit"
         label="Price per Unit (€)"
         type="number"
-        :rules="[v => !!v || 'Price per unit is required']"
+        :rules="[v => (v === 0 || !!v) || 'Price per unit is required']"
         required
       />
       <v-text-field
         v-model.number="form.totalQuantity"
         label="Total Quantity"
         type="number"
-        :rules="[v => !!v || 'Quantity is required']"
+        :rules="[v => (v === 0 || !!v) || 'Quantity is required']"
         required
       />
 
@@ -254,17 +254,19 @@ const assignedGoalsCount = computed(() =>
 
 // Check if all required fields are filled
 const isFormValid = computed(() => {
-  return !!(
+  const hasBasicFields =
     form.caseId &&
     form.caseUnit &&
-    form.pricePerUnit &&
-    form.totalQuantity &&
     form.startDate &&
     form.deadline &&
     form.orderStatus &&
     form.caseType &&
-    form.estimatedRevenue
-  );
+    form.estimatedRevenue;
+
+  const hasPrice = form.pricePerUnit !== '' && !isNaN(form.pricePerUnit);
+  const hasQuantity = form.totalQuantity !== '' && !isNaN(form.totalQuantity);
+
+  return !!(hasBasicFields && hasPrice && hasQuantity);
 });
 
 const agentName = id => {

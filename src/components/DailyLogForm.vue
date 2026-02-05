@@ -25,15 +25,31 @@
       <v-text-field v-model="form.caseUnit" :label="$t('dailyLogForm.caseUnit')" required />
       <v-text-field v-model.number="form.call_time" :label="$t('dailyLogForm.callTime')" type="number" required />
       <v-text-field v-model.number="form.completed_calls" :label="$t('dailyLogForm.completedCalls')" type="number" required />
-      <v-text-field v-model.number="form.outgoing_calls" :label="$t('dailyLogForm.outboundCalls')" type="number" required />
-      <v-text-field v-model.number="form.answered_calls" :label="$t('dailyLogForm.answeredCalls')" type="number" required />
 
-      <v-text-field
-        :value="formattedResponseRate"
-        :label="$t('dailyLogForm.responseRate')"
-        readonly
-        persistent-placeholder
-      />
+      <!-- Toggle for call detail fields -->
+      <v-btn
+        class="mt-2 mb-2"
+        variant="text"
+        color="primary"
+        @click="showCallFieldsExpanded = !showCallFieldsExpanded"
+      >
+        {{ showCallFieldsExpanded ? 'Hide call details' : 'Show call details' }}
+      </v-btn>
+
+      <template v-if="showCallFieldsExpanded">
+        <v-text-field v-model.number="form.outgoing_calls" :label="$t('dailyLogForm.outboundCalls')" type="number" required />
+        <v-text-field v-model.number="form.answered_calls" :label="$t('dailyLogForm.answeredCalls')" type="number" required />
+      </template>
+
+      <!-- Toggle for lead fields -->
+      <v-btn
+        class="mt-4 mb-2"
+        variant="text"
+        color="primary"
+        @click="showLeadFieldsExpanded = !showLeadFieldsExpanded"
+      >
+        {{ showLeadFieldsExpanded ? 'Hide lead fields' : 'Show lead fields' }}
+      </v-btn>
 
       <!-- Conditional Kuuki / Hourly / Daily fields -->
       <template v-if="showLeadFields">
@@ -143,7 +159,20 @@ export default {
     formValid: true,
     originalLogId: null, // Store the ID of the log being edited
     showSuccessMessage: false,
-    successMessage: ''
+    successMessage: '',
+    // Leads section is collapsed by default for new logs, expanded if editing with existing lead values
+    showLeadFieldsExpanded: !!(this.logToEdit && (
+      this.logToEdit.aLeads ||
+      this.logToEdit.bLeads ||
+      this.logToEdit.cLeads ||
+      this.logToEdit.dLeads ||
+      this.logToEdit.noPotential
+    )),
+    // Call details section: expanded by default when editing logs with call data
+    showCallFieldsExpanded: !!(this.logToEdit && (
+      this.logToEdit.outgoing_calls ||
+      this.logToEdit.answered_calls
+    )),
     }
   },
   computed: {
@@ -205,8 +234,8 @@ export default {
     return this.ordersWithCaseName.find(o => o._id === this.form.order) || null
   },
   showLeadFields() {
-    // Show lead fields for all cases
-    return true
+    // Controlled by toggle button
+    return this.showLeadFieldsExpanded
   },
   showInterviewFields() {
     const t = String(this.selectedOrder?.caseType || '').toLowerCase()
@@ -231,6 +260,10 @@ export default {
         this.form.order = '';
         this.form.caseUnit = '';
         this.form.caseName = '';
+    },
+    // Keep numeric response_rate in sync for backend payload even though field is hidden
+    responseRateValue(newVal) {
+      this.form.response_rate = newVal;
     },
   },
 async mounted() {
@@ -391,6 +424,8 @@ async mounted() {
                 this.form.completedInterviews = 0;
                 this.form.resultAnalysis = 0;
                 this.originalLogId = null;
+                this.showLeadFieldsExpanded = false;
+                this.showCallFieldsExpanded = false;
                 this.$emit('saved');
         } catch (err) {
             console.error('Failed to save log', err);

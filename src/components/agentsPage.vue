@@ -202,11 +202,19 @@ import AgentCard from './agentCard.vue';
         const aid = String(agent?._id ?? agent?.id ?? '');
         if (!aid) return [];
         const all = this.orders || [];
-        return all.filter(
+        
+        // First, only orders where the agent is assigned and the order overlaps current month
+        const agentOrders = all.filter(
           (order) =>
             (order.assignedCallers || []).some((x) => String(x?._id ?? x?.id ?? x) === aid) &&
             this.orderOverlapsCurrentMonth(order)
         );
+
+        // Then, exclude cases where this agent's goal is 0 or not set
+        return agentOrders.filter(order => {
+          const goal = Number(order?.agentGoals?.[aid] ?? 0);
+          return goal > 0;
+        });
       },
 
       // Unique assigned cases for this agent in the current month (no duplicates by case name)

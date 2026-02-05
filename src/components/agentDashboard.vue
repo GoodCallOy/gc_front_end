@@ -1252,10 +1252,16 @@ function findOrdersForUser(allOrdersArray, agentId) {
   const agentOrders = (allOrdersArray || []).filter(order =>
     (order.assignedCallers || []).some(id => String(id?._id ?? id) === wanted)
   );
+
+  // Exclude cases where this agent's goal is 0 or not set
+  const agentOrdersWithGoal = agentOrders.filter(order => {
+    const goal = Number(order?.agentGoals?.[wanted] ?? 0);
+    return goal > 0;
+  });
   
   // Early return if no date range
   if (!currentDateRange.value || currentDateRange.value.length < 2) {
-    return agentOrders;
+    return agentOrdersWithGoal;
   }
   
   // Pre-calculate date boundaries once
@@ -1264,7 +1270,7 @@ function findOrdersForUser(allOrdersArray, agentId) {
   const monthEnd = new Date(endDate);
   
   // Optimized date filtering
-  return agentOrders.filter(order => {
+  return agentOrdersWithGoal.filter(order => {
     const orderStart = new Date(order.startDate);
     const orderEnd = new Date(order.deadline);
     

@@ -15,10 +15,24 @@ module.exports = defineConfig({
   },
   devServer: isDev
     ? (() => {
-        const keyPath = 'C:/Users/Jason/server.key';
-        const certPath = 'C:/Users/Jason/server.cert';
-        const hasCertificates = fs.existsSync(keyPath) && fs.existsSync(certPath);
-        
+        // Read SSL paths from environment so each machine can configure its own
+        const keyPath = process.env.SSL_KEY_PATH;
+        const certPath = process.env.SSL_CERT_PATH;
+
+        const hasCertificates =
+          !!keyPath &&
+          !!certPath &&
+          fs.existsSync(keyPath) &&
+          fs.existsSync(certPath);
+
+        if (!hasCertificates) {
+          // Optional: log a message in the dev server console when falling back
+          // eslint-disable-next-line no-console
+          console.warn(
+            '[devServer] SSL certificates not found or paths not set. Falling back to HTTP on port 8080.'
+          );
+        }
+
         return {
           server: hasCertificates
             ? {
