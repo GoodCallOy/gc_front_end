@@ -121,7 +121,13 @@
             </template>
             <template #item.caseName="{ item }">
               <span>
-                {{ item.caseName }}
+                <span
+                  class="text-primary"
+                  style="cursor: pointer; text-decoration: underline;"
+                  @click.stop="editCaseFromOrder(item)"
+                >
+                  {{ item.caseName }}
+                </span>
                 <v-chip v-if="item.isMultiMonth" size="x-small" color="primary" class="ml-2">
                   {{ t('ordersDashboard.multiMonth') }}
                 </v-chip>
@@ -572,6 +578,26 @@ function navigateToOrderDetails(order) {
   router.push({
     name: 'orderDetails',
     query: { orderId: order._id }
+  })
+}
+
+function editCaseFromOrder(order) {
+  if (!order) return
+  // order.caseId can be a string or an object; handle both
+  const rawCaseId = order.caseId ?? order.case?._id ?? order.case?.id ?? null
+  const caseId =
+    typeof rawCaseId === 'object'
+      ? rawCaseId._id ?? rawCaseId.id ?? null
+      : rawCaseId
+
+  if (!caseId) {
+    console.warn('editCaseFromOrder: no caseId found on order', order)
+    return
+  }
+
+  router.push({
+    name: 'addCaseForm',
+    query: { caseId: caseId },
   })
 }
 

@@ -76,6 +76,16 @@
             </v-icon>
           </template>
 
+          <template #item.caseName="{ item }">
+            <span
+              class="text-primary"
+              style="cursor: pointer; text-decoration: underline;"
+              @click.stop="editCaseFromOrder(item)"
+            >
+              {{ item.caseName }}
+            </span>
+          </template>
+
           <template #item.goalsDistributed="{ item }">
             {{ getDistributedGoals(item) }}
           </template>
@@ -1080,6 +1090,26 @@ function closeAddCaseModal() {
 
 const getDistributedGoals = (order) => {
   return Object.values(order.agentGoals || {}).reduce((sum, val) => sum + val, 0)
+}
+
+function editCaseFromOrder(order) {
+  if (!order) return;
+  // order.caseId can be a string or an object; handle both
+  const rawCaseId = order.caseId ?? order.case?._id ?? order.case?.id ?? null;
+  const caseId =
+    typeof rawCaseId === 'object'
+      ? rawCaseId._id ?? rawCaseId.id ?? null
+      : rawCaseId;
+
+  if (!caseId) {
+    console.warn('editCaseFromOrder: no caseId found on order', order);
+    return;
+  }
+
+  router.push({
+    name: 'addCaseForm',
+    query: { caseId },
+  });
 }
 
 const getOrderPrice = async (orderId) => {
