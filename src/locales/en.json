@@ -256,7 +256,10 @@
       "logDeletedSuccessfully": "Log deleted successfully",
       "editGoal": "Edit goal",
       "editWeeklyGoal": "Edit weekly goal",
-      "saveGoal": "Save"
+      "saveGoal": "Save",
+      "deleteWeeklyGoal": "Delete weekly goal",
+      "confirmDeleteWeeklyGoal": "Are you sure you want to delete this weekly goal? This action cannot be undone.",
+      "failedToDeleteWeeklyGoal": "Failed to delete weekly goal. Please try again."
     },
     "agentCaseCard": {
       "showOrder": "Show order",
@@ -277,7 +280,7 @@
       "noCasesAssigned": "You have no assigned cases. Contact your manager.",
       "selectCase": "Select case",
       "caseRequired": "Case is required",
-      "weekStarting": "Week starting (Monday)",
+      "weekStarting": "Week starting",
       "selectMonth": "Month",
       "selectWeek": "Week",
       "weekStartDate": "Week start date",

@@ -239,7 +239,10 @@
       "logDeletedSuccessfully": "Loki poistettu onnistuneesti",
       "editGoal": "Muokkaa tavoitetta",
       "editWeeklyGoal": "Muokkaa viikkotavoitetta",
-      "saveGoal": "Tallenna"
+      "saveGoal": "Tallenna",
+      "deleteWeeklyGoal": "Poista viikkotavoite",
+      "confirmDeleteWeeklyGoal": "Haluatko varmasti poistaa tämän viikkotavoitteen? Tätä toimintoa ei voi perua.",
+      "failedToDeleteWeeklyGoal": "Viikkotavoitteen poistaminen epäonnistui. Yritä uudelleen."
     },
     "agentCaseCard": {
       "showOrder": "Näytä tilaus",
@@ -260,7 +263,7 @@
       "noCasesAssigned": "Sinulla ei ole tapauksia. Ota yhteyttä esimieheen.",
       "selectCase": "Valitse tapaus",
       "caseRequired": "Tapaus vaaditaan",
-      "weekStarting": "Viikon alku (maanantai)",
+      "weekStarting": "Viikon alku",
       "selectMonth": "Kuukausi",
       "selectWeek": "Viikko",
       "weekStartDate": "Viikon aloituspäivä",

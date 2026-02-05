@@ -151,11 +151,12 @@
           <div class="d-flex align-center">
             <v-icon
               icon
+              class="mr-2"
               size="small"
               color="grey"
               :title="t('agentDashboard.editLog')"
               @click="editLog(item.originalLog)"
-              class="mr-2"
+             
             >
               <v-icon>mdi-pencil</v-icon>
             </v-icon>
@@ -176,31 +177,52 @@
 
   <!-- Weekly goals by project (per week) -->
   <v-card v-if="userOrders.length > 0" class="mx-auto my-4 pa-4 elevation-4" style="background-color: #eeeff1;">
-    <h3 class="text-h6 mb-3">{{ t('agentDashboard.weeklyGoalsByCase') }}</h3>
-    <v-data-table
-      v-if="weeklyGoalsTableRows.length > 0"
-      :headers="weeklyGoalsHeaders"
-      :items="weeklyGoalsTableRows"
-      class="elevation-1"
-      density="comfortable"
-      :items-per-page="25"
-      style="width: 100%"
+  <h3 class="text-h6 mb-3">{{ t('agentDashboard.weeklyGoalsByCase') }}</h3>
+  <div v-if="weeklyGoalsByWeek.length > 0">
+    <div
+      v-for="group in weeklyGoalsByWeek"
+      :key="group.weekKey"
+      class="mb-6"
     >
-      <template #item.actions="{ item }">
-        <v-btn
-          icon
-          variant="text"
-          size="small"
-          color="primary"
-          :title="t('agentDashboard.editGoal')"
-          @click="openEditWeeklyGoalDialog(item)"
-        >
-          <v-icon size="small">mdi-pencil</v-icon>
-        </v-btn>
-      </template>
-    </v-data-table>
-    <p v-else class="text-body-2 text-grey">{{ t('agentDashboard.noWeeklyGoals') }}</p>
-  </v-card>
+      <h4 class="text-subtitle-1 mb-2">
+        {{ group.weekLabel }}
+      </h4>
+      <v-data-table
+        :headers="weeklyGoalsHeaders"
+        :items="group.rows"
+        class="elevation-1"
+        density="comfortable"
+        :items-per-page="10"
+        style="width: 100%"
+      >
+        <template #item.actions="{ item }">
+          <div class="d-flex align-center">
+            <v-icon
+              icon
+              size="small"
+              color="grey"
+              :title="t('agentDashboard.editGoal')"
+              @click="openEditWeeklyGoalDialog(item)"
+              class="mr-2"
+            >
+              <v-icon>mdi-pencil</v-icon>
+            </v-icon>
+            <v-icon
+              icon
+              size="small"
+              color="red"
+              :title="t('agentDashboard.deleteWeeklyGoal')"
+              @click="deleteWeeklyGoal(item)"
+            >
+              <v-icon>mdi-delete</v-icon>
+            </v-icon>
+          </div>
+        </template>
+      </v-data-table>
+    </div>
+  </div>
+  <p v-else class="text-body-2 text-grey">{{ t('agentDashboard.noWeeklyGoals') }}</p>
+</v-card>
 
   <!-- Edit weekly goal dialog -->
   <v-dialog v-model="editWeeklyGoalDialog" max-width="400" persistent>
@@ -1008,28 +1030,161 @@ const casesTableHeaders = computed(() => [
   { title: t('ordersDashboard.tableHeaders.deadline'), key: 'deadline', sortable: true },
 ])
 
-// Headers for weekly goals by project table
+// Headers for weekly goals by project table (per week section)
 const weeklyGoalsHeaders = computed(() => [
   { title: t('ordersDashboard.tableHeaders.caseName'), key: 'project', sortable: true },
-  { title: t('agentWeeklyGoal.weekStarting'), key: 'weekStart', sortable: true },
   { title: t('agentWeeklyGoal.goal'), key: 'goal', sortable: true },
-  { title: '', key: 'actions', sortable: false, width: '56px' },
+  { title: t('agentTables.results'), key: 'progress', sortable: false },
+  { title: '', key: 'actions', sortable: false, width: '96px' },
 ])
 
-// Table rows: all weekly goals for this agent for the current month (project, week start, goal) + _raw for edit
+// Table rows: all weekly goals for this agent for the current month
+// (project, week start, goal, progress "results / goal") + _raw for edit/delete
 const weeklyGoalsTableRows = computed(() => {
   const goals = agentWeeklyGoals.value || []
+  const stats = caseStats.value || []
+  const agent = selectedGcAgent.value
+
+  // If no agent or no stats, we still return rows, just without progress
+  const agentId = agent ? String(agent._id ?? agent.id ?? '') : null
+
   return goals.map((g) => {
     const start = g?.goal_date?.start ?? g?.weekStartDate ?? g?.weekStart ?? g?.week_start ?? ''
+    const end = g?.goal_date?.end ?? g?.weekEndDate ?? g?.week_end ?? ''
+
+    let completed = 0
+
+    if (agentId && start) {
+      const from = new Date(start)
+      const to = end ? new Date(end) : new Date(start)
+      if (!isNaN(from.getTime()) && !isNaN(to.getTime())) {
+        to.setHours(23, 59, 59, 999)
+
+        const goalOrderId = String(g?.orderId ?? g?.order_id ?? '')
+        const goalCaseName = g?.case ?? g?.caseName ?? g?.case_name ?? ''
+
+        completed = stats.reduce((sum, log) => {
+          // Match by date range
+          const d = new Date(log.date)
+          if (isNaN(d.getTime()) || d < from || d > to) return sum
+
+          // Match by agent
+          const logAgentId = String(
+            log?.agent?._id ??
+            log?.agent?.id ??
+            log?.agent ??
+            log?.agentId ??
+            ''
+          )
+          if (logAgentId !== agentId) return sum
+
+          // Match by order or case name
+          const logOrderId = String(
+            log?.order?._id ??
+            log?.order?.id ??
+            log?.orderId ??
+            ''
+          )
+          const logCaseName = log?.caseName ?? ''
+          const sameOrder =
+            (goalOrderId && logOrderId && logOrderId === goalOrderId) ||
+            (goalCaseName && logCaseName && logCaseName === goalCaseName)
+
+          if (!sameOrder) return sum
+
+          return sum + (Number(log.quantityCompleted) || 0)
+        }, 0)
+      }
+    }
+
+    const goalValue = Number(g?.goal ?? 0)
+    const progress = `${completed} / ${goalValue}`
+
     const weekStartFormatted = start
       ? formatDateForTable(start)
       : ''
     return {
       project: g?.case ?? g?.caseName ?? g?.case_name ?? '—',
       weekStart: weekStartFormatted,
-      goal: g?.goal ?? 0,
+      goal: goalValue,
+      completed,
+      progress,
       _raw: g,
     }
+  })
+})
+
+// Group weekly goals rows by week, so each week shows only its own cases
+const weeklyGoalsByWeek = computed(() => {
+  const rows = weeklyGoalsTableRows.value || []
+  if (!rows.length) return []
+
+  const groups = new Map()
+
+  rows.forEach((row) => {
+    const raw = row._raw || {}
+    const startRaw = raw?.goal_date?.start ?? raw?.weekStartDate ?? raw?.weekStart ?? raw?.week_start ?? ''
+    const endRaw = raw?.goal_date?.end ?? raw?.weekEndDate ?? raw?.week_end ?? ''
+
+    const key = startRaw || row.weekStart || String(raw._id ?? raw.id ?? '')
+
+    if (!groups.has(key)) {
+      // Build a label that matches "Daily Entries by Week" visual style:
+      // "Week N (dd/mm - dd/mm)"
+      let label = ''
+
+      if (startRaw && monthWeeks.value && monthWeeks.value.length > 0) {
+        const startDateObj = new Date(startRaw)
+        if (!isNaN(startDateObj.getTime())) {
+          const matchingWeek = monthWeeks.value.find(week => {
+            const weekStart = new Date(week.start)
+            return !isNaN(weekStart.getTime()) && weekStart.getTime() === startDateObj.getTime()
+          })
+
+          if (matchingWeek) {
+            const startDate = new Date(matchingWeek.start)
+            const endDate = new Date(matchingWeek.end)
+            const startStr = startDate.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit' })
+            const endStr = endDate.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit' })
+            label = `${t('agentDashboard.week')} ${matchingWeek.weekNumber} (${startStr} - ${endStr})`
+          }
+        }
+      }
+
+      // Fallback if we couldn't match to a configured week
+      if (!label) {
+        if (startRaw && endRaw) {
+          const startDate = new Date(startRaw)
+          const endDate = new Date(endRaw)
+          if (!isNaN(startDate.getTime()) && !isNaN(endDate.getTime())) {
+            const startStr = startDate.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit' })
+            const endStr = endDate.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit' })
+            label = `${t('agentDashboard.week')} (${startStr} - ${endStr})`
+          }
+        }
+      }
+      if (!label) {
+        label = t('agentDashboard.week')
+      }
+
+      groups.set(key, {
+        weekKey: key,
+        weekLabel: label,
+        rows: [],
+      })
+    }
+
+    groups.get(key).rows.push(row)
+  })
+
+  // Sort weeks by their key when it's a date
+  return Array.from(groups.values()).sort((a, b) => {
+    const da = new Date(a.weekKey)
+    const db = new Date(b.weekKey)
+    if (!isNaN(da) && !isNaN(db)) {
+      return da - db
+    }
+    return String(a.weekLabel).localeCompare(String(b.weekLabel))
   })
 })
 
@@ -1227,6 +1382,28 @@ async function saveEditedWeeklyGoal() {
     console.error('Edit weekly goal error:', err);
   } finally {
     editWeeklyGoalSaving.value = false;
+  }
+}
+
+async function deleteWeeklyGoal(row) {
+  const raw = row?._raw ?? row?.raw ?? row;
+  if (!raw) return;
+
+  if (!confirm(t('agentDashboard.confirmDeleteWeeklyGoal'))) {
+    return;
+  }
+
+  try {
+    const goalId = raw._id ?? raw.id;
+    if (!goalId) {
+      console.warn('deleteWeeklyGoal: no id on goal row', raw);
+      return;
+    }
+    await axios.delete(`${urls.backEndURL}/agentGoals/${goalId}`);
+    await fetchAgentWeeklyGoals();
+  } catch (err) {
+    console.error('Delete weekly goal error:', err);
+    alert(t('agentDashboard.failedToDeleteWeeklyGoal'));
   }
 }
 
