@@ -148,6 +148,18 @@
         <template #item.responseRate="{ value }">
           {{ value }}%
         </template>
+        <!-- Comments preview -->
+        <template #item.comments="{ item }">
+          <span
+            v-if="item.comments"
+            class="text-truncate"
+            style="max-width: 220px; display: inline-block;"
+            :title="item.comments"
+          >
+            {{ item.comments }}
+          </span>
+          <span v-else class="text-caption text-grey">—</span>
+        </template>
         
         <!-- Actions column for individual logs -->
         <template #item.actions="{ item }">
@@ -946,6 +958,7 @@ const individualLogs = computed(() => {
         // Team result placeholder: currently same as personal
         // (this table is scoped to the current agent's logs only)
         teamResults: quantityCompleted,
+        comments: log.comments || '',
         amountMade: `€${amountMade}`,
         originalLog: log,
       };
@@ -1024,6 +1037,7 @@ const individualHeaders = computed(() => [
   { title: t('agentTables.completedCalls'), key: 'completedCalls', sortable: true, class: 'd-none d-xl-table-cell' },
   { title: t('agentTables.personalResults'), key: 'personalResults', sortable: true },
   { title: t('agentTables.teamResults'), key: 'teamResults', sortable: true },
+  { title: t('dailyLogForm.comments'), key: 'comments', sortable: false },
   { title: t('agentTables.amountMade'), key: 'amountMade', sortable: true },
   { title: t('agentTables.edit'), key: 'actions', sortable: false, width: '100px' },
 ])

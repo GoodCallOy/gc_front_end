@@ -154,6 +154,18 @@
             <template #item.responseRate="{ value }">
               {{ value }}%
             </template>
+            <!-- Comments preview -->
+            <template #item.comments="{ item }">
+              <span
+                v-if="item.comments"
+                class="text-truncate"
+                style="max-width: 220px; display: inline-block;"
+                :title="item.comments"
+              >
+                {{ item.comments }}
+              </span>
+              <span v-else class="text-caption text-grey">—</span>
+            </template>
             
             <!-- Edit column for individual logs -->
             <template #item.edit="{ item }">
@@ -343,6 +355,7 @@ const individualHeaders = computed(() => [
   { title: t('agentTables.responseRate'), key: 'responseRate', sortable: true },
   { title: t('agentTables.completedCalls'), key: 'completedCalls', sortable: true },
   { title: t('agentTables.results'), key: 'quantityCompleted', sortable: true },
+  { title: t('dailyLogForm.comments'), key: 'comments', sortable: false },
   { title: t('agentTables.amountMade'), key: 'amountMade', sortable: true },
   { title: 'Edit', key: 'edit', sortable: false, width: '60px' },
   { title: 'Delete', key: 'delete', sortable: false, width: '60px' },
@@ -692,6 +705,7 @@ const individualLogs = computed(() => {
         responseRate: formatNumber(responseRate),
         completedCalls: log.completed_calls || 0,
         quantityCompleted,
+        comments: log.comments || '',
         amountMade: `€${amountMade}`,
         originalLog: log,
       };
