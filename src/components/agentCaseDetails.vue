@@ -13,22 +13,8 @@
       </div>
     </v-card>
 
-    <v-card v-if="order" class="pa-4"   >
-      <v-row justify="space-between" align="center">
-        <v-col>
-          <h2>Case Details</h2>
-        </v-col>
-        <v-col cols="auto">
-          <v-btn
-            color="primary"
-            variant="tonal"
-            :to="{ name: 'agentWeeklyGoal', query: { orderId: order._id } }"
-          >
-            {{ t('agentWeeklyGoal.buttonForCase') }}
-          </v-btn>
-        </v-col>
-      </v-row>
-
+    <v-card v-if="order" class="pa-4">
+      <h2>Case Details</h2>
 
       <div>
         <v-row>
@@ -77,19 +63,26 @@
   <v-container>
     <v-card class="pa-4 elevation-4" style="background-color: #eeeff1;">
     <v-row>
-      <v-col cols="4">
+      <v-col cols="12" md="3">
         <h2 class="text-h5">Case Statistics - {{ getFormattedDateRange() }}</h2>
       </v-col>
-      <v-col cols="4">
+      <v-col cols="12" md="3">
         <h2 class="text-h6">Revenue Generate: €{{ revenueGenerated.revenue }}</h2>
       </v-col>
-      <v-col cols="4">
+      <v-col cols="12" md="3">
         <h2 class="text-h6">Total Units: {{ revenueGenerated.totalUnits }}</h2>
+      </v-col>
+      <v-col cols="12" md="3">
+        <h2 class="text-h6">{{ t('agentWeeklyGoal.goal') }}: {{ caseGoal }}</h2>
       </v-col>
     </v-row>
     
-    <p v-if="weeklyTotals.length === 0 && individualLogs.length === 0">No statistics available for this case in the selected month.</p>
-    <div v-else>
+    <div v-if="isLoadingStats" class="text-center py-8">
+      <v-progress-circular indeterminate color="primary" size="40" />
+    </div>
+    <template v-else>
+      <p v-if="weeklyTotals.length === 0 && individualLogs.length === 0">No statistics available for this case in the selected month.</p>
+      <div v-else>
       <!-- Weekly Totals Table -->
       <div v-if="weeklyTotals.length > 0" class="mb-6">
         <h3 class="text-h6 mb-3">Weekly Summary</h3>
@@ -142,6 +135,7 @@
         </div>
       </div>
     </div>
+    </template>
   </v-card>
   </v-container>
     
@@ -154,7 +148,7 @@
   import { useRoute, useRouter } from 'vue-router'
   import { useI18n } from 'vue-i18n';
   import { useStore } from 'vuex'
-  import { goToNextMonth, goToPreviousMonth, formattedDateRange, isCurrentMonth } from '@/js/dateUtils';
+  import { goToNextMonth, goToPreviousMonth, formattedDateRange, isCurrentMonth, getMonthWeeks } from '@/js/dateUtils';
   import urls from '@/js/config.js'
 
 
@@ -173,9 +167,22 @@
   const currentDateRange = computed(() => store.getters['currentDateRange'])
   const orders = computed(() => store.getters['orders'])
   const gcCases = computed(() => store.getters['gcCases'])
+  const monthWeeks = ref([])
+  const isLoadingStats = ref(false)
   
   const goalTypes = ['hours', 'interviews', 'meetings']
   const orderStatuses = ['pending', 'in-progress', 'completed', 'cancelled', 'on-hold']
+
+  // Selected agent for this case details view:
+  // - Prefer explicit ?agentId from route (when coming from agentDashboard)
+  // - Fallback to the first assigned caller on the order
+  const routeAgentId = computed(() => route.query.agentId ? String(route.query.agentId) : null)
+  const selectedAgentId = computed(() => {
+    if (routeAgentId.value) return routeAgentId.value
+    const firstCaller = order.value?.assignedCallers?.[0]
+    const agentId = firstCaller?._id || firstCaller?.id || firstCaller
+    return agentId ? String(agentId) : null
+  })
   const agentName = id => {
     // Handle both object and string formats
     const agentId = id?._id || id?.id || id;
@@ -193,14 +200,11 @@
   }
   
   // Get agent ID for filtering - handle both object and string formats
-  const firstCaller = order.value.assignedCallers?.[0];
-  const agentId = firstCaller?._id || firstCaller?.id || firstCaller;
-  if (!agentId) {
-    console.log('⚠️ Revenue: No agent ID found in assignedCallers:', order.value.assignedCallers);
+  const agentIdStr = String(selectedAgentId.value || '');
+  if (!agentIdStr) {
+    console.log('⚠️ Revenue: No selected agent ID');
     return { totalUnits: 0, revenue: '0.00' };
   }
-  
-  const agentIdStr = String(agentId);
   console.log('💰 Revenue Calculation - Agent ID:', agentIdStr);
   console.log('💰 Revenue Calculation - Assigned callers:', order.value.assignedCallers);
   
@@ -279,6 +283,16 @@
   return { totalUnits, revenue };
 });
 
+// Agent goal for this case (for the selected agent)
+const caseGoal = computed(() => {
+  if (!order.value || !order.value.agentGoals) {
+    return 0;
+  }
+  const agentIdStr = String(selectedAgentId.value || '');
+  if (!agentIdStr) return 0;
+  return Number(order.value.agentGoals[agentIdStr] ?? 0);
+});
+
 // Headers for weekly totals table
 const weeklyHeaders = computed(() => [
   { title: 'Week', key: 'date', sortable: true },
@@ -288,6 +302,7 @@ const weeklyHeaders = computed(() => [
   { title: t('agentTables.responseRate'), key: 'responseRate', sortable: true },
   { title: t('agentTables.completedCalls'), key: 'completedCalls', sortable: true },
   { title: t('agentTables.results'), key: 'quantityCompleted', sortable: true },
+  { title: t('agentTables.goalReached'), key: 'goalReached', sortable: true },
   { title: t('agentTables.amountMade'), key: 'amountMade', sortable: true },
 ])
 
@@ -344,21 +359,15 @@ function getWeekNumber(date) {
   return Math.ceil((((d - week1) / 86400000) + week1.getDay() + 1) / 7);
 }
 
-// Helper function to get week start and end dates
-function getWeekRange(date) {
+// Helper: get matching custom week for a given date from monthWeeks
+function getCustomWeekForDate(date) {
+  if (!Array.isArray(monthWeeks.value) || monthWeeks.value.length === 0) return null;
   const d = new Date(date);
-  const day = d.getDay();
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Adjust when day is Sunday
-  const monday = new Date(d.setDate(diff));
-  const sunday = new Date(monday);
-  sunday.setDate(monday.getDate() + 6);
-  
-  return {
-    start: monday,
-    end: sunday,
-    weekNumber: getWeekNumber(date),
-    year: d.getFullYear()
-  };
+  return monthWeeks.value.find(w => {
+    const start = new Date(w.start);
+    const end = new Date(w.end);
+    return d >= start && d <= end;
+  }) || null;
 }
 
 // Weekly totals computed property - across ALL cases for the agent
@@ -371,15 +380,12 @@ const weeklyTotals = computed(() => {
     return [];
   }
 
-  // Get all cases the agent is assigned to - handle both object and string formats
-  const firstCaller = order.value?.assignedCallers?.[0];
-  const agentId = firstCaller?._id || firstCaller?.id || firstCaller;
-  if (!agentId) {
-    console.log('⚠️ Weekly Totals: No agent ID found');
+  // Get selected agent ID
+  const agentIdStr = String(selectedAgentId.value || '');
+  if (!agentIdStr) {
+    console.log('⚠️ Weekly Totals: No selected agent ID');
     return [];
   }
-  
-  const agentIdStr = String(agentId);
   console.log('📊 Weekly Totals - Agent ID:', agentIdStr);
 
   const agentCases = allOrders.filter(order => {
@@ -434,33 +440,52 @@ const weeklyTotals = computed(() => {
   console.log('Weekly totals - Unique logs:', uniqueLogs.length);
   console.log('Weekly totals - Agent ID:', agentIdStr);
 
-  // Group logs by week using deduplicated logs
+  // Group logs by custom weeks using deduplicated logs
+  const weeks = Array.isArray(monthWeeks.value) ? monthWeeks.value : [];
   const weeklyGroups = {};
-  
+
+  // Initialize groups based on custom weeks to keep ordering consistent
+  weeks.forEach((w, idx) => {
+    const start = new Date(w.start);
+    const end   = new Date(w.end);
+    const weekNumber = w.weekNumber || (idx + 1);
+    const year  = start.getFullYear();
+    const key   = `W${weekNumber}`;
+
+    weeklyGroups[key] = {
+      key,
+      weekNumber,
+      year,
+      start,
+      end,
+      totals: {
+        callTime: 0,
+        outgoingCalls: 0,
+        answeredCalls: 0,
+        completedCalls: 0,
+        quantityCompleted: 0,
+        amountMade: 0
+      }
+    };
+  });
+
   uniqueLogs.forEach(log => {
-    const weekInfo = getWeekRange(log.date);
-    const weekKey = `${weekInfo.year}-W${weekInfo.weekNumber}`;
-    
-    if (!weeklyGroups[weekKey]) {
-      weeklyGroups[weekKey] = {
-        weekKey,
-        weekInfo,
-        logs: [],
-        cases: new Set(), // Track unique cases for this week
-        totals: {
-          callTime: 0,
-          outgoingCalls: 0,
-          answeredCalls: 0,
-          completedCalls: 0,
-          quantityCompleted: 0,
-          amountMade: 0
-        }
-      };
-    }
-    
-    weeklyGroups[weekKey].logs.push(log);
-    weeklyGroups[weekKey].cases.add(log.caseName); // Add case to the set
-    
+    const logDate = new Date(log.date);
+
+    // Find the custom week this log belongs to
+    const customWeek = weeks.find(w => {
+      const ws = new Date(w.start);
+      const we = new Date(w.end);
+      return logDate >= ws && logDate <= we;
+    });
+
+    if (!customWeek) return;
+
+    const weekNumber = customWeek.weekNumber || (weeks.indexOf(customWeek) + 1);
+    const key = `W${weekNumber}`;
+    const group = weeklyGroups[key];
+    if (!group) return;
+
     // Add to totals
     const logCallTime = log.call_time || 0;
     const logOutgoingCalls = log.outgoing_calls || 0;
@@ -472,44 +497,58 @@ const weeklyTotals = computed(() => {
     const pricePerUnit = Number(order.value.pricePerUnit) || 0;
     const logAmountMade = logQuantityCompleted * pricePerUnit;
     
-    weeklyGroups[weekKey].totals.callTime += logCallTime;
-    weeklyGroups[weekKey].totals.outgoingCalls += logOutgoingCalls;
-    weeklyGroups[weekKey].totals.answeredCalls += logAnsweredCalls;
-    weeklyGroups[weekKey].totals.completedCalls += logCompletedCalls;
-    weeklyGroups[weekKey].totals.quantityCompleted += logQuantityCompleted;
-    weeklyGroups[weekKey].totals.amountMade += logAmountMade;
+    group.totals.callTime          += logCallTime;
+    group.totals.outgoingCalls     += logOutgoingCalls;
+    group.totals.answeredCalls     += logAnsweredCalls;
+    group.totals.completedCalls    += logCompletedCalls;
+    group.totals.quantityCompleted += logQuantityCompleted;
+    group.totals.amountMade        += logAmountMade;
   });
 
   // Convert to array for weekly totals
   const result = [];
   
   Object.values(weeklyGroups).forEach(group => {
+    const { weekNumber, year, start, totals } = group;
+
+    // Skip empty weeks
+    if (
+      totals.quantityCompleted === 0 &&
+      totals.callTime === 0 &&
+      totals.outgoingCalls === 0 &&
+      totals.answeredCalls === 0
+    ) {
+      return;
+    }
+
     // Calculate average response rate for the week
-    const avgResponseRate = group.totals.outgoingCalls > 0 
-      ? (group.totals.answeredCalls / group.totals.outgoingCalls) * 100 
+    const avgResponseRate = totals.outgoingCalls > 0 
+      ? (totals.answeredCalls / totals.outgoingCalls) * 100 
       : 0;
     
     // Since we're only showing the current case, display it
     const casesDisplay = order.value.caseName || 'Current Case';
-    
-    console.log(`Week ${group.weekInfo.weekNumber} totals:`, {
-      quantityCompleted: group.totals.quantityCompleted,
-      logsCount: group.logs.length,
-      cases: casesDisplay
-    });
+
+    // Agent's goal for this case (for selected agent)
+    const agentIdForGoal = String(selectedAgentId.value || '');
+    const myGoal = Number(order.value?.agentGoals?.[agentIdForGoal] ?? 0);
+    const goalReached = myGoal > 0
+      ? Number(((totals.quantityCompleted / myGoal) * 100).toFixed(1))
+      : 0;
 
     result.push({
-      date: `Week ${group.weekInfo.weekNumber}, ${group.weekInfo.year}`,
+      date: `Week ${weekNumber}, ${year}`,
       cases: casesDisplay,
       caseUnit: 'All Cases',
-      callTime: formatNumber(group.totals.callTime),
-      outgoingCalls: group.totals.outgoingCalls,
-      answeredCalls: group.totals.answeredCalls,
+      callTime: formatNumber(totals.callTime),
+      outgoingCalls: totals.outgoingCalls,
+      answeredCalls: totals.answeredCalls,
       responseRate: formatNumber(avgResponseRate),
-      completedCalls: group.totals.completedCalls,
-      quantityCompleted: group.totals.quantityCompleted,
-      amountMade: `€${group.totals.amountMade.toFixed(2)}`,
-      originalDate: group.weekInfo.start,
+      completedCalls: totals.completedCalls,
+      quantityCompleted: totals.quantityCompleted,
+      goalReached,
+      amountMade: `€${totals.amountMade.toFixed(2)}`,
+      originalDate: start,
     });
   });
   
@@ -527,15 +566,12 @@ const individualLogs = computed(() => {
     return [];
   }
 
-  // Get all cases the agent is assigned to - handle both object and string formats
-  const firstCaller = order.value?.assignedCallers?.[0];
-  const agentId = firstCaller?._id || firstCaller?.id || firstCaller;
-  if (!agentId) {
-    console.log('⚠️ Individual Logs: No agent ID found');
+  // Get selected agent ID
+  const agentIdStr = String(selectedAgentId.value || '');
+  if (!agentIdStr) {
+    console.log('⚠️ Individual Logs: No selected agent ID');
     return [];
   }
-  
-  const agentIdStr = String(agentId);
   console.log('📋 Individual logs - Agent ID:', agentIdStr);
   console.log('📋 Individual logs - All orders:', allOrders);
 
@@ -621,37 +657,49 @@ const individualLogs = computed(() => {
     });
 });
 
-// Group individual logs by week
+// Group individual logs by custom weeks
 const weeklyLogGroups = computed(() => {
   const logs = individualLogs.value;
-  if (!logs || logs.length === 0) return [];
+  if (!logs || logs.length === 0 || !Array.isArray(monthWeeks.value) || monthWeeks.value.length === 0) return [];
 
   console.log('Weekly log groups - Individual logs:', logs);
   console.log('Weekly log groups - Number of logs:', logs.length);
 
+  const weeks = monthWeeks.value;
   const weekGroups = {};
   
   logs.forEach(log => {
     const logDate = new Date(log.originalLog.date);
-    const weekInfo = getWeekRange(logDate);
-    const weekKey = `${weekInfo.year}-W${weekInfo.weekNumber}`;
+
+    const customWeek = weeks.find(w => {
+      const ws = new Date(w.start);
+      const we = new Date(w.end);
+      return logDate >= ws && logDate <= we;
+    });
+
+    if (!customWeek) return;
+
+    const weekNumber = customWeek.weekNumber || (weeks.indexOf(customWeek) + 1);
+    const key = `W${weekNumber}`;
     
-    if (!weekGroups[weekKey]) {
-      weekGroups[weekKey] = {
-        weekKey,
-        weekInfo,
-        weekTitle: `Week ${weekInfo.weekNumber}, ${weekInfo.year}`,
-        logs: []
+    if (!weekGroups[key]) {
+      const start = new Date(customWeek.start);
+      const end   = new Date(customWeek.end);
+      weekGroups[key] = {
+        weekKey: key,
+        weekInfo: { start, end, weekNumber, year: start.getFullYear() },
+        weekTitle: `Week ${weekNumber}, ${start.getFullYear()}`,
+        logs: [],
       };
     }
     
-    weekGroups[weekKey].logs.push(log);
+    weekGroups[key].logs.push(log);
   });
 
-  // Convert to array and sort by week (oldest first)
+  // Convert to array and sort by week (oldest first); limit to 4 weeks as before
   const result = Object.values(weekGroups)
     .sort((a, b) => new Date(a.weekInfo.start) - new Date(b.weekInfo.start))
-    .slice(0, 4); // Limit to 4 weeks
+    .slice(0, 4);
 
   console.log('Weekly log groups - Final result:', result);
   console.log('Weekly log groups - Number of week groups:', result.length);
@@ -698,6 +746,15 @@ const weeklyLogGroups = computed(() => {
       // Store orders and cases in the store
       store.commit('setOrders', ordersRes.data)
       store.commit('setGcCases', casesRes.data)
+
+      // Load custom weeks for the current month
+      if (currentDateRange.value && currentDateRange.value.length >= 2) {
+        const [startDate] = currentDateRange.value;
+        const d = new Date(startDate);
+        const year = d.getFullYear();
+        const monthIdx = d.getMonth() + 1;
+        monthWeeks.value = await getMonthWeeks(year, monthIdx);
+      }
 
       // Fetch case stats for all cases the agent is assigned to
       await fetchCaseStats();
@@ -746,21 +803,24 @@ const weeklyLogGroups = computed(() => {
 
   // Function to fetch all case stats for the agent across all cases
   const fetchCaseStats = async () => {
+    isLoadingStats.value = true;
+
     if (!order.value || !orders.value) {
       console.log('⚠️ fetchCaseStats: Missing order or orders');
+      caseStats.value = [];
+      isLoadingStats.value = false;
       return;
     }
     
     try {
-      // Get all cases the agent is assigned to - handle both object and string formats
-      const firstCaller = order.value.assignedCallers?.[0];
-      const agentId = firstCaller?._id || firstCaller?.id || firstCaller;
-      if (!agentId) {
-        console.log('⚠️ fetchCaseStats: No agent ID found in assignedCallers:', order.value.assignedCallers);
+      // Get selected agent ID for stats loading
+      const agentIdStr = String(selectedAgentId.value || '');
+      if (!agentIdStr) {
+        console.log('⚠️ fetchCaseStats: No selected agent ID');
+        caseStats.value = [];
         return;
       }
       
-      const agentIdStr = String(agentId);
       console.log('📥 fetchCaseStats - Agent ID:', agentIdStr);
 
       const agentCases = orders.value.filter(order => {
@@ -794,6 +854,8 @@ const weeklyLogGroups = computed(() => {
     } catch (error) {
       console.error('Error fetching case stats:', error);
       caseStats.value = [];
+    } finally {
+      isLoadingStats.value = false;
     }
   }
 

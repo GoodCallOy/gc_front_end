@@ -185,6 +185,22 @@ async function logout() {
         :active="isHomeRoute"
         @click="navigateToHome"
       />
+
+      <!-- Top-level admin/manager links -->
+      <v-list-item
+        v-if="user?.user?.role === 'admin' || user?.user?.role === 'manager'"
+        prepend-icon="mdi-account-plus"
+        :title="t('buttons.assignGoals')"
+        :active="route.name === 'assignGoals'"
+        @click="navigateTo('assignGoals')"
+      />
+      <v-list-item
+        v-if="user?.user?.role === 'admin' || user?.user?.role === 'manager'"
+        prepend-icon="mdi-account-multiple"
+        :title="t('buttons.agents')"
+        :active="route.name === 'agents'"
+        @click="navigateTo('agents')"
+      />
       
       <v-divider class="mb-2" />
 
@@ -217,18 +233,6 @@ async function logout() {
           :active="route.name === 'casesProgress'"
           @click="navigateTo('casesProgress')"
         ></v-list-item>
-        <v-list-item
-          prepend-icon="mdi-account-plus"
-          :title="t('buttons.assignGoals')"  
-          :active="route.name === 'assignGoals'"
-          @click="navigateTo('assignGoals')"
-        ></v-list-item>
-         <v-list-item
-          prepend-icon="mdi-account-multiple"
-          :title="t('buttons.agents')"  
-          :active="route.name === 'agents'"
-          @click="navigateTo('agents')"
-        ></v-list-item>  
         <v-list-item
           prepend-icon="mdi-account-multiple"
           :title="t('buttons.editAgent')"  

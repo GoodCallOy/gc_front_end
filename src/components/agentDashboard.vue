@@ -14,26 +14,35 @@
     </v-card>
 
     <!-- Agent Statistics Header -->
-    <v-card v-if="userOrders.length > 0" class="mx-auto my-4 pa-4 elevation-4" style="background-color: #eeeff1;">
-      <v-row align="center">
-        <v-col cols="12" md="3">
-          <div class="text-h5">{{ t('agentDashboard.agentStatistics') }} - {{ getFormattedDateRange() }}</div>
+    <v-card v-if="userOrders.length > 0" class="mx-auto my-2 pa-4 elevation-4" style="background-color: #eeeff1;">
+      <v-row align="center" dense>
+        <v-col cols="12" md="3" class="py-0">
+          <div class="text-h5">
+            {{ t('agentDashboard.agentStatistics') }} - {{ getFormattedDateRange() }}
+          </div>
         </v-col>
-        <v-col cols="12" md="3">
-          <div class="text-h5">{{ t('agentDashboard.revenue') }}: €{{ revenueGenerated.revenue }}</div>
+        <v-col cols="12" md="3" class="py-0">
+          <div class="text-h6">
+            {{ t('agentDashboard.revenue') }}: €{{ revenueGenerated.revenue }}
+          </div>
         </v-col>
-        <v-col cols="12" md="6">
-          <div class="d-flex flex-wrap" style="gap: 20px;">
-            <div class="text-body-1">
+        <v-col cols="12" md="3" class="py-0">
+          <div class="text-h6">
+            {{ t('agentDashboard.myRateRevenue') }}: €{{ revenueGenerated.myRateRevenue }}
+          </div>
+        </v-col>
+        <v-col cols="12" md="3" class="py-0">  
+          <div class="d-flex flex-wrap" style="gap: 12px;">
+            <div class="text-body-2">
               {{ t('agentCaseCard.interviews') }}: {{ revenueGenerated.unitsByType.interviews }}
             </div>
-            <div class="text-body-1">
+            <div class="text-body-2">
               {{ t('agentCaseCard.hours') }}: {{ revenueGenerated.unitsByType.hours }}
             </div>
-            <div class="text-body-1">
+            <div class="text-body-2">
               {{ t('agentCaseCard.meetings') }}: {{ revenueGenerated.unitsByType.meetings }}
             </div>
-            <div class="text-body-1">
+            <div class="text-body-2">
               {{ t('dailyLogForm.aLeads') }}: {{ revenueGenerated.unitsByType.aLeads }}
             </div>
           </div>
@@ -50,66 +59,89 @@
 
     <!-- Show cases if assigned -->
     <div v-else>
-      <h1 class="text-h4 mb-4">{{ t('agentDashboard.casesFor') }} {{ selectedGcAgent ? selectedGcAgent.name : '—' }}</h1>
+      <div class="d-flex align-center justify-space-between mb-4">
+        <h1 class="text-h4 mb-0">
+          {{ t('agentDashboard.casesFor') }} {{ selectedGcAgent ? selectedGcAgent.name : '—' }}
+        </h1>
+        <v-select
+          v-if="currentUser?.role === 'admin' || currentUser?.role === 'manager'"
+          v-model="selectedAgentName"
+          :items="activeGcAgents"
+          item-title="name"
+          item-value="name"
+          density="compact"
+          hide-details
+          style="max-width: 260px;"
+          :label="t('agentDashboard.casesFor')"
+        />
+      </div>
 
-      <v-tabs v-model="casesViewTab" density="comfortable" class="mb-4">
-        <v-tab value="table">{{ t('ordersDashboard.tabs.tables') }}</v-tab>
-        <v-tab value="cards">{{ t('ordersDashboard.tabs.cards') }}</v-tab>
-      </v-tabs>
+      <div v-if="isLoadingDashboard" class="text-center py-8">
+        <v-progress-circular indeterminate color="primary" size="40" />
+      </div>
+      <template v-else>
+        <v-tabs v-model="casesViewTab" density="comfortable" class="mb-4">
+          <v-tab value="table">{{ t('ordersDashboard.tabs.tables') }}</v-tab>
+          <v-tab value="cards">{{ t('ordersDashboard.tabs.cards') }}</v-tab>
+        </v-tabs>
 
-      <v-window v-model="casesViewTab">
-        <v-window-item value="table">
-          <v-card elevation="1">
-            <v-data-table
-              :headers="casesTableHeaders"
-              :items="casesTableRows"
-              item-value="_id"
-              class="elevation-0"
-              :items-per-page="25"
-              density="comfortable"
-              @click:row="(event, row) => goToCaseDetails(row?.item ?? row)"
-            >
-              <template #item.callers="{ item }">
-                {{ getCallerNames(item?.raw ?? item) }}
-              </template>
-              <template #item.myGoal="{ item }">
-                {{ (item?.raw ?? item)?.myGoal }}
-              </template>
-              <template #item.myUnits="{ item }">
-                {{ (item?.raw ?? item)?.myAgentUnits }} / {{ (item?.raw ?? item)?.myGoal || 0 }}
-              </template>
-              <template #item.teamUnits="{ item }">
-                {{ (item?.raw ?? item)?.teamUnits }} / {{ (item?.raw ?? item)?.teamGoal || 0 }}
-              </template>
-              <template #item.myRevenueGoal="{ item }">
-                {{ formatCurrency((item?.raw ?? item)?.myRevenueGoal) }}
-              </template>
-              <template #item.currentRevenue="{ item }">
-                {{ formatCurrency((item?.raw ?? item)?.currentRevenue) }}
-              </template>
-              <template #item.percentage="{ item }">
-                {{ (item?.raw ?? item)?.percentage }}%
-              </template>
-              <template #item.deadline="{ item }">
-                {{ formatDateForTable((item?.raw ?? item)?.deadline) }}
-              </template>
-            </v-data-table>
-          </v-card>
-        </v-window-item>
+        <v-window v-model="casesViewTab">
+          <v-window-item value="table">
+            <v-card elevation="1">
+              <v-data-table
+                :headers="casesTableHeaders"
+                :items="casesTableRows"
+                item-value="_id"
+                class="elevation-0"
+                :items-per-page="25"
+                density="comfortable"
+                @click:row="(event, row) => goToCaseDetails(row?.item ?? row)"
+              >
+                <template #item.callers="{ item }">
+                  {{ getCallerNames(item?.raw ?? item) }}
+                </template>
+                <template #item.myGoal="{ item }">
+                  {{ (item?.raw ?? item)?.myGoal }}
+                </template>
+                <template #item.myUnits="{ item }">
+                  {{ (item?.raw ?? item)?.myAgentUnits }} / {{ (item?.raw ?? item)?.myGoal || 0 }}
+                </template>
+                <template #item.teamUnits="{ item }">
+                  {{ (item?.raw ?? item)?.teamUnits }} / {{ (item?.raw ?? item)?.teamGoal || 0 }}
+                </template>
+                <template #item.myRevenueGoal="{ item }">
+                  {{ formatCurrency((item?.raw ?? item)?.myRevenueGoal) }}
+                </template>
+                <template #item.currentRevenue="{ item }">
+                  {{ formatCurrency((item?.raw ?? item)?.currentRevenue) }}
+                </template>
+                <template #item.myRate="{ item }">
+                  €{{ (item?.raw ?? item)?.myRate?.toFixed ? (item?.raw ?? item)?.myRate.toFixed(2) : (item?.raw ?? item)?.myRate || 0 }}
+                </template>
+                <template #item.percentage="{ item }">
+                  {{ (item?.raw ?? item)?.percentage }}%
+                </template>
+                <template #item.deadline="{ item }">
+                  {{ formatDateForTable((item?.raw ?? item)?.deadline) }}
+                </template>
+              </v-data-table>
+            </v-card>
+          </v-window-item>
 
-        <v-window-item value="cards">
-          <div class="grid-container ">
-            <agentCaseCard
-              v-for="(userOrder, index) in userOrders"
-              :key="index"
-              :order="userOrder"
-              :agents="gcAgents"
-              :dailyLogs="caseStats"
-              :currentUser="selectedGcAgent"
-            />
-          </div>
-        </v-window-item>
-      </v-window>
+          <v-window-item value="cards">
+            <div class="grid-container ">
+              <agentCaseCard
+                v-for="(userOrder, index) in userOrders"
+                :key="index"
+                :order="userOrder"
+                :agents="gcAgents"
+                :dailyLogs="caseStats"
+                :currentUser="selectedGcAgent"
+              />
+            </div>
+          </v-window-item>
+        </v-window>
+      </template>
     </div>
     
 
@@ -280,6 +312,7 @@ const router = useRouter()
 const route = useRoute()
 const userOrders = ref([])
 const caseStats = ref([])
+const isLoadingDashboard = ref(false)
 const monthWeeks = ref([])
 const agentWeeklyGoals = ref([])
 const casesViewTab = ref('table')
@@ -291,6 +324,9 @@ const { t } = useI18n()
 
 const orders = computed(() => store.getters['orders'])
 const gcAgents = computed(() => store.getters['gcAgents'])
+const activeGcAgents = computed(() =>
+  (gcAgents.value || []).filter(agent => agent.active !== false)
+)
 const currentDate = computed(() => store.getters['currentDate'])
 const currentDateRange = computed(() => store.getters['currentDateRange'])
 
@@ -349,7 +385,14 @@ function getCallerNames(order) {
 
 function goToCaseDetails(row) {
   if (!row?._id) return;
-  router.push({ name: 'agentCaseDetails', query: { orderId: row._id } });
+  const agentId = selectedGcAgent.value?._id ?? selectedGcAgent.value?.id;
+  router.push({
+    name: 'agentCaseDetails',
+    query: {
+      orderId: row._id,
+      agentId: agentId ? String(agentId) : undefined,
+    },
+  });
 }
 
 // Helper function to check if an order is a test case
@@ -393,6 +436,7 @@ function findOrderForLog(log, availableOrders) {
 const revenueGenerated = computed(() => {
   const stats = caseStats.value;
   const dateRange = currentDateRange.value;
+  const allOrders = orders.value || [];
   
   console.log('💰 Revenue Calculation Started');
   console.log('📊 Inputs:', {
@@ -406,6 +450,8 @@ const revenueGenerated = computed(() => {
     return { 
       totalUnits: 0, 
       revenue: '0.00',
+      myRateRevenue: '0.00',
+      myRate: '0.00',
       unitsByType: {
         interviews: 0,
         hours: 0,
@@ -532,7 +578,7 @@ const revenueGenerated = computed(() => {
   }
 
   // Calculate total units and revenue from deduplicated logs for ALL cases the agent is assigned to (excluding test cases)
-  const agentCases = orders.value.filter(order => {
+  const agentCases = allOrders.filter(order => {
     if (!order.assignedCallers) return false;
     
     // Handle both object and string formats for assignedCallers
@@ -569,6 +615,7 @@ const revenueGenerated = computed(() => {
   
   let totalUnits = 0;
   let totalRevenue = 0;
+  let totalMyRateRevenue = 0;
   const revenueBreakdown = [];
   
   // Track units by type
@@ -634,6 +681,12 @@ const revenueGenerated = computed(() => {
       const pricePerUnit = Number(logCase.pricePerUnit) || 0;
       const logRevenue = logQuantityCompleted * pricePerUnit;
       totalRevenue += logRevenue;
+
+      // Agent-specific rate revenue (from agentRates on the order)
+      const rawAgentRates = logCase.agentRates || logCase.agentPrices || {};
+      const agentRate = Number(rawAgentRates[agentId]) || 0;
+      const logMyRateRevenue = agentRate > 0 ? logQuantityCompleted * agentRate : 0;
+      totalMyRateRevenue += logMyRateRevenue;
       
       // Track units by case unit type
       const caseUnit = String(logCase.caseUnit || '').toLowerCase();
@@ -684,6 +737,8 @@ const revenueGenerated = computed(() => {
   });
   
   const revenue = totalRevenue.toFixed(2);
+  const myRateRevenue = totalMyRateRevenue.toFixed(2);
+  const myRate = totalUnits > 0 ? (totalMyRateRevenue / totalUnits).toFixed(2) : '0.00';
   
   console.log('📊 Revenue Calculation Summary:', {
     totalLogsProcessed: uniqueLogs.length,
@@ -696,6 +751,8 @@ const revenueGenerated = computed(() => {
   return { 
     totalUnits, 
     revenue,
+    myRateRevenue,
+    myRate,
     unitsByType: {
       interviews: unitsByType.interviews,
       hours: unitsByType.hours,
@@ -1054,6 +1111,7 @@ const casesTableHeaders = computed(() => [
   { title: t('agentTables.teamResults'), key: 'teamUnits', sortable: true },
   { title: t('agentCaseCard.myRevenueGoal'), key: 'myRevenueGoal', sortable: true },
   { title: t('agentCaseCard.myCurrentRevenue'), key: 'currentRevenue', sortable: true },
+  { title: t('agentDashboard.myRate'), key: 'myRate', sortable: true },
   { title: '%', key: 'percentage', sortable: true },
   { title: t('ordersDashboard.tableHeaders.deadline'), key: 'deadline', sortable: true },
 ])
@@ -1237,8 +1295,11 @@ const casesTableRows = computed(() => {
     const orderId = String(order._id ?? order.id ?? '');
     const myGoal = Number(order?.agentGoals?.[agentId] ?? 0);
     const pricePerUnit = Number(order?.pricePerUnit ?? 0);
+    const rawAgentRates = order?.agentRates || order?.agentPrices || {};
+    const agentRate = Number(rawAgentRates[agentId]) || 0;
 
-    const myAgentOrderLogs = stats.filter((log) => {
+    // All logs for this agent & order within the current date range
+    const myAgentOrderLogsRaw = stats.filter((log) => {
       const logOrderId = String(log?.order?._id ?? log?.order ?? log?.orderId ?? '');
       const logCaseName = log?.caseName ?? '';
       const sameOrder = logOrderId === orderId || logCaseName === (order?.caseName ?? '');
@@ -1249,6 +1310,17 @@ const casesTableRows = computed(() => {
         return d >= from && d <= to;
       }
       return true;
+    });
+
+    // De-duplicate logs to avoid double-counting (same strategy as in revenue calculations)
+    const myAgentOrderLogs = [];
+    const seenMyLogs = new Set();
+    myAgentOrderLogsRaw.forEach(log => {
+      const key = `${log.date}_${log.agentName || log.agent}_${log.caseName}_${log._id || log.id}`;
+      if (!seenMyLogs.has(key)) {
+        seenMyLogs.add(key);
+        myAgentOrderLogs.push(log);
+      }
     });
 
     const myAgentUnits = myAgentOrderLogs.reduce(
@@ -1288,7 +1360,7 @@ const casesTableRows = computed(() => {
       0
     );
     const myRevenueGoal = myGoal * pricePerUnit;
-    const currentRevenue = myAgentUnits * pricePerUnit;
+    const currentRevenue = myAgentUnits * agentRate;
     const percentage = myGoal > 0 ? Number(((myAgentUnits / myGoal) * 100).toFixed(1)) : 0;
 
     return {
@@ -1300,6 +1372,7 @@ const casesTableRows = computed(() => {
       teamUnits,
       totalQuantity: Number(order?.totalQuantity ?? 0),
       myRevenueGoal,
+      myRate: agentRate,
       currentRevenue,
       percentage,
     };
@@ -1333,12 +1406,44 @@ const selectedGcAgent = computed(() => {
   ) || null;
 });
 
+// Admin/manager agent selector (kept in sync with ?agent= query)
+const selectedAgentName = ref('')
+
+watch(
+  () => route.query.agent,
+  (newVal) => {
+    // Keep local select in sync with URL / selected agent
+    if (typeof newVal === 'string') {
+      selectedAgentName.value = newVal
+    } else if (selectedGcAgent.value?.name) {
+      selectedAgentName.value = selectedGcAgent.value.name
+    } else {
+      selectedAgentName.value = ''
+    }
+  },
+  { immediate: true }
+)
+
+watch(selectedAgentName, (newName) => {
+  // When admin/manager changes the dropdown, update the query param
+  if (!newName) return
+  const current = route.query.agent
+  if (current === newName) return
+  router.push({
+    name: 'agentDashboard',
+    query: { ...route.query, agent: newName },
+  })
+})
+
 // Function to fetch all case stats for the agent across all cases
 const fetchCaseStats = async () => {
   if (!selectedGcAgent.value || !orders.value) {
+    caseStats.value = [];
     return;
   }
   
+  isLoadingDashboard.value = true;
+
   try {
     // Get all cases the agent is assigned to
     const agentId = String(selectedGcAgent.value._id ?? selectedGcAgent.value.id);
@@ -1368,6 +1473,8 @@ const fetchCaseStats = async () => {
   } catch (error) {
     console.error('AgentDashboard: Error fetching case stats:', error);
     caseStats.value = [];
+  } finally {
+    isLoadingDashboard.value = false;
   }
 }
 
@@ -1652,7 +1759,7 @@ watch(currentDateRange, async (newRange) => {
   }
   
   .agent-dashboard-container {
-    max-width: 1400px;
+    max-width: 90vw;
     margin-left: auto;
     margin-right: auto;
     padding-left: 24px;

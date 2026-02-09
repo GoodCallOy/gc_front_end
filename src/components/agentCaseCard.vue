@@ -195,10 +195,14 @@
         return total
       })
 
-      // revenue completed for this agent on this order (from daily logs)
+      // revenue completed for this agent on this order (from daily logs, using agent rate only)
       const totalAgentUnitsValue = computed(() => {
-        console.log('Total agent units value:', myAgentUnits.value * (Number(props.order?.pricePerUnit) || 0))
-        return myAgentUnits.value * (Number(props.order?.pricePerUnit) || 0)
+        const rawAgentRates = props.order?.agentRates || props.order?.agentPrices || {}
+        const rateFromOrder = Number(rawAgentRates[myAgentId.value]) || 0
+
+        const value = myAgentUnits.value * rateFromOrder
+        console.log('Total agent units value (agent rate):', value)
+        return value
       })
 
       // total units for this specific case from all agents

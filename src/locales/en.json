@@ -74,7 +74,8 @@
       "personalResults": "My results",
       "teamResults": "Team results",
       "unit": "Unit",
-      "amountMade": "Amount Made"
+      "amountMade": "Amount Made",
+      "goalReached": "Goal reached %"
     },
     "dailyLogForm": {
       "selectAgent": "Select Agent",
@@ -239,8 +240,10 @@
     },
     "agentDashboard": {
       "agentStatistics": "Agent Stats",
-      "revenue": "Revenue",
+      "revenue": "Case Revenue",
       "revenueGenerated": "Revenue Generated",
+      "myRateRevenue": "My revenue",
+      "myRate": "My rate",
       "totalUnits": "Total Units",
       "casesFor": "Cases for",
       "weeklySummary": "Weekly Summary",
@@ -267,7 +270,7 @@
       "showOrder": "Show order",
       "myGoal": "My goal",
       "myRevenueGoal": "My revenue goal",
-      "myCurrentRevenue": "My current revenue",
+      "myCurrentRevenue": "My revenue",
       "callers": "Callers",
       "deadline": "Deadline",
       "none": "None",
