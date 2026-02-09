@@ -76,7 +76,10 @@
                 {{ (item?.raw ?? item)?.myGoal }}
               </template>
               <template #item.myUnits="{ item }">
-                {{ (item?.raw ?? item)?.myAgentUnits }} / {{ (item?.raw ?? item)?.totalQuantity }}
+                {{ (item?.raw ?? item)?.myAgentUnits }} / {{ (item?.raw ?? item)?.myGoal || 0 }}
+              </template>
+              <template #item.teamUnits="{ item }">
+                {{ (item?.raw ?? item)?.teamUnits }} / {{ (item?.raw ?? item)?.teamGoal || 0 }}
               </template>
               <template #item.myRevenueGoal="{ item }">
                 {{ formatCurrency((item?.raw ?? item)?.myRevenueGoal) }}
@@ -853,7 +856,11 @@ const weeklyTotals = computed(() => {
       answeredCalls: group.totals.answeredCalls,
       responseRate: formatNumber(avgResponseRate),
       completedCalls: group.totals.completedCalls,
-      quantityCompleted: group.totals.quantityCompleted,
+      // Personal results: this agent's completed quantity
+      personalResults: group.totals.quantityCompleted,
+      // Team results: currently same as personal (only this agent's logs are included here)
+      // You can extend this later to include all agents if desired.
+      teamResults: group.totals.quantityCompleted,
       amountMade: `€${group.totals.amountMade.toFixed(2)}`,
       originalDate: group.weekInfo.start,
     });
@@ -934,7 +941,11 @@ const individualLogs = computed(() => {
         answeredCalls,
         responseRate: formatNumber(responseRate),
         completedCalls: log.completed_calls || 0,
-        quantityCompleted,
+        // Personal result for this log row
+        personalResults: quantityCompleted,
+        // Team result placeholder: currently same as personal
+        // (this table is scoped to the current agent's logs only)
+        teamResults: quantityCompleted,
         amountMade: `€${amountMade}`,
         originalLog: log,
       };
@@ -996,7 +1007,8 @@ const weeklyHeaders = computed(() => [
   { title: t('agentTables.answeredCalls'), key: 'answeredCalls', sortable: true, class: 'd-none d-lg-table-cell' },
   { title: t('agentTables.responseRate'), key: 'responseRate', sortable: true, class: 'd-none d-md-table-cell' },
   { title: t('agentTables.completedCalls'), key: 'completedCalls', sortable: true, class: 'd-none d-xl-table-cell' },
-  { title: t('agentTables.results'), key: 'quantityCompleted', sortable: true },
+  { title: t('agentTables.personalResults'), key: 'personalResults', sortable: true },
+  { title: t('agentTables.teamResults'), key: 'teamResults', sortable: true },
   { title: t('agentTables.amountMade'), key: 'amountMade', sortable: true },
 ])
 
@@ -1010,7 +1022,8 @@ const individualHeaders = computed(() => [
   { title: t('agentTables.answeredCalls'), key: 'answeredCalls', sortable: true, class: 'd-none d-xl-table-cell' },
   { title: t('agentTables.responseRate'), key: 'responseRate', sortable: true, class: 'd-none d-lg-table-cell' },
   { title: t('agentTables.completedCalls'), key: 'completedCalls', sortable: true, class: 'd-none d-xl-table-cell' },
-  { title: t('agentTables.results'), key: 'quantityCompleted', sortable: true },
+  { title: t('agentTables.personalResults'), key: 'personalResults', sortable: true },
+  { title: t('agentTables.teamResults'), key: 'teamResults', sortable: true },
   { title: t('agentTables.amountMade'), key: 'amountMade', sortable: true },
   { title: t('agentTables.edit'), key: 'actions', sortable: false, width: '100px' },
 ])
@@ -1023,7 +1036,8 @@ const casesTableHeaders = computed(() => [
   { title: t('ordersDashboard.tableHeaders.unit'), key: 'caseUnit', sortable: true },
   { title: t('ordersDashboard.tableHeaders.totalQty'), key: 'totalQuantity', sortable: true },
   { title: t('agentCaseCard.myGoal'), key: 'myGoal', sortable: true },
-  { title: t('agentTables.results'), key: 'myUnits', sortable: true },
+  { title: t('agentTables.personalResults'), key: 'myUnits', sortable: true },
+  { title: t('agentTables.teamResults'), key: 'teamUnits', sortable: true },
   { title: t('agentCaseCard.myRevenueGoal'), key: 'myRevenueGoal', sortable: true },
   { title: t('agentCaseCard.myCurrentRevenue'), key: 'currentRevenue', sortable: true },
   { title: '%', key: 'percentage', sortable: true },
@@ -1227,6 +1241,38 @@ const casesTableRows = computed(() => {
       (sum, l) => sum + (Number(l?.quantityCompleted) ?? 0),
       0
     );
+
+    // Team goal: use the order's total quantity (project goal)
+    const teamGoal = Number(order?.totalQuantity ?? 0);
+
+    // Team units: all agents' quantityCompleted for this order in the same date range,
+    // with basic de-duplication to avoid double-counting identical logs.
+    const candidateTeamLogs = stats.filter((log) => {
+      const logOrderId = String(log?.order?._id ?? log?.order ?? log?.orderId ?? '');
+      const logCaseName = log?.caseName ?? '';
+      const sameOrder = logOrderId === orderId || logCaseName === (order?.caseName ?? '');
+      if (!sameOrder) return false;
+      if (from && to) {
+        const d = new Date(log?.date);
+        return d >= from && d <= to;
+      }
+      return true;
+    });
+
+    const teamTeamLogsUnique = [];
+    const seenTeam = new Set();
+    candidateTeamLogs.forEach(log => {
+      const key = `${log.date}_${log.agentName || log.agent}_${log.caseName}_${log._id || log.id}`;
+      if (!seenTeam.has(key)) {
+        seenTeam.add(key);
+        teamTeamLogsUnique.push(log);
+      }
+    });
+
+    const teamUnits = teamTeamLogsUnique.reduce(
+      (sum, l) => sum + (Number(l?.quantityCompleted) ?? 0),
+      0
+    );
     const myRevenueGoal = myGoal * pricePerUnit;
     const currentRevenue = myAgentUnits * pricePerUnit;
     const percentage = myGoal > 0 ? Number(((myAgentUnits / myGoal) * 100).toFixed(1)) : 0;
@@ -1236,6 +1282,8 @@ const casesTableRows = computed(() => {
       _id: order._id ?? order.id,
       myGoal,
       myAgentUnits,
+      teamGoal,
+      teamUnits,
       totalQuantity: Number(order?.totalQuantity ?? 0),
       myRevenueGoal,
       currentRevenue,

@@ -54,6 +54,8 @@
       "responseRate": "Vastausprosentti %",
       "completedCalls": "Valmiit puhelut",
       "results": "Tulokset",
+      "personalResults": "Omat tulokset",
+      "teamResults": "Tiimin tulokset",
       "unit": "Yksikkö",
       "amountMade": "Tulot"
     },

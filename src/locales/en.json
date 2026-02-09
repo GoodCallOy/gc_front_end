@@ -71,6 +71,8 @@
       "responseRate": "Response Rate %",
       "completedCalls": "Completed Calls",
       "results": "Results",
+      "personalResults": "My results",
+      "teamResults": "Team results",
       "unit": "Unit",
       "amountMade": "Amount Made"
     },
