@@ -1149,10 +1149,11 @@ const weeklyGoalsTableRows = computed(() => {
         const goalOrderId = String(g?.orderId ?? g?.order_id ?? '')
         const goalCaseName = g?.case ?? g?.caseName ?? g?.case_name ?? ''
 
-        completed = stats.reduce((sum, log) => {
+        // First, collect all matching logs for this agent, order/case and week
+        const matchingLogsRaw = stats.filter((log) => {
           // Match by date range
           const d = new Date(log.date)
-          if (isNaN(d.getTime()) || d < from || d > to) return sum
+          if (isNaN(d.getTime()) || d < from || d > to) return false
 
           // Match by agent
           const logAgentId = String(
@@ -1162,7 +1163,7 @@ const weeklyGoalsTableRows = computed(() => {
             log?.agentId ??
             ''
           )
-          if (logAgentId !== agentId) return sum
+          if (logAgentId !== agentId) return false
 
           // Match by order or case name
           const logOrderId = String(
@@ -1176,10 +1177,24 @@ const weeklyGoalsTableRows = computed(() => {
             (goalOrderId && logOrderId && logOrderId === goalOrderId) ||
             (goalCaseName && logCaseName && logCaseName === goalCaseName)
 
-          if (!sameOrder) return sum
+          return sameOrder
+        })
 
-          return sum + (Number(log.quantityCompleted) || 0)
-        }, 0)
+        // De-duplicate logs to avoid double-counting
+        const seen = new Set()
+        const matchingLogs = []
+        matchingLogsRaw.forEach((log) => {
+          const key = `${log.date}_${log.agentName || log.agent}_${log.caseName}_${log._id || log.id}`
+          if (!seen.has(key)) {
+            seen.add(key)
+            matchingLogs.push(log)
+          }
+        })
+
+        completed = matchingLogs.reduce(
+          (sum, log) => sum + (Number(log.quantityCompleted) || 0),
+          0
+        )
       }
     }
 

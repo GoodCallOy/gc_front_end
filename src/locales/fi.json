@@ -223,7 +223,7 @@
     },
     "agentDashboard": {
       "agentStatistics": "Agenttitilastot",
-      "revenue": "Tapauksen liikevaihto",
+      "revenue": "Kaikki liikevaihto",
       "revenueGenerated": "Tuotettu liikevaihto",
       "myRateRevenue": "Oma liikevaihto",
       "myRate": "Oma taksa",
