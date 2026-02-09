@@ -113,6 +113,7 @@
         "totalQty": "Yhteensä määrä",
         "goal": "Tavoite (€)",
         "revenue": "Liikevaihto (€)",
+        "percentageToGoal": "% tavoitteesta",
         "start": "Alku",
         "deadline": "Määräaika"
       },

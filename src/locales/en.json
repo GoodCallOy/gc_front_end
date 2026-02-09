@@ -130,6 +130,7 @@
         "totalQty": "Total Qty",
         "goal": "Goal (€)",
         "revenue": "Revenue (€)",
+        "percentageToGoal": "% to goal",
         "start": "Start",
         "deadline": "Deadline"
       },

@@ -142,6 +142,11 @@
             <template #item.revenue="{ item }">
               {{ formatCurrency(computeOrderRevenue(item)) }}
             </template>
+            <template #item.percentageToGoal="{ item }">
+              <span :class="['percentage-badge', getPercentageToGoalClass(item)]">
+                {{ computePercentageToGoal(item) }}%
+              </span>
+            </template>
             <template #item.quantity="{ item }">
               {{ computeOrderQuantity(item) }}
             </template>
@@ -208,6 +213,7 @@ const tableHeaders = computed(() => [
   { title: t('ordersDashboard.tableHeaders.totalQty'), key: 'totalQuantity' },
   { title: t('ordersDashboard.tableHeaders.goal'), key: 'goal', sortable: false },
   { title: t('ordersDashboard.tableHeaders.revenue'), key: 'revenue', sortable: false },
+  { title: t('ordersDashboard.tableHeaders.percentageToGoal'), key: 'percentageToGoal', sortable: true },
   { title: t('ordersDashboard.tableHeaders.start'), key: 'startDate' },
   { title: t('ordersDashboard.tableHeaders.deadline'), key: 'deadline' },
 ])
@@ -555,6 +561,27 @@ function computeOrderRevenue(order) {
   return qty * price
 }
 
+function computePercentageToGoal(order) {
+  const goal = Number(order?.estimatedRevenue) || 0
+  if (!goal) {
+    return 0
+  }
+  const revenue = computeOrderRevenue(order)
+  const percentage = (revenue / goal) * 100
+  if (!isFinite(percentage) || isNaN(percentage)) {
+    return 0
+  }
+  return Math.round(percentage)
+}
+
+function getPercentageToGoalClass(order) {
+  const pct = computePercentageToGoal(order)
+  if (pct <= 25) return 'percentage-red'
+  if (pct > 25 && pct <= 50) return 'percentage-orange'
+  if (pct > 50 && pct <= 75) return 'percentage-yellow'
+  return 'percentage-green'
+}
+
 function getCallerNames(order) {
   if (!order.assignedCallers || !Array.isArray(order.assignedCallers)) return ''
   return order.assignedCallers
@@ -857,5 +884,28 @@ async function loadMonthWeeks() {
   
   .revenue-summary .text-success {
     color: #198754 !important;
+  }
+
+  /* % to goal badge coloring (match case cards) */
+  .percentage-badge {
+    display: inline-block;
+    color: #151313;
+    font-weight: 600;
+    font-size: 0.875rem;
+    padding: 2px 8px;
+    border-radius: 9999px;
+  }
+
+  .percentage-red {
+    background-color: #f35555;
+  }
+  .percentage-orange {
+    background-color: #e8b731;
+  }
+  .percentage-yellow {
+    background-color: #eaea08;
+  }
+  .percentage-green {
+    background-color: #10b981;
   }
 </style>
