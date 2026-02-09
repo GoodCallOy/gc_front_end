@@ -242,6 +242,9 @@
         :items-per-page="10"
         style="width: 100%"
       >
+        <template #item.goalReached="{ item }">
+          {{ item.goalReached }}%
+        </template>
         <template #item.actions="{ item }">
           <div class="d-flex align-center">
             <v-icon
@@ -1121,6 +1124,7 @@ const weeklyGoalsHeaders = computed(() => [
   { title: t('ordersDashboard.tableHeaders.caseName'), key: 'project', sortable: true },
   { title: t('agentWeeklyGoal.goal'), key: 'goal', sortable: true },
   { title: t('agentTables.results'), key: 'progress', sortable: false },
+  { title: t('agentTables.goalReached'), key: 'goalReached', sortable: true },
   { title: '', key: 'actions', sortable: false, width: '96px' },
 ])
 
@@ -1200,6 +1204,9 @@ const weeklyGoalsTableRows = computed(() => {
 
     const goalValue = Number(g?.goal ?? 0)
     const progress = `${completed} / ${goalValue}`
+    const goalReached = goalValue > 0
+      ? Number(((completed / goalValue) * 100).toFixed(1))
+      : 0
 
     const weekStartFormatted = start
       ? formatDateForTable(start)
@@ -1210,6 +1217,7 @@ const weeklyGoalsTableRows = computed(() => {
       goal: goalValue,
       completed,
       progress,
+      goalReached,
       _raw: g,
     }
   })
