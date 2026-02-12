@@ -50,8 +50,13 @@
                 <div v-if="getAgentCases(agent).length" class="text-body-2">
                   <div class="font-weight-medium mb-1">Assigned cases</div>
                   <ul class="mb-2 text-caption agent-case-list">
-                    <li v-for="c in getAgentCases(agent)" :key="c.caseName" class="text-truncate" :title="c.caseName">
-                      {{ c.caseName }}
+                    <li
+                      v-for="c in getAgentCases(agent)"
+                      :key="c.caseName"
+                      class="text-truncate"
+                      :title="`${c.caseName} — ${c.completed}/${c.goal}`"
+                    >
+                      {{ c.caseName }} — {{ c.completed }}/{{ c.goal }}
                     </li>
                   </ul>
                   <div class="font-weight-medium">
@@ -236,10 +241,29 @@ import AgentCard from './agentCard.vue';
         });
       },
 
+      getCurrentMonthBounds() {
+        const range = this.currentDateRange;
+        if (!Array.isArray(range) || range.length < 2) {
+          const now = new Date();
+          const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+          const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+          return { from: firstDay, to: lastDay };
+        }
+        const [start, end] = range;
+        const from = new Date(start);
+        const to = new Date(end);
+        to.setHours(23, 59, 59, 999);
+        return { from, to };
+      },
+
       // Unique assigned cases for this agent in the current month (no duplicates by case name)
       getAgentCases(agent) {
         const orders = this.getAgentOrdersCurrentMonth(agent);
         const seen = new Set();
+        const { from, to } = this.getCurrentMonthBounds();
+        const fromTime = from.getTime();
+        const toTime = to.getTime();
+
         return orders
           .filter((order) => {
             const name = order?.caseName || order?.caseId || '';
@@ -247,7 +271,62 @@ import AgentCard from './agentCard.vue';
             seen.add(name);
             return true;
           })
-          .map((order) => ({ caseName: order.caseName || order.caseId || '—' }));
+          .map((order) => {
+            const aid = String(agent?._id ?? agent?.id ?? '');
+            const goal = Number(order?.agentGoals?.[aid] ?? 0);
+            let completed = 0;
+
+            try {
+              const logs = Array.isArray(this.dailyLogs) ? this.dailyLogs : [];
+              const orderId = String(order?._id ?? order?.id ?? '');
+              const caseName = order?.caseName || '';
+
+              const seenLogs = new Set();
+              logs.forEach((log) => {
+                const logAgentId = String(
+                  log?.agent?._id ??
+                  log?.agentId ??
+                  log?.agent ??
+                  ''
+                );
+                if (logAgentId !== aid) return;
+
+                const logOrderId = String(
+                  log?.order?._id ??
+                  log?.order?.id ??
+                  log?.orderId ??
+                  ''
+                );
+                const logCaseName = log?.caseName ?? '';
+                const sameOrder =
+                  (orderId && logOrderId && logOrderId === orderId) ||
+                  (caseName && logCaseName && logCaseName === caseName);
+                if (!sameOrder) return;
+
+                const d = new Date(log.date);
+                const tMs = d.getTime();
+                if (!Number.isFinite(tMs)) return;
+                if (tMs < fromTime || tMs > toTime) return;
+
+                const key = `${log.date}_${logAgentId}_${logCaseName}_${log._id || log.id}`;
+                if (seenLogs.has(key)) return;
+                seenLogs.add(key);
+
+                const units = Number(log.quantityCompleted ?? 0);
+                if (Number.isFinite(units) && !Number.isNaN(units)) {
+                  completed += units;
+                }
+              });
+            } catch (e) {
+              console.warn('Failed to compute case progress on agentsPage:', e);
+            }
+
+            return {
+              caseName: order.caseName || order.caseId || '—',
+              completed,
+              goal,
+            };
+          });
       },
 
       // Total revenue from assigned cases in current month: sum of (agent goal × pricePerUnit) per order
