@@ -359,8 +359,23 @@ async mounted() {
         await this.fetchCases();
     },
     
+    normalizeDecimal(value) {
+        if (value === null || value === undefined) return value;
+        if (typeof value === 'number') return value;
+        if (typeof value === 'string') {
+            const replaced = value.replace(',', '.');
+            const n = Number(replaced);
+            return Number.isNaN(n) ? value : n;
+        }
+        return value;
+    },
+    
     async submitForm() {
         if (!this.formValid) return
+
+        // Allow both comma and dot as decimal separators for key numeric fields
+        this.form.hours = this.normalizeDecimal(this.form.hours);
+        this.form.quantityCompleted = this.normalizeDecimal(this.form.quantityCompleted);
 
         try {
             const selectedAgent = this.gcAgents.find(agent => agent._id === this.form.agent);
