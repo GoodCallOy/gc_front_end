@@ -324,7 +324,16 @@ const groupedOrdersByCaseTypeForCards = computed(() => {
     }
     groups[type].items.push(order);
   });
-  
+
+  // Sort items inside each group alphabetically by case name
+  Object.values(groups).forEach(group => {
+    group.items.sort((a, b) => {
+      const nameA = String(a.caseName || '').toLowerCase()
+      const nameB = String(b.caseName || '').toLowerCase()
+      return nameA.localeCompare(nameB)
+    })
+  })
+
   // Return groups that have items, sorted by case type name
   return Object.values(groups)
     .filter(group => group.items.length > 0)
@@ -366,7 +375,16 @@ const groupedOrdersByCaseType = computed(() => {
     }
     groups[type].items.push(order);
   });
-  
+
+  // Sort items inside each group alphabetically by case name
+  Object.values(groups).forEach(group => {
+    group.items.sort((a, b) => {
+      const nameA = String(a.caseName || '').toLowerCase()
+      const nameB = String(b.caseName || '').toLowerCase()
+      return nameA.localeCompare(nameB)
+    })
+  })
+
   // Return groups that have items, sorted by case type name
   return Object.values(groups)
     .filter(group => group.items.length > 0)
