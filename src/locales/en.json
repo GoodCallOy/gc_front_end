@@ -140,6 +140,8 @@
         "dateRange": "Date Range",
         "quantityCompleted": "Quantity Completed",
         "revenue": "Revenue (€)",
+        "goal": "Goal (€)",
+        "percentageToGoal": "% to goal",
         "remaining": "Remaining",
         "total": "Total"
       },
@@ -180,6 +182,7 @@
         "totalGoals": "Total Goals",
         "goalsDistributed": "Goals Distributed",
         "priceUnit": "Price Unit",
+        "multiMonth": "Multi-Month",
         "copy": "Copy",
         "edit": "Edit",
         "delete": "Delete"
@@ -207,6 +210,7 @@
         "orderStatus": "Order Status",
         "caseType": "Case Type",
         "estimatedRevenue": "Estimated Revenue (€)",
+        "monthlyRevenueGoals": "Monthly Revenue Goals (€ per month)",
         "selectManagers": "Select Managers",
         "assignCallers": "Assign Callers",
         "projectStartFee": "Project Start Fee (€)",
@@ -221,6 +225,7 @@
         "contactName": "Contact Name",
         "contactTitle": "Contact Title"
       },
+      "currentVsGoalThisMonth": "Current/Goal this month",
       "validation": {
         "caseUnitRequired": "Case Unit is required",
         "pricePerUnitRequired": "Price per unit is required",

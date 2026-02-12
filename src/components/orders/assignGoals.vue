@@ -77,12 +77,22 @@
           </template>
 
           <template #item.caseName="{ item }">
-            <span
-              class="text-primary"
-              style="cursor: pointer; text-decoration: underline;"
-              @click.stop="editCaseFromOrder(item)"
-            >
-              {{ item.caseName }}
+            <span>
+              <span
+                class="text-primary"
+                style="cursor: pointer; text-decoration: underline;"
+                @click.stop="editCaseFromOrder(item)"
+              >
+                {{ item.caseName }}
+              </span>
+              <v-chip
+                v-if="orderSpansMultipleMonths(item)"
+                size="x-small"
+                color="primary"
+                class="ml-2"
+              >
+                {{ t('ordersDashboard.multiMonth') }}
+              </v-chip>
             </span>
           </template>
 
@@ -161,9 +171,12 @@
 
             <!-- Right: monthly/other orders -->
             <v-col cols="12" md="7" class="pa-4">
-              <div class="text-caption mb-1 text-grey">{{ t('assignGoals.thisMonth') }}</div>
+              <div class="text-caption mb-1 text-grey">
+                {{ t('assignGoals.thisMonth') }}
+                <span v-if="currentMonthLabel">({{ currentMonthLabel }})</span>
+              </div>
               <div class="mb-2">
-                {{ agent.goalForThisOrder }} {{ t('assignGoals.totalGoals') }}
+                {{ agent.completedUnitsForThisOrder ?? 0 }}/{{ agent.goalForThisOrder }} {{ t('assignGoals.totalGoals') }}
               </div>
 
               <div class="text-caption mb-1 text-grey">{{ t('assignGoals.otherOrders') }}</div>
@@ -262,6 +275,28 @@
             :rules="[v => !!v || t('assignGoals.validation.deadlineRequired')]"
             required
         />
+
+        <!-- Monthly revenue goals for multi-month orders -->
+        <div v-if="monthlyGoalMonths.length" class="mt-4">
+          <div class="text-subtitle-2 mb-2">
+            {{ t('assignGoals.formLabels.monthlyRevenueGoals') }}
+          </div>
+          <v-row>
+            <v-col
+              v-for="month in monthlyGoalMonths"
+              :key="month.monthKey"
+              cols="12"
+              sm="6"
+            >
+              <v-text-field
+                v-model.number="form.monthlyRevenueGoals[month.monthKey]"
+                :label="`${month.year}-${String(month.month).padStart(2, '0')}`"
+                type="number"
+                min="0"
+              />
+            </v-col>
+          </v-row>
+        </div>
 
         <v-select
             v-model="form.orderStatus"
@@ -473,6 +508,7 @@ import { useRouter } from 'vue-router'
 import { useStore } from 'vuex'
 import { useI18n } from 'vue-i18n'
 import { goToNextMonth, goToPreviousMonth, formattedDateRange, isCurrentMonth } from '@/js/dateUtils';
+import { getOrderMonths, orderSpansMultipleMonths } from '@/js/statsUtils';
 import axios from 'axios'
 import urls from '@/js/config.js'
 
@@ -764,6 +800,7 @@ async function fetchAllData() {
 
 const orders = computed(() => store.getters['orders'])
 const gcAgents = computed(() => store.getters['gcAgents'])
+const dailyLogs = computed(() => store.getters['dailyLogs'] || [])
 const agents = gcAgents
 const currentDateRange = computed(() => store.getters['currentDateRange'])
 const cases = computed(() => store.getters['GcCases'])
@@ -776,6 +813,14 @@ const caseTypes = computed(() => {
   // debug
   try { console.log('assignGoals caseTypes computed:', list) } catch {}
   return list
+})
+
+// Human-readable label for the currently selected month in the toolbar
+const currentMonthLabel = computed(() => {
+  const range = currentDateRange.value
+  if (!range || !range.length) return ''
+  const start = new Date(range[0])
+  return start.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
 })
 
 const orderHeaders = computed(() => [
@@ -816,7 +861,9 @@ const defaultForm = () => ({
   ProjectStartFee: 0,
   ProjectManagmentFee: 0,
   managers: [],
-  assignedCallers: []
+  assignedCallers: [],
+  // Revenue goals per calendar month (for multi-month orders), keyed by monthKey YYYY-MM
+  monthlyRevenueGoals: {}
 })
 
 const form = ref(defaultForm())
@@ -841,6 +888,20 @@ const addOrderFormValid = computed(() => {
 // If you also want to keep `form.estimatedRevenue` synced:
 watch(estimatedRevenue, (val) => {
   form.value.estimatedRevenue = val
+})
+
+// Months spanned by the current order dates (for monthly revenue goals UI)
+const monthlyGoalMonths = computed(() => {
+  const f = form.value
+  if (!f.startDate || !f.deadline) return []
+  try {
+    return getOrderMonths({
+      startDate: f.startDate,
+      deadline: f.deadline
+    })
+  } catch {
+    return []
+  }
 })
 
 const hasGoalChanges = computed(() => {
@@ -1062,6 +1123,9 @@ function openEditOrderModal() {
   )];
   form.value.assignedCallers = assignedIds;
 
+  // hydrate monthly revenue goals if present on the order
+  form.value.monthlyRevenueGoals = { ...(o.monthlyRevenueGoals || {}) }
+
   // hydrate agent goals/rates for assigned agents
   Object.keys(agentGoals).forEach(k => (agentGoals[k] = 0));
   Object.keys(agentRates).forEach(k => (agentRates[k] = 0));
@@ -1213,8 +1277,9 @@ const selectOrder = async (order, event) => {
     // clear local goals cache
     Object.keys(agentGoals).forEach(k => (agentGoals[k] = 0));
 
-    // full-month window from the order's start date
-    const { from, to } = monthBoundsFrom(item.startDate);
+    // full-month window for the currently selected month in the toolbar (fallback to order start)
+    const baseDate = (currentDateRange.value && currentDateRange.value[0]) || item.startDate;
+    const { from, to } = monthBoundsFrom(baseDate);
 
     console.log('Calculating goals for order:', item._id, 'from', from, 'to', to);
 
@@ -1247,8 +1312,17 @@ const selectOrder = async (order, event) => {
     const statsAgents = agentStats?.agents || [];
     const byId = new Map(statsAgents.map(a => [ String(a.agentId), a ]));
 
+    // Determine this month key (YYYY-MM) for monthly revenue goals
+    const baseDateStr = toDateOnly(baseDate) || ''
+    const currentMonthKey = baseDateStr ? baseDateStr.slice(0, 7) : ''
+    const monthlyGoals = selectedOrder.value.monthlyRevenueGoals || {}
+    const caseMonthlyGoalRevenue = Number(monthlyGoals[currentMonthKey]) || 0
+
+    const goalOrderId = orderId
+    const goalCaseName = selectedOrder.value.caseName || selectedOrder.value.case?.name || ''
+
     // build agentSummary only for agents on this order
-    selectedOrder.value.agentSummary = assignedIds.map(agentId => {
+    const summaries = assignedIds.map(agentId => {
       const bucket = byId.get(agentId);               // this agent's month bucket (may be undefined)
       const name   = bucket?.agentName || t('assignGoals.unknownAgent');
       const AgentOrders =  bucket?.orders || {};
@@ -1268,9 +1342,55 @@ const selectOrder = async (order, event) => {
         chosenRate: rateForThisOrder,
       });
 
-      // prefer the order entry from bucket.orders if present; fallback to goal*price
+      // prefer the order entry from bucket.orders if present
       const orderEntry = bucket?.orders?.find(o => String(o.orderId) === orderId);
-      const revenueForThisOrder = Number(orderEntry?.revenue) || (goalForThisOrder * price);
+
+      // Revenue for this order/month (if provided), otherwise 0
+      const rawRevenue = Number(orderEntry?.revenue);
+      const hasRealRevenue = Number.isFinite(rawRevenue) && !Number.isNaN(rawRevenue);
+      const revenueForThisOrder = hasRealRevenue ? rawRevenue : 0;
+
+      // Completed units: compute from dailyLogs for the current month + order + agent
+      let completedUnitsForThisOrderInt = 0;
+      try {
+        const logs = Array.isArray(dailyLogs.value) ? dailyLogs.value : [];
+        const fromTime = from.getTime();
+        const toTime = to.getTime();
+        completedUnitsForThisOrderInt = logs
+          .filter(l => {
+            const logAgentId = String(
+              l?.agent?._id ??
+              l?.agentId ??
+              l?.agent ??
+              ''
+            );
+            if (logAgentId !== String(agentId)) return false;
+
+            const logOrderId = String(
+              l?.order?._id ??
+              l?.order?.id ??
+              l?.orderId ??
+              ''
+            );
+            const logCaseName = l?.caseName ?? ''
+            const sameOrder =
+              (goalOrderId && logOrderId && logOrderId === goalOrderId) ||
+              (goalCaseName && logCaseName && logCaseName === goalCaseName)
+            if (!sameOrder) return false;
+
+            const d = new Date(l.date);
+            const tMs = d.getTime();
+            if (!Number.isFinite(tMs)) return false;
+            return tMs >= fromTime && tMs <= toTime;
+          })
+          .reduce((sum, l) => {
+            const units = Number(l.quantityCompleted ?? l.completedUnits ?? 0);
+            return sum + (Number.isFinite(units) && !Number.isNaN(units) ? units : 0);
+          }, 0);
+      } catch (e) {
+        console.warn('Failed to compute completed units for agent/order in AssignGoals:', e);
+        completedUnitsForThisOrderInt = 0;
+      }
 
       return {
         AgentOrders: AgentOrders,
@@ -1280,12 +1400,30 @@ const selectOrder = async (order, event) => {
         rateForThisOrder,
         revenueForThisOrder,
         revenueForThisOrderFormatted: currency(revenueForThisOrder),
+        completedUnitsForThisOrder: completedUnitsForThisOrderInt,
 
         // optional: include month totals from the stats bucket
         monthRevenue: Number(bucket?.totals?.revenue ?? bucket?.totalRevenue) || 0,
         monthOrders:  Number(bucket?.totals?.orders)  || (bucket?.orders?.length ?? 0),
       };
     });
+
+    // compute total goal units on this order to apportion monthly revenue goal
+    const totalGoalUnits = summaries.reduce((sum, a) => sum + (Number(a.goalForThisOrder) || 0), 0)
+
+    // attach per‑agent monthly revenue goal share (for current month)
+    selectedOrder.value.agentSummary = summaries.map(a => {
+      let monthlyGoalRevenueForThisMonth = 0
+      if (caseMonthlyGoalRevenue && totalGoalUnits) {
+        monthlyGoalRevenueForThisMonth =
+          caseMonthlyGoalRevenue * ((Number(a.goalForThisOrder) || 0) / totalGoalUnits)
+      }
+      return {
+        ...a,
+        monthlyGoalRevenueForThisMonth,
+        monthlyGoalRevenueForThisMonthFormatted: currency(monthlyGoalRevenueForThisMonth),
+      }
+    })
 
     console.log('Agent summary:', selectedOrder.value.agentSummary);
   } finally {

@@ -110,7 +110,8 @@ const store = createStore({
             dispatch('fetchOrders', true), // force fetch
             dispatch('fetchgcAgents', true), // force fetch
             dispatch('fetchGcCases', true), // force fetch
-            dispatch('fetchCaseTypes')
+            dispatch('fetchCaseTypes'),
+            dispatch('fetchDailyLogs', true) // need logs to show per-agent progress
           );
           break;
           

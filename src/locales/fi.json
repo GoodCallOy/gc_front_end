@@ -123,6 +123,8 @@
         "dateRange": "Päivämääräalue",
         "quantityCompleted": "Valmistunut määrä",
         "revenue": "Liikevaihto (€)",
+        "goal": "Tavoite (€)",
+        "percentageToGoal": "% tavoitteesta",
         "remaining": "Jäljellä",
         "total": "Yhteensä"
       },
@@ -163,6 +165,7 @@
         "totalGoals": "Tavoitteet yhteensä",
         "goalsDistributed": "Jaetut tavoitteet",
         "priceUnit": "Hinnan yksikkö",
+        "multiMonth": "Monikuukautinen",
         "copy": "Kopioi",
         "edit": "Muokkaa",
         "delete": "Poista"
@@ -190,6 +193,7 @@
         "orderStatus": "Tilauksen tila",
         "caseType": "Tapauksen tyyppi",
         "estimatedRevenue": "Arvioitu liikevaihto (€)",
+        "monthlyRevenueGoals": "Kuukausittaiset liikevaihtotavoitteet (€ / kk)",
         "selectManagers": "Valitse esimiehet",
         "assignCallers": "Määritä soittajat",
         "projectStartFee": "Projektin aloitusmaksu (€)",
@@ -204,6 +208,7 @@
         "contactName": "Yhteyshenkilön nimi",
         "contactTitle": "Yhteyshenkilön titteli"
       },
+      "currentVsGoalThisMonth": "Nykyinen/tavoite tässä kuussa",
       "validation": {
         "caseUnitRequired": "Tapauksen yksikkö on pakollinen",
         "pricePerUnitRequired": "Hinta per yksikkö on pakollinen",

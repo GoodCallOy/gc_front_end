@@ -96,6 +96,8 @@
                           <th>{{ t('ordersDashboard.monthlyBreakdown.dateRange') }}</th>
                           <th>{{ t('ordersDashboard.monthlyBreakdown.quantityCompleted') }}</th>
                           <th>{{ t('ordersDashboard.monthlyBreakdown.revenue') }}</th>
+                          <th>{{ t('ordersDashboard.monthlyBreakdown.goal') }}</th>
+                          <th>{{ t('ordersDashboard.monthlyBreakdown.percentageToGoal') }}</th>
                           <th>{{ t('ordersDashboard.monthlyBreakdown.remaining') }}</th>
                         </tr>
                       </thead>
@@ -105,12 +107,20 @@
                           <td>{{ formatDateDetailed(month.startDateStr) }} - {{ formatDateDetailed(month.endDateStr) }}</td>
                           <td>{{ month.quantityCompleted }}</td>
                           <td>€{{ formatCurrency(month.revenue) }}</td>
+                          <td>€{{ formatCurrency(getMonthlyRevenueGoal(item, month)) }}</td>
+                          <td>
+                            <span :class="['percentage-badge', getMonthlyPercentageToGoalClass(item, month)]">
+                              {{ getMonthlyPercentageToGoal(item, month) }}%
+                            </span>
+                          </td>
                           <td>{{ Math.max(0, item.totalQuantity - getTotalCompletedUpToMonth(item.monthlyBreakdown, month.monthKey)) }}</td>
                         </tr>
                         <tr class="font-weight-bold">
                           <td colspan="2">{{ t('ordersDashboard.monthlyBreakdown.total') }}</td>
                           <td>{{ getTotalQuantity(item.monthlyBreakdown) }}</td>
                           <td>€{{ formatCurrency(getTotalRevenue(item.monthlyBreakdown)) }}</td>
+                          <td></td>
+                          <td></td>
                           <td>{{ Math.max(0, item.totalQuantity - getTotalQuantity(item.monthlyBreakdown)) }}</td>
                         </tr>
                       </tbody>
@@ -594,6 +604,29 @@ function computePercentageToGoal(order) {
 
 function getPercentageToGoalClass(order) {
   const pct = computePercentageToGoal(order)
+  if (pct <= 25) return 'percentage-red'
+  if (pct > 25 && pct <= 50) return 'percentage-orange'
+  if (pct > 50 && pct <= 75) return 'percentage-yellow'
+  return 'percentage-green'
+}
+
+function getMonthlyRevenueGoal(order, month) {
+  const goals = order?.monthlyRevenueGoals || {}
+  const raw = goals[month.monthKey]
+  return Number(raw) || 0
+}
+
+function getMonthlyPercentageToGoal(order, month) {
+  const goal = getMonthlyRevenueGoal(order, month)
+  if (!goal) return 0
+  const revenue = Number(month?.revenue) || 0
+  const pct = (revenue / goal) * 100
+  if (!isFinite(pct) || isNaN(pct)) return 0
+  return Math.round(pct)
+}
+
+function getMonthlyPercentageToGoalClass(order, month) {
+  const pct = getMonthlyPercentageToGoal(order, month)
   if (pct <= 25) return 'percentage-red'
   if (pct > 25 && pct <= 50) return 'percentage-orange'
   if (pct > 50 && pct <= 75) return 'percentage-yellow'
