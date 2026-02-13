@@ -56,11 +56,11 @@
         </v-row>
         <v-row>
             <v-col cols="12">
-                <div v-if="order.agentGoals">
+                <div v-if="order.assignedCallers?.length">
                     <strong>Agent Goals:</strong>
                     <ul>
-                        <li v-for="id in order.assignedCallers" :key="id">
-                        {{ agentName(id) }}: {{ order.agentGoals[id] || 0 }}
+                        <li v-for="item in agentGoalsWithAchieved" :key="item.agentId">
+                        {{ item.name }}: {{ item.achieved }} / {{ item.target }}
                         </li>
                     </ul>
                 </div>
@@ -171,8 +171,9 @@
             <template #item.edit="{ item }">
               <v-btn
                 icon
+                variant="text"
                 size="small"
-                color="primary"
+                color="grey"
                 title="Edit Log"
                 @click="editLog(item.originalLog)"
               >
@@ -185,8 +186,9 @@
               <v-btn
                 v-if="canDeleteLog || true"
                 icon
+                variant="text"
                 size="small"
-                color="error"
+                color="grey"
                 title="Delete Log"
                 @click="deleteLog(item.originalLog)"
               >
@@ -239,7 +241,42 @@
   
   const goalTypes = ['hours', 'interviews', 'meetings']
   const orderStatuses = ['pending', 'in-progress', 'completed', 'cancelled', 'on-hold']
-  const agentName = id => agents.value.find(a => a._id === id)?.name || id;
+  const agentName = id => agents.value.find(a => String(a._id) === String(id?._id ?? id))?.name || (id?._id ?? id) || 'Unknown';
+
+  // Per-agent: target (from agentGoals) + achieved (from caseStats logs in current month)
+  const agentGoalsWithAchieved = computed(() => {
+    const ord = order.value;
+    const stats = caseStats.value;
+    const dateRange = currentDateRange.value;
+    if (!ord?.assignedCallers?.length) return [];
+    const currentCaseName = ord.caseName;
+    if (!currentCaseName) return [];
+    let monthStart, monthEnd;
+    if (dateRange && dateRange.length >= 2) {
+      monthStart = new Date(dateRange[0]);
+      monthEnd = new Date(dateRange[1]);
+      monthEnd.setHours(23, 59, 59, 999);
+    }
+    const agentGoals = ord.agentGoals || {};
+    return ord.assignedCallers.map(rawId => {
+      const agentId = String(rawId?._id ?? rawId ?? '');
+      const name = agentName(rawId);
+      const target = Number(agentGoals[agentId] ?? agentGoals[rawId] ?? 0) || 0;
+      let achieved = 0;
+      if (stats && Array.isArray(stats) && monthStart && monthEnd) {
+        achieved = stats
+          .filter(log => {
+            const logDate = new Date(log.date);
+            if (logDate < monthStart || logDate > monthEnd) return false;
+            const logAgentId = String(log.agent?._id ?? log.agent ?? log.agentId ?? '');
+            const sameCase = (log.caseName || log.case) === currentCaseName;
+            return logAgentId === agentId && sameCase;
+          })
+          .reduce((sum, log) => sum + (Number(log.quantityCompleted) || 0), 0);
+      }
+      return { agentId, name, target, achieved };
+    });
+  });
 
   // Check if current user can delete logs (managers and admins only)
   const canDeleteLog = computed(() => {
@@ -265,15 +302,14 @@
   const stats = caseStats.value;
   const dateRange = currentDateRange.value;
   
-  if (!order.value || !order.value.assignedCallers || !Array.isArray(stats) || !dateRange) {
+  if (!order.value || !Array.isArray(stats) || !dateRange) {
     return { totalUnits: 0, revenue: '0.00' };
   }
   
-  // Get all agents assigned to the current case
-  const assignedAgents = order.value.assignedCallers || [];
-  if (!assignedAgents.length) return { totalUnits: 0, revenue: '0.00' };
+  const currentCaseName = order.value.caseName;
+  if (!currentCaseName) return { totalUnits: 0, revenue: '0.00' };
   
-  // Filter logs to only include those within the selected date range AND for all assigned agents AND current case
+  // Filter logs: within date range AND for the current case (show all logs for the case)
   const [startDate, endDate] = dateRange;
   const monthStart = new Date(startDate);
   const monthEnd = new Date(endDate);
@@ -282,16 +318,8 @@
   const filteredStats = stats.filter(log => {
     const logDate = new Date(log.date);
     const isInDateRange = logDate >= monthStart && logDate <= monthEnd;
-    
-    // Check if this log belongs to any of the agents assigned to the current case
-    const logAgentId = log.agent?._id || log.agent || log.agentId;
-    const isAssignedAgent = assignedAgents.some(agentId => String(logAgentId) === String(agentId));
-    
-    // Check if this log is for the current case
-    const currentCaseName = order.value.caseName;
-    const isCurrentCase = log.caseName === currentCaseName;
-    
-    return isInDateRange && isAssignedAgent && isCurrentCase;
+    const isCurrentCase = (log.caseName || log.case) === currentCaseName;
+    return isInDateRange && isCurrentCase;
   });
 
   // Add deduplication to prevent double counting
@@ -309,7 +337,6 @@
   });
 
   // Calculate total units from deduplicated logs for the current case only (excluding test cases)
-  const currentCaseName = order.value.caseName;
   const isTest = isTestCase(order.value);
   
   // If it's a test case, return zero revenue
@@ -435,23 +462,14 @@ const calculateWeeklyTotals = async () => {
   const dateRange = currentDateRange.value;
   const allOrders = orders.value;
   
-  if (!stats || !Array.isArray(stats) || !dateRange || !allOrders) {
+  if (!stats || !Array.isArray(stats) || !dateRange || !allOrders || !order.value?.caseName) {
     weeklyTotals.value = [];
     return;
   }
 
-  // Get all agents assigned to the current case
-  const assignedAgents = order.value?.assignedCallers || [];
-  if (!assignedAgents.length) {
-    weeklyTotals.value = [];
-    return;
-  }
+  const currentCaseName = order.value.caseName;
 
-  const agentCases = allOrders.filter(order => 
-    order.assignedCallers && order.assignedCallers.includes(assignedAgents[0])
-  );
-
-  // Filter logs to only include those within the selected date range AND for all assigned agents AND current case
+  // Filter logs: within date range AND for the current case (show all logs for the case)
   const [startDate, endDate] = dateRange;
   const monthStart = new Date(startDate);
   const monthEnd = new Date(endDate);
@@ -460,16 +478,8 @@ const calculateWeeklyTotals = async () => {
   const filteredStats = stats.filter(log => {
     const logDate = new Date(log.date);
     const isInDateRange = logDate >= monthStart && logDate <= monthEnd;
-    
-    // Check if this log belongs to any of the agents assigned to the current case
-    const logAgentId = log.agent?._id || log.agent || log.agentId;
-    const isAssignedAgent = assignedAgents.some(agentId => String(logAgentId) === String(agentId));
-    
-    // Check if this log is for the current case
-    const currentCaseName = order.value.caseName;
-    const isCurrentCase = log.caseName === currentCaseName;
-    
-    return isInDateRange && isAssignedAgent && isCurrentCase;
+    const isCurrentCase = (log.caseName || log.case) === currentCaseName;
+    return isInDateRange && isCurrentCase;
   });
 
   // Add deduplication to prevent double counting
@@ -617,20 +627,10 @@ const individualLogs = computed(() => {
     return [];
   }
 
-  // Get all agents assigned to the current case
-  const assignedAgents = order.value?.assignedCallers || [];
-  if (!assignedAgents.length) return [];
+  const currentCaseName = order.value?.caseName;
+  if (!currentCaseName) return [];
 
-  console.log('Individual logs - Assigned agents:', assignedAgents);
-  console.log('Individual logs - All orders:', allOrders);
-
-  const agentCases = allOrders.filter(order => 
-    order.assignedCallers && order.assignedCallers.includes(assignedAgents[0])
-  );
-
-  console.log('Individual logs - Agent cases:', agentCases);
-
-  // Filter logs to only include those within the selected date range AND for all assigned agents AND current case
+  // Filter logs: within date range AND for the current case (show all logs for the case)
   const [startDate, endDate] = dateRange;
   const monthStart = new Date(startDate);
   const monthEnd = new Date(endDate);
@@ -639,16 +639,8 @@ const individualLogs = computed(() => {
   const filteredStats = stats.filter(log => {
     const logDate = new Date(log.date);
     const isInDateRange = logDate >= monthStart && logDate <= monthEnd;
-    
-    // Check if this log belongs to any of the agents assigned to the current case
-    const logAgentId = log.agent?._id || log.agent || log.agentId;
-    const isAssignedAgent = assignedAgents.some(agentId => String(logAgentId) === String(agentId));
-    
-    // Check if this log is for the current case
-    const currentCaseName = order.value.caseName;
-    const isCurrentCase = log.caseName === currentCaseName;
-    
-    return isInDateRange && isAssignedAgent && isCurrentCase;
+    const isCurrentCase = (log.caseName || log.case) === currentCaseName;
+    return isInDateRange && isCurrentCase;
   });
 
   // Remove duplicates based on unique log ID or combination of date + agent + case
@@ -823,46 +815,28 @@ watch(individualLogs, () => {
       isCalculatingWeeklyLogs.value = true;
       console.log('Starting to fetch case stats, setting loading to true');
       
-      const agentId = order.value.assignedCallers?.[0];
-      if (!agentId) {
-        console.log('No agent ID found, clearing loading state');
+      const currentCaseName = order.value?.caseName;
+      if (!currentCaseName) {
+        console.log('No case name found, clearing loading state');
         isCalculatingWeeklyLogs.value = false;
+        caseStats.value = [];
         return;
       }
 
-      // Get all cases the agent is assigned to
-      const agentCases = orders.value.filter(order => 
-        order.assignedCallers && order.assignedCallers.includes(agentId)
-      );
-
-      console.log('Agent cases found:', agentCases.length);
-      const caseNames = agentCases.map(c => c.caseName);
+      // Fetch logs for the current order's case directly (not filtered by first agent)
       const allStats = [];
+      try {
+        console.log(`Fetching stats for case: ${currentCaseName}`);
+        const response = await axios.get(
+          `${urls.backEndURL}/dailyLogs/${encodeURIComponent(currentCaseName)}`
+        );
+        const data = response.data;
+        allStats.push(...(Array.isArray(data) ? data : []));
+        console.log(`Got ${allStats.length} logs for case: ${currentCaseName}`);
+      } catch (error) {
+        console.warn(`Error fetching stats for case ${currentCaseName}:`, error);
+      }
 
-      // Add timeout to prevent infinite loading
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Timeout after 10 seconds')), 10000)
-      );
-
-      // Fetch stats for all cases the agent is assigned to
-      console.log('Fetching stats for cases:', caseNames);
-      const fetchPromise = Promise.all(caseNames.map(async (caseName) => {
-        try {
-          console.log(`Fetching stats for case: ${caseName}`);
-          const response = await axios.get(
-            `${urls.backEndURL}/dailyLogs/${caseName}`
-          );
-          console.log(`Got ${response.data.length} logs for case: ${caseName}`);
-          return response.data;
-        } catch (error) {
-          console.warn(`Error fetching stats for case ${caseName}:`, error);
-          return [];
-        }
-      }));
-
-      const results = await Promise.race([fetchPromise, timeoutPromise]);
-      allStats.push(...results.flat());
-      
       caseStats.value = allStats;
       console.log('All Agent Case Stats loaded:', caseStats.value);
       

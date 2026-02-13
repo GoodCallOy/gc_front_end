@@ -106,8 +106,8 @@
                           <td>{{ getMonthName(month.month) }} {{ month.year }}</td>
                           <td>{{ formatDateDetailed(month.startDateStr) }} - {{ formatDateDetailed(month.endDateStr) }}</td>
                           <td>{{ month.quantityCompleted }}</td>
-                          <td>€{{ formatCurrency(month.revenue) }}</td>
-                          <td>€{{ formatCurrency(getMonthlyRevenueGoal(item, month)) }}</td>
+                          <td>{{ formatCurrency(month.revenue) }}</td>
+                          <td>{{ formatCurrency(getMonthlyRevenueGoal(item, month)) }}</td>
                           <td>
                             <span :class="['percentage-badge', getMonthlyPercentageToGoalClass(item, month)]">
                               {{ getMonthlyPercentageToGoal(item, month) }}%
@@ -118,7 +118,7 @@
                         <tr class="font-weight-bold">
                           <td colspan="2">{{ t('ordersDashboard.monthlyBreakdown.total') }}</td>
                           <td>{{ getTotalQuantity(item.monthlyBreakdown) }}</td>
-                          <td>€{{ formatCurrency(getTotalRevenue(item.monthlyBreakdown)) }}</td>
+                          <td>{{ formatCurrency(getTotalRevenue(item.monthlyBreakdown)) }}</td>
                           <td></td>
                           <td></td>
                           <td>{{ Math.max(0, item.totalQuantity - getTotalQuantity(item.monthlyBreakdown)) }}</td>

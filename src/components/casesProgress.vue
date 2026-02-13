@@ -65,13 +65,13 @@
                       <td>{{ getMonthName(month.month) }} {{ month.year }}</td>
                       <td>{{ formatDate(month.startDateStr) }} - {{ formatDate(month.endDateStr) }}</td>
                       <td>{{ month.quantityCompleted }}</td>
-                      <td>€{{ formatCurrency(month.revenue) }}</td>
+                      <td>{{ formatCurrency(month.revenue) }}</td>
                       <td>{{ Math.max(0, item.monthGoal - getTotalCompletedUpToMonth(item.monthlyBreakdown, month.monthKey)) }}</td>
                     </tr>
                     <tr class="font-weight-bold">
                       <td colspan="2">Total</td>
                       <td>{{ getTotalQuantity(item.monthlyBreakdown) }}</td>
-                      <td>€{{ formatCurrency(getTotalRevenue(item.monthlyBreakdown)) }}</td>
+                      <td>{{ formatCurrency(getTotalRevenue(item.monthlyBreakdown)) }}</td>
                       <td>{{ Math.max(0, item.monthGoal - getTotalQuantity(item.monthlyBreakdown)) }}</td>
                     </tr>
                   </tbody>
@@ -80,12 +80,12 @@
             </td>
           </tr>
         </template>
-        <template #item.revenueNow="{ item }">€{{ formatCurrency(item.revenueNow) }}</template>
-        <template #item.revenueGoal="{ item }">€{{ formatCurrency(item.revenueGoal) }}</template>
-        <template #item.projectManagementFee="{ item }">€{{ formatCurrency(item.projectManagementFee) }}</template>
-        <template #item.projectStartFee="{ item }">€{{ formatCurrency(item.projectStartFee) }}</template>
-        <template #item.invoicePrice="{ item }">€{{ formatCurrency(item.invoicePrice) }}</template>
-        <template #item.totalPrice="{ item }">€{{ formatCurrency(item.totalPrice) }}</template>
+        <template #item.revenueNow="{ item }">{{ formatCurrency(item.revenueNow) }}</template>
+        <template #item.revenueGoal="{ item }">{{ formatCurrency(item.revenueGoal) }}</template>
+        <template #item.projectManagementFee="{ item }">{{ formatCurrency(item.projectManagementFee) }}</template>
+        <template #item.projectStartFee="{ item }">{{ formatCurrency(item.projectStartFee) }}</template>
+        <template #item.invoicePrice="{ item }">{{ formatCurrency(item.invoicePrice) }}</template>
+        <template #item.totalPrice="{ item }">{{ formatCurrency(item.totalPrice) }}</template>
         <template #item.caseName="{ item }">
           <span>
             {{ item.caseName }}
