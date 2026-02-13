@@ -130,18 +130,22 @@
               </tr>
             </template>
             <template #item.caseName="{ item }">
-              <span>
-                <span
-                  class="text-primary"
-                  style="cursor: pointer; text-decoration: underline;"
+              <div class="d-flex align-center">
+                <span class="mr-2">{{ item.caseName }}</span>
+                <v-btn
+                  icon
+                  variant="text"
+                  size="x-small"
+                  color="grey"
+                  title="Edit case"
                   @click.stop="editCaseFromOrder(item)"
                 >
-                  {{ item.caseName }}
-                </span>
-                <v-chip v-if="item.isMultiMonth" size="x-small" color="primary" class="ml-2">
+                  <v-icon size="small">mdi-pencil</v-icon>
+                </v-btn>
+                <v-chip v-if="item.isMultiMonth" size="x-small" color="primary" class="ml-1">
                   {{ t('ordersDashboard.multiMonth') }}
                 </v-chip>
-              </span>
+              </div>
             </template>
             <template #item.callers="{ item }">
               {{ getCallerNames(item) }}
