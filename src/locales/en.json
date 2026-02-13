@@ -205,7 +205,7 @@
         "selectCase": "Select Case",
         "caseUnit": "Case Unit",
         "pricePerUnit": "Price per Unit (€)",
-        "totalQuantity": "Total Quantity",
+        "totalQuantity": "Team goal",
         "startDate": "Start Date",
         "deadline": "Deadline",
         "orderStatus": "Order Status",
@@ -230,7 +230,7 @@
       "validation": {
         "caseUnitRequired": "Case Unit is required",
         "pricePerUnitRequired": "Price per unit is required",
-        "quantityRequired": "Quantity is required",
+        "quantityRequired": "Team goal is required",
         "startDateRequired": "Start date is required",
         "deadlineRequired": "Deadline is required",
         "orderStatusRequired": "Order status is required",

@@ -188,7 +188,7 @@
         "selectCase": "Valitse tapaus",
         "caseUnit": "Tapauksen yksikkö",
         "pricePerUnit": "Hinta per yksikkö (€)",
-        "totalQuantity": "Määrä yhteensä",
+        "totalQuantity": "Tiimin tavoite",
         "startDate": "Aloituspäivä",
         "deadline": "Määräaika",
         "orderStatus": "Tilauksen tila",
@@ -213,7 +213,7 @@
       "validation": {
         "caseUnitRequired": "Tapauksen yksikkö on pakollinen",
         "pricePerUnitRequired": "Hinta per yksikkö on pakollinen",
-        "quantityRequired": "Määrä on pakollinen",
+        "quantityRequired": "Tiimin tavoite on pakollinen",
         "startDateRequired": "Aloituspäivä on pakollinen",
         "deadlineRequired": "Määräaika on pakollinen",
         "orderStatusRequired": "Tilauksen tila on pakollinen",

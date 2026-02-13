@@ -45,7 +45,7 @@
                <strong>Deadline:</strong> {{ formatDate(order.deadline) }}
             </v-col>
             <v-col cols="3">
-               <strong>Quantity:</strong> {{ order.totalQuantity }}
+               <strong>Team goal:</strong> {{ order.totalQuantity }}
             </v-col>
             <v-col cols="3">
                 <strong>Estimated Revenue:</strong> €{{ order.estimatedRevenue }}
@@ -175,7 +175,7 @@
                 size="small"
                 color="grey"
                 title="Edit Log"
-                @click="editLog(item.originalLog)"
+                @click.stop="editLog(item.raw?.originalLog ?? item.originalLog)"
               >
                 <v-icon>mdi-pencil</v-icon>
               </v-btn>
@@ -190,7 +190,7 @@
                 size="small"
                 color="grey"
                 title="Delete Log"
-                @click="deleteLog(item.originalLog)"
+                @click.stop="deleteLog(item.raw?.originalLog ?? item.originalLog)"
               >
                 <v-icon>mdi-delete</v-icon>
               </v-btn>
@@ -360,7 +360,6 @@
 // Headers for weekly totals table
 const weeklyHeaders = computed(() => [
   { title: 'Week', key: 'date', sortable: true },
-  { title: 'Cases', key: 'cases', sortable: true },
   { title: t('agentTables.callTime'), key: 'callTime', sortable: true },
   { title: t('agentTables.outgoingCalls'), key: 'outgoingCalls', sortable: true },
   { title: t('agentTables.answeredCalls'), key: 'answeredCalls', sortable: true },
@@ -374,7 +373,6 @@ const weeklyHeaders = computed(() => [
 const individualHeaders = computed(() => [
   { title: t('agentTables.date'), key: 'date', sortable: true },
   { title: 'Agent', key: 'agentName', sortable: true },
-  { title: 'Case', key: 'caseName', sortable: true },
   { title: t('agentTables.unit'), key: 'caseUnit', sortable: true },
   { title: t('agentTables.callTime'), key: 'callTime', sortable: true },
   { title: t('agentTables.outgoingCalls'), key: 'outgoingCalls', sortable: true },
@@ -759,8 +757,11 @@ const calculateWeeklyLogGroups = async () => {
     if (key && weekGroups[key]) weekGroups[key].logs.push(log)
   }
 
-  // Convert to array and sort by week (newest first)
+  // Convert to array, sort by week, and filter to only weeks up to current (exclude future weeks)
+  const today = new Date();
+  today.setHours(23, 59, 59, 999);
   const result = Object.values(weekGroups)
+    .filter((w) => new Date(w.weekInfo.start) <= today) // Only include weeks that have started
     .sort((a, b) => new Date(a.weekInfo.start) - new Date(b.weekInfo.start))
     .slice(0, 4); // Limit to 4 weeks
 

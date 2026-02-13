@@ -31,9 +31,9 @@
       />
       <v-text-field
         v-model.number="form.totalQuantity"
-        label="Total Quantity"
+        label="Team goal"
         type="number"
-        :rules="[v => (v === 0 || !!v) || 'Quantity is required']"
+        :rules="[v => (v === 0 || !!v) || 'Team goal is required']"
         required
       />
 
