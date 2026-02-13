@@ -157,8 +157,8 @@
                 {{ computePercentageToGoal(item) }}%
               </span>
             </template>
-            <template #item.quantity="{ item }">
-              {{ computeOrderQuantity(item) }}
+            <template #item.teamGoals="{ item }">
+              {{ computeOrderQuantity(item) }} / {{ item.totalQuantity || 0 }}
             </template>
             <template #item.startDate="{ item }">
               {{ formatDate(item.startDate) }}
@@ -219,10 +219,9 @@ const tableHeaders = computed(() => [
   { title: t('ordersDashboard.tableHeaders.callers'), key: 'callers', sortable: false },
   { title: t('ordersDashboard.tableHeaders.pricePerUnit'), key: 'pricePerUnit' },
   { title: t('ordersDashboard.tableHeaders.unit'), key: 'caseUnit' },
-  { title: t('ordersDashboard.tableHeaders.quantity'), key: 'quantity', sortable: false },
-  { title: t('ordersDashboard.tableHeaders.totalQty'), key: 'totalQuantity' },
-  { title: t('ordersDashboard.tableHeaders.goal'), key: 'goal', sortable: false },
-  { title: t('ordersDashboard.tableHeaders.revenue'), key: 'revenue', sortable: false },
+  { title: t('ordersDashboard.tableHeaders.teamGoals'), key: 'teamGoals', sortable: false },
+  { title: t('ordersDashboard.tableHeaders.revenueGoal'), key: 'goal', sortable: false },
+  { title: t('ordersDashboard.tableHeaders.currentRevenue'), key: 'revenue', sortable: false },
   { title: t('ordersDashboard.tableHeaders.percentageToGoal'), key: 'percentageToGoal', sortable: true },
   { title: t('ordersDashboard.tableHeaders.start'), key: 'startDate' },
   { title: t('ordersDashboard.tableHeaders.deadline'), key: 'deadline' },
