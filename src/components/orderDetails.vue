@@ -12,10 +12,10 @@
     <v-card v-if="order" class="pa-4"   >
       <v-row justify="space-between">
         <v-col>
-          <h2>Case Details</h2>
+          <h2>{{ t('orderDetails.detailsFor', { name: order.caseName }) }}</h2>
         </v-col>
         <v-col cols="auto">
-          <v-btn color="primary" @click="editOrder">Edit Case</v-btn>
+          <v-btn color="primary" @click="editOrder">{{ t('orderDetails.editCase') }}</v-btn>
         </v-col>
       </v-row>
 
@@ -23,41 +23,36 @@
       <div>
         <v-row>
             <v-col cols="3">
-                <strong>Case:</strong> {{ order.caseName }}
+                <strong>{{ t('orderDetails.unit') }}:</strong> {{ order.caseUnit }}
             </v-col>
             <v-col cols="3">
-                <strong>Case Unit:</strong> {{ order.caseUnit }}
+                <strong>{{ t('orderDetails.pricePerUnit') }}:</strong> {{ order.pricePerUnit }}
             </v-col>
             <v-col cols="3">
-                <strong>Price per Unit:</strong> {{ order.pricePerUnit }}
+                <strong>{{ t('orderDetails.status') }}:</strong> {{ order.orderStatus }}
             </v-col>
             <v-col cols="3">
-                <strong>Status:</strong> {{ order.orderStatus }}
-            </v-col>
-        </v-row>
-        <v-row>
-            <v-col cols="3">
-                <strong>Case Type:</strong> {{ order.caseType || 'N/A' }}
+                <strong>{{ t('orderDetails.type') }}:</strong> {{ order.caseType || t('orderDetails.nA') }}
             </v-col>
         </v-row>
         <v-row>
             <v-col cols="3">
-               <strong>Deadline:</strong> {{ formatDate(order.deadline) }}
+               <strong>{{ t('orderDetails.deadline') }}:</strong> {{ formatDate(order.deadline) }}
             </v-col>
             <v-col cols="3">
-               <strong>Team goal:</strong> {{ order.totalQuantity }}
+               <strong>{{ t('orderDetails.teamGoal') }}:</strong> {{ order.totalQuantity }}
             </v-col>
             <v-col cols="3">
-                <strong>Estimated Revenue:</strong> €{{ order.estimatedRevenue }}
+                <strong>{{ t('orderDetails.estimatedRevenue') }}:</strong> €{{ order.estimatedRevenue }}
             </v-col>
             <v-col cols="3">
-                <strong>Callers:</strong> {{ getCallerNames(order, agents) }}
+                <strong>{{ t('orderDetails.callers') }}:</strong> {{ getCallerNames(order, agents) }}
             </v-col>
         </v-row>
         <v-row>
             <v-col cols="12">
                 <div v-if="order.assignedCallers?.length">
-                    <strong>Agent Goals:</strong>
+                    <strong>{{ t('orderDetails.agentGoals') }}:</strong>
                     <ul>
                         <li v-for="item in agentGoalsWithAchieved" :key="item.agentId">
                         {{ item.name }}: {{ item.achieved }} / {{ item.target }}
@@ -73,11 +68,11 @@
     <v-card class="pa-4 elevation-4" style="background-color: #eeeff1;">
     <v-row>
       <v-col cols="4">
-        <h2 class="text-h5">Case Statistics - {{ getFormattedDateRange() }}</h2>
+        <h2 class="text-h5">{{ t('orderDetails.caseStatistics') }} - {{ getFormattedDateRange() }}</h2>
       </v-col>
       <v-col cols="4">
         <h2 class="text-h6">
-          Current Revenue: 
+          {{ t('orderDetails.currentRevenue') }}: 
           <v-progress-circular
             v-if="isCalculatingRevenue"
             indeterminate
@@ -90,15 +85,15 @@
         </h2>
       </v-col>
       <v-col cols="4">
-        <h2 class="text-h6">Total Units: {{ revenueGenerated.totalUnits }}</h2>
+        <h2 class="text-h6">{{ t('orderDetails.totalUnits') }}: {{ revenueGenerated.totalUnits }}</h2>
       </v-col>
     </v-row>
     
-    <p v-if="weeklyTotals.length === 0 && individualLogs.length === 0">No statistics available for this case in the selected month.</p>
+    <p v-if="weeklyTotals.length === 0 && individualLogs.length === 0">{{ t('orderDetails.noStatistics') }}</p>
     <div v-else>
       <!-- Weekly Totals Table -->
       <div v-if="weeklyTotals.length > 0" class="mb-6">
-        <h3 class="text-h6 mb-3">Weekly Summary</h3>
+        <h3 class="text-h6 mb-3">{{ t('orderDetails.weeklySummary') }}</h3>
         <v-data-table
           :headers="weeklyHeaders"
           :items="weeklyTotals"
@@ -117,7 +112,7 @@
       <!-- Individual Logs Tables by Week -->
       <div>
         <h3 class="text-h6 mb-3 d-flex align-center">
-          Daily Entries by Week
+          {{ t('orderDetails.dailyEntriesByWeek') }}
           <v-progress-circular
             v-if="isCalculatingWeeklyLogs"
             indeterminate
@@ -136,7 +131,7 @@
             color="primary"
             class="mb-2"
           ></v-progress-circular>
-          <p class="text-caption text-grey">Loading daily entries...</p>
+          <p class="text-caption text-grey">{{ t('orderDetails.loadingDailyEntries') }}</p>
         </div>
         
         <div v-else-if="weeklyLogGroups.length > 0">
@@ -174,7 +169,7 @@
                 variant="text"
                 size="small"
                 color="grey"
-                title="Edit Log"
+                :title="t('agentDashboard.editLog')"
                 @click.stop="editLog(item.raw?.originalLog ?? item.originalLog)"
               >
                 <v-icon>mdi-pencil</v-icon>
@@ -189,13 +184,13 @@
                 variant="text"
                 size="small"
                 color="grey"
-                title="Delete Log"
+                :title="t('agentDashboard.deleteLog')"
                 @click.stop="deleteLog(item.raw?.originalLog ?? item.originalLog)"
               >
                 <v-icon>mdi-delete</v-icon>
               </v-btn>
               <span v-else-if="!canDeleteLog" class="text-caption text-grey">
-                No permission
+                {{ t('orderDetails.noPermission') }}
               </span>
             </template>
           </v-data-table>
@@ -359,7 +354,7 @@
 
 // Headers for weekly totals table
 const weeklyHeaders = computed(() => [
-  { title: 'Week', key: 'date', sortable: true },
+  { title: t('orderDetails.week'), key: 'date', sortable: true },
   { title: t('agentTables.callTime'), key: 'callTime', sortable: true },
   { title: t('agentTables.outgoingCalls'), key: 'outgoingCalls', sortable: true },
   { title: t('agentTables.answeredCalls'), key: 'answeredCalls', sortable: true },
@@ -372,7 +367,7 @@ const weeklyHeaders = computed(() => [
 // Headers for individual logs table
 const individualHeaders = computed(() => [
   { title: t('agentTables.date'), key: 'date', sortable: true },
-  { title: 'Agent', key: 'agentName', sortable: true },
+  { title: t('orderDetails.agent'), key: 'agentName', sortable: true },
   { title: t('agentTables.unit'), key: 'caseUnit', sortable: true },
   { title: t('agentTables.callTime'), key: 'callTime', sortable: true },
   { title: t('agentTables.outgoingCalls'), key: 'outgoingCalls', sortable: true },
@@ -382,8 +377,8 @@ const individualHeaders = computed(() => [
   { title: t('agentTables.results'), key: 'quantityCompleted', sortable: true },
   { title: t('dailyLogForm.comments'), key: 'comments', sortable: false },
   { title: t('agentTables.amountMade'), key: 'amountMade', sortable: true },
-  { title: 'Edit', key: 'edit', sortable: false, width: '60px' },
-  { title: 'Delete', key: 'delete', sortable: false, width: '60px' },
+  { title: t('orderDetails.edit'), key: 'edit', sortable: false, width: '60px' },
+  { title: t('orderDetails.delete'), key: 'delete', sortable: false, width: '60px' },
 ])
 
 // Format number helper function
@@ -574,16 +569,16 @@ const calculateWeeklyTotals = async () => {
     
     // Convert cases set to sorted array for display
     const casesList = Array.from(group.cases).sort();
-    const casesDisplay = casesList.length > 0 ? casesList.join(', ') : 'No cases';
+    const casesDisplay = casesList.length > 0 ? casesList.join(', ') : t('agentDashboard.noCases');
     
     // Show date range for clarity
     const s = new Date(group.weekInfo.start)
     const e = new Date(group.weekInfo.end)
     const fmt = (d) => `${String(d.getMonth()+1).padStart(2,'0')}-${d.getDate()}`
     result.push({
-      date: `Week ${group.weekInfo.weekNumber}, ${fmt(s)} to ${fmt(e)}`,
+      date: `${t('orderDetails.week')} ${group.weekInfo.weekNumber}, ${fmt(s)} to ${fmt(e)}`,
       cases: casesDisplay,
-      caseUnit: 'All Cases',
+      caseUnit: t('agentDashboard.allCases'),
       callTime: formatNumber(group.totals.callTime),
       outgoingCalls: group.totals.outgoingCalls,
       answeredCalls: group.totals.answeredCalls,
@@ -956,7 +951,7 @@ watch(individualLogs, () => {
     }
 
     // Confirm deletion
-    if (!confirm('Are you sure you want to delete this log entry? This action cannot be undone.')) {
+    if (!confirm(t('agentDashboard.confirmDeleteLog'))) {
       return;
     }
 
@@ -979,11 +974,11 @@ watch(individualLogs, () => {
         await calculateWeeklyLogGroups();
         
         // Show success message (you could add a toast notification here)
-        alert('Log entry deleted successfully');
+        alert(t('agentDashboard.logDeletedSuccessfully'));
       }
     } catch (error) {
       console.error('Error deleting log:', error);
-      alert('Failed to delete log entry. Please try again.');
+      alert(t('agentDashboard.failedToDeleteLog'));
     }
   }
 
