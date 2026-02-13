@@ -121,15 +121,16 @@
             
             <!-- Actions column for individual logs -->
             <template #item.actions="{ item }">
-              <v-icon
+              <v-btn
                 icon
+                variant="text"
                 size="small"
                 color="grey"
                 title="Edit Log"
-                @click="editLog(item.originalLog)"
+                @click.stop="editLog(item.raw?.originalLog ?? item.originalLog)"
               >
                 <v-icon>mdi-pencil</v-icon>
-              </v-icon>
+              </v-btn>
             </template>
           </v-data-table>
         </div>

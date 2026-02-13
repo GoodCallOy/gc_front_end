@@ -66,14 +66,17 @@
           @click:row="selectOrder"
         >
           <template #item.copy="{ item }">
-            <v-icon
-              style="cursor: pointer;"
+            <v-btn
+              icon
+              variant="text"
+              size="small"
               color="grey"
               class="mr-2"
+              :title="t('assignGoals.tableHeaders.copy')"
               @click.stop="copyOrder(item)"
             >
-              mdi-content-copy
-            </v-icon>
+              <v-icon>mdi-content-copy</v-icon>
+            </v-btn>
           </template>
 
           <template #item.caseName="{ item }">
@@ -101,25 +104,31 @@
           </template>
 
           <template #item.edit="{ item }">
-            <v-icon
-              style="cursor: pointer;"
+            <v-btn
+              icon
+              variant="text"
+              size="small"
               color="grey"
               class="mr-2"
+              :title="t('assignGoals.tableHeaders.edit')"
               @click.stop="selectOrderForEdit(item)"
             >
-              mdi-pencil
-            </v-icon>
+              <v-icon>mdi-pencil</v-icon>
+            </v-btn>
           </template>
 
           <template #item.actions="{ item }">
-            <v-icon
-              style="cursor: pointer;"
+            <v-btn
+              icon
+              variant="text"
+              size="small"
               color="grey"
               class="mr-2"
+              :title="t('assignGoals.tableHeaders.delete')"
               @click.stop="deleteOrder(item._id)"
             >
-              mdi-delete
-            </v-icon>
+              <v-icon>mdi-delete</v-icon>
+            </v-btn>
           </template>
         </v-data-table>
 

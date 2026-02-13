@@ -26,7 +26,7 @@
       </div>
 
       <!-- List of Agent Cards styled like listGcAgents.vue -->
-      <v-container class="py-2" style="width: 80%;">
+      <v-container class="py-2 agents-page-container" style="width: 80%; max-width: 100%;">
         <v-row dense align="stretch">
           <v-col
             v-for="(agent, index) in agentsWithStats"
@@ -36,6 +36,7 @@
             md="4"
             lg="3"
             class="d-flex"
+            style="min-width: 0;"
           >
             <v-card class="h-100 d-flex flex-column agent-card">
               <v-card-title class="text-truncate text-center">
@@ -70,11 +71,10 @@
 
               <v-spacer />
 
-              <v-card-actions class="justify-center">
+              <v-card-actions class="justify-center flex-wrap pa-2" style="gap: 8px;">
                 <!-- Role chip -->
                 <v-chip
                   size="small"
-                  class="mr-2"
                   :color="agent.active !== false ? 'success' : 'grey'"
                 >
                   {{ agent.role || 'caller' }}
@@ -83,7 +83,6 @@
                 <!-- Linked status chip -->
                 <v-chip
                   size="small"
-                  class="mr-2"
                   :color="agent.linkedUserId ? 'success' : 'grey'"
                 >
                   {{ agent.linkedUserId ? 'Linked' : 'Unlinked' }}
@@ -91,8 +90,8 @@
 
                 <v-spacer />
 
-                <v-btn size="small" color="grey" class="ml-2" @click="editAgent(agent)">Edit</v-btn>
-                <v-btn size="small" color="primary" class="ml-2" @click="viewAgent(agent)">View</v-btn>
+                <v-btn size="small" color="grey" @click="editAgent(agent)">Edit</v-btn>
+                <v-btn size="small" color="primary" @click="viewAgent(agent)">View</v-btn>
               </v-card-actions>
             </v-card>
           </v-col>
@@ -402,6 +401,8 @@ import AgentCard from './agentCard.vue';
     min-height: 360px;
     width: 100%;
     min-width: 0;
+    overflow: visible;
+    box-sizing: border-box;
   }
   .agent-card .v-card-title,
   .agent-card .v-card-subtitle {
@@ -417,6 +418,18 @@ import AgentCard from './agentCard.vue';
     padding-left: 1.5rem;
     margin-left: 0;
     text-align: left;
+  }
+
+  /* Prevent card actions from being cut off on narrow screens (e.g. Lenovo Yoga) */
+  .agent-card .v-card-actions {
+    flex-wrap: wrap;
+    justify-content: center;
+    padding: 8px !important;
+    min-height: 0;
+  }
+
+  .agents-page-container .v-col {
+    min-width: 0;
   }
   </style>
   

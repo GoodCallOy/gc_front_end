@@ -287,8 +287,11 @@
     padding: 16px;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
     font-family: 'Inter', sans-serif;
-    width: 100%; /* Fill the full container width */
-    min-height: 250px; /* Ensure consistent height */
+    width: 100%;
+    min-width: 0; /* Allow shrinking in grid to prevent overflow */
+    min-height: 250px;
+    box-sizing: border-box;
+    overflow: visible;
   }
 
   .case-card .menu {
@@ -305,6 +308,8 @@
     font-weight: 600;
     margin: 0 0 4px 0;
     color: #111827;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
   }
 
   .case-card .label {
@@ -347,12 +352,33 @@
     background-color: #10b981;
   }
 
-  /* Mobile optimizations */
+  /* Ensure bottom content wraps and doesn't get cut off */
+  .case-card > div {
+    min-width: 0;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+  }
+
+  .case-card .value {
+    flex-wrap: wrap;
+    word-break: break-word;
+  }
+
+  /* Mobile and narrow screen optimizations (e.g. Lenovo Yoga) */
   @media (max-width: 600px) {
     .case-card {
       width: 100% !important;
       max-width: none !important;
       margin: 8px 0 !important;
+      padding: 12px !important;
+    }
+  }
+
+  /* Prevent horizontal cut-off on narrow cards (1400px and below) */
+  @media (max-width: 1400px) {
+    .case-card {
+      min-width: 0;
+      padding: 14px;
     }
   }
 </style>

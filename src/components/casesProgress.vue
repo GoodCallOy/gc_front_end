@@ -95,7 +95,14 @@
           </span>
         </template>
         <template #item.actions="{ item }">
-          <v-btn icon size="small" color="grey" title="Edit Order" @click="editOrder(item)">
+          <v-btn
+            icon
+            variant="text"
+            size="small"
+            color="grey"
+            title="Edit Order"
+            @click.stop="editOrder(item)"
+          >
             <v-icon>mdi-pencil</v-icon>
           </v-btn>
         </template>

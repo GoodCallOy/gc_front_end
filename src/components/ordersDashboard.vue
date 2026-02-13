@@ -135,12 +135,12 @@
                 <v-btn
                   icon
                   variant="text"
-                  size="x-small"
+                  size="small"
                   color="grey"
                   title="Edit case"
                   @click.stop="editCaseFromOrder(item)"
                 >
-                  <v-icon size="small">mdi-pencil</v-icon>
+                  <v-icon>mdi-pencil</v-icon>
                 </v-btn>
                 <v-chip v-if="item.isMultiMonth" size="x-small" color="primary" class="ml-1">
                   {{ t('ordersDashboard.multiMonth') }}

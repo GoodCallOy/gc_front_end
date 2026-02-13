@@ -193,30 +193,31 @@
           <span v-else class="text-caption text-grey">—</span>
         </template>
         
-        <!-- Actions column for individual logs -->
-        <template #item.actions="{ item }">
-          <div class="d-flex align-center">
-            <v-icon
-              icon
-              class="mr-2"
-              size="small"
-              color="grey"
-              :title="t('agentDashboard.editLog')"
-              @click="editLog(item.originalLog)"
-             
-            >
-              <v-icon>mdi-pencil</v-icon>
-            </v-icon>
-            <v-icon
-              icon
-              size="small"
-              color="red"
-              :title="t('agentDashboard.deleteLog')"
-              @click="deleteLog(item.originalLog)"
-            >
-              <v-icon>mdi-delete</v-icon>
-            </v-icon>
-          </div>
+        <!-- Edit column for individual logs -->
+        <template #item.edit="{ item }">
+          <v-btn
+            icon
+            variant="text"
+            size="small"
+            color="grey"
+            :title="t('agentDashboard.editLog')"
+            @click.stop="editLog(item.raw?.originalLog ?? item.originalLog)"
+          >
+            <v-icon>mdi-pencil</v-icon>
+          </v-btn>
+        </template>
+        <!-- Delete column for individual logs -->
+        <template #item.delete="{ item }">
+          <v-btn
+            icon
+            variant="text"
+            size="small"
+            color="grey"
+            :title="t('agentDashboard.deleteLog')"
+            @click.stop="deleteLog(item.raw?.originalLog ?? item.originalLog)"
+          >
+            <v-icon>mdi-delete</v-icon>
+          </v-btn>
         </template>
       </v-data-table>
     </div>
@@ -245,28 +246,29 @@
         <template #item.goalReached="{ item }">
           {{ item.goalReached }}%
         </template>
-        <template #item.actions="{ item }">
-          <div class="d-flex align-center">
-            <v-icon
-              icon
-              size="small"
-              color="grey"
-              :title="t('agentDashboard.editGoal')"
-              @click="openEditWeeklyGoalDialog(item)"
-              class="mr-2"
-            >
-              <v-icon>mdi-pencil</v-icon>
-            </v-icon>
-            <v-icon
-              icon
-              size="small"
-              color="red"
-              :title="t('agentDashboard.deleteWeeklyGoal')"
-              @click="deleteWeeklyGoal(item)"
-            >
-              <v-icon>mdi-delete</v-icon>
-            </v-icon>
-          </div>
+        <template #item.edit="{ item }">
+          <v-btn
+            icon
+            variant="text"
+            size="small"
+            color="grey"
+            :title="t('agentDashboard.editGoal')"
+            @click.stop="openEditWeeklyGoalDialog(item)"
+          >
+            <v-icon>mdi-pencil</v-icon>
+          </v-btn>
+        </template>
+        <template #item.delete="{ item }">
+          <v-btn
+            icon
+            variant="text"
+            size="small"
+            color="grey"
+            :title="t('agentDashboard.deleteWeeklyGoal')"
+            @click.stop="deleteWeeklyGoal(item)"
+          >
+            <v-icon>mdi-delete</v-icon>
+          </v-btn>
         </template>
       </v-data-table>
     </div>
@@ -1099,7 +1101,8 @@ const individualHeaders = computed(() => [
   { title: t('agentTables.teamResults'), key: 'teamResults', sortable: true },
   { title: t('dailyLogForm.comments'), key: 'comments', sortable: false },
   { title: t('agentTables.amountMade'), key: 'amountMade', sortable: true },
-  { title: t('agentTables.edit'), key: 'actions', sortable: false, width: '100px' },
+  { title: t('agentTables.edit'), key: 'edit', sortable: false, width: '60px' },
+  { title: t('assignGoals.tableHeaders.delete'), key: 'delete', sortable: false, width: '60px' },
 ])
 
 // Headers for cases table view (agent dashboard)
@@ -1125,7 +1128,8 @@ const weeklyGoalsHeaders = computed(() => [
   { title: t('agentWeeklyGoal.goal'), key: 'goal', sortable: true },
   { title: t('agentTables.results'), key: 'progress', sortable: false },
   { title: t('agentTables.goalReached'), key: 'goalReached', sortable: true },
-  { title: '', key: 'actions', sortable: false, width: '96px' },
+  { title: t('agentTables.edit'), key: 'edit', sortable: false, width: '60px' },
+  { title: t('assignGoals.tableHeaders.delete'), key: 'delete', sortable: false, width: '60px' },
 ])
 
 // Table rows: all weekly goals for this agent for the current month
@@ -1791,7 +1795,7 @@ watch(currentDateRange, async (newRange) => {
 
   .grid-container {
     display: grid;
-    grid-template-columns: repeat(4, 1fr); /* 4 columns for smaller cards */
+    grid-template-columns: repeat(4, minmax(0, 1fr)); /* minmax(0,1fr) allows cards to shrink and prevents overflow */
     gap: 12px;
     width: 100%;
     max-width: 100%;
@@ -1802,6 +1806,12 @@ watch(currentDateRange, async (newRange) => {
     /* Hide scrollbar for Webkit browsers (Chrome, Safari) */
     scrollbar-width: none; /* Firefox */
     -ms-overflow-style: none;  /* IE and Edge */
+  }
+
+  /* Allow grid children to shrink below content size - prevents cut-off on Yoga/narrow screens */
+  .grid-container > * {
+    min-width: 0;
+    overflow: visible;
   }
 
 
