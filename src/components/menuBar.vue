@@ -256,6 +256,13 @@ async function logout() {
         :active="route.name === 'agentWeeklyGoal'"
         @click="navigateTo('agentWeeklyGoal')"
       />
+      <v-list-item
+        v-if="(user?.user?.role === 'caller' && isCallerLinkedToAgent) || user?.user?.role === 'admin' || user?.user?.role === 'manager'"
+        prepend-icon="mdi-chart-line"
+        :title="t('buttons.reports')"
+        :active="route.name === 'agentReport'"
+        @click="navigateTo('agentReport')"
+      />
 
       <!-- Orders (admin/manager only – submenu) -->
       <v-list-group

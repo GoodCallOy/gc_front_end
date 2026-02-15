@@ -29,7 +29,8 @@
       "agentDashboard": "Kojelauta",
       "home": "Koti",
       "contactManagerForCases": "Ota yhteyttä esimieheesi saadaksesi tapauksia",
-      "accountNotLinked": "Tili ei ole linkitetty - ota yhteyttä esimieheesi"
+      "accountNotLinked": "Tili ei ole linkitetty - ota yhteyttä esimieheesi",
+      "reports": "Kaaviot"
     },
     "messages": {
       "noCasesAssigned": "Sinua ei ole lisätty mihinkään tapaukseen",

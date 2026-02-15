@@ -42,7 +42,8 @@
       "agentDashboard": "Dashboard",
       "home": "Home",
       "contactManagerForCases": "Contact your manager to be assigned to cases",
-      "accountNotLinked": "Account not linked - contact your manager"
+      "accountNotLinked": "Account not linked - contact your manager",
+      "reports": "Charts"
     },
     "messages": {
       "noCasesAssigned": "You have not been added to any cases",

@@ -59,10 +59,23 @@
 
     <!-- Show cases if assigned -->
     <div v-else>
-      <div class="d-flex align-center justify-space-between mb-4">
+      <div class="d-flex align-center justify-space-between mb-4 flex-wrap" style="gap: 12px;">
         <h1 class="text-h4 mb-0">
           {{ t('agentDashboard.casesFor') }} {{ selectedGcAgent ? selectedGcAgent.name : '—' }}
         </h1>
+        <v-select
+          v-if="currentUser?.role === 'admin' || currentUser?.role === 'manager'"
+          v-model="viewReportCaseId"
+          :items="reportCaseOptions"
+          item-title="caseName"
+          :item-value="(item) => item._id ?? item.id ?? ''"
+          density="compact"
+          hide-details
+          style="max-width: 260px;"
+          label="View Report"
+          :disabled="!reportCaseOptions.length"
+          @update:model-value="onViewReportCaseSelect"
+        />
         <v-select
           v-if="currentUser?.role === 'admin' || currentUser?.role === 'manager'"
           v-model="selectedAgentName"
@@ -398,6 +411,25 @@ function goToCaseDetails(row) {
       agentId: agentId ? String(agentId) : undefined,
     },
   });
+}
+
+function goToAgentReports(agentName, caseId) {
+  const name = agentName || selectedAgentName.value || selectedGcAgent.value?.name;
+  const query = {};
+  if (name) query.agent = name;
+  if (caseId) query.case = caseId;
+  router.push({ name: 'agentReport', query });
+}
+
+// Cases for the selected agent (for View Report dropdown) - matches report page case options
+const reportCaseOptions = computed(() => userOrders.value || []);
+
+const viewReportCaseId = ref('');
+
+function onViewReportCaseSelect(caseId) {
+  if (!caseId) return;
+  goToAgentReports(selectedAgentName.value || selectedGcAgent.value?.name, caseId);
+  viewReportCaseId.value = ''; // reset so dropdown shows placeholder again
 }
 
 // Helper function to check if an order is a test case
@@ -1452,6 +1484,7 @@ watch(
 )
 
 watch(selectedAgentName, (newName) => {
+  viewReportCaseId.value = '' // reset View Report selection when agent changes
   // When admin/manager changes the dropdown, update the query param
   if (!newName) return
   const current = route.query.agent

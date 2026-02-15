@@ -27,6 +27,7 @@ import orderDetails from '@/components/orderDetails.vue';
 import assignGoals from '@/components/orders/assignGoals.vue';
 import CaseTypesManager from '@/components/orders/CaseTypesManager.vue';
 import agentDashboard from '@/components/agentDashboard.vue';
+import agentReport from '@/components/agentReport.vue';
 import agentCaseDetails from '@/components/agentCaseDetails.vue';
 import agentWeeklyGoalForm from '@/components/agentWeeklyGoalForm.vue';
 import listGcAgents from '@/components/agents/listGcAgents.vue';
@@ -49,6 +50,7 @@ const routes = [
       { path: 'dashboard', name: 'home', component: DashBoard, meta: { requiresAuth: true, roles: ['admin', 'manager'] }  },
       { path: 'dashboard2', name: 'dash2', component: DashBoard2, meta: { requiresAuth: true, roles: ['admin', 'manager'] }  },
       { path: 'agentDashboard', name: 'agentDashboard', component: agentDashboard, meta: { requiresAuth: true, roles: ['caller', 'admin', 'manager'] }  },
+      { path: 'agent-report', name: 'agentReport', component: agentReport, meta: { requiresAuth: true, roles: ['caller', 'admin', 'manager'] }  },
       { path: 'listGcAgents', name: 'listGcAgents', component: listGcAgents, meta: { requiresAuth: true, roles: ['admin'] }  },  
       { path: 'editGcAgent', name: 'editGcAgent', component: editGcAgent, meta: { requiresAuth: true, roles: ['admin'] },
         props: route => ({ activeAgent: route.query.activeAgent || "" })  
