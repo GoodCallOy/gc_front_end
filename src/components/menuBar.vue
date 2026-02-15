@@ -196,6 +196,20 @@ async function logout() {
       />
       <v-list-item
         v-if="user?.user?.role === 'admin' || user?.user?.role === 'manager'"
+        prepend-icon="mdi-phone-cancel"
+        title="Canceled Calls"
+        :active="route.name === 'canceledCalls'"
+        @click="navigateTo('canceledCalls')"
+      />
+      <v-list-item
+        v-if="(user?.user?.role === 'caller' && isCallerLinkedToAgent) || user?.user?.role === 'admin' || user?.user?.role === 'manager'"
+        prepend-icon="mdi-chart-line"
+        :title="t('buttons.reports')"
+        :active="route.name === 'agentReport'"
+        @click="navigateTo('agentReport')"
+      />
+      <v-list-item
+        v-if="user?.user?.role === 'admin' || user?.user?.role === 'manager'"
         prepend-icon="mdi-account-multiple"
         :title="t('buttons.agents')"
         :active="route.name === 'agents'"
@@ -255,13 +269,6 @@ async function logout() {
         :title="t('agentWeeklyGoal.menuTitle')"
         :active="route.name === 'agentWeeklyGoal'"
         @click="navigateTo('agentWeeklyGoal')"
-      />
-      <v-list-item
-        v-if="(user?.user?.role === 'caller' && isCallerLinkedToAgent) || user?.user?.role === 'admin' || user?.user?.role === 'manager'"
-        prepend-icon="mdi-chart-line"
-        :title="t('buttons.reports')"
-        :active="route.name === 'agentReport'"
-        @click="navigateTo('agentReport')"
       />
 
       <!-- Orders (admin/manager only – submenu) -->
