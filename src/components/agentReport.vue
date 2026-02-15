@@ -281,8 +281,15 @@ const donutChartOptions = {
 const barChartOptions = {
   responsive: true,
   maintainAspectRatio: false,
+  layout: {
+    padding: { top: 30, bottom: 10 },
+  },
   plugins: {
-    legend: { display: true },
+    legend: {
+      display: true,
+      position: 'bottom',
+      padding: 16,
+    },
     datalabels: {
       anchor: 'end',
       align: 'top',
