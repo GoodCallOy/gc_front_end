@@ -443,13 +443,23 @@ function isTestCase(order) {
   return false;
 }
 
+// Normalize case name for comparison (trim, collapse spaces)
+function normalizeCaseName(name) {
+  if (name == null) return '';
+  return String(name).trim().replace(/\s+/g, ' ');
+}
+
 // Helper function to find the correct order for a log
 // Handles cases where multiple orders have the same caseName but different prices
 // Always uses the most recent order (by deadline) to ensure latest pricePerUnit
+// Uses normalized comparison to tolerate minor spacing/casing differences
 function findOrderForLog(log, availableOrders) {
   if (!log || !availableOrders || !availableOrders.length) return null;
   
-  const matchingOrders = availableOrders.filter(order => order.caseName === log.caseName);
+  const logCaseName = normalizeCaseName(log.caseName);
+  const matchingOrders = availableOrders.filter(order =>
+    normalizeCaseName(order.caseName) === logCaseName
+  );
   
   if (matchingOrders.length === 0) return null;
   if (matchingOrders.length === 1) return matchingOrders[0];
@@ -716,15 +726,21 @@ const revenueGenerated = computed(() => {
     
     if (logCase && !isTestCase(logCase)) {
       const pricePerUnit = Number(logCase.pricePerUnit) || 0;
-      const caseUnit = String(logCase.caseUnit || '').toLowerCase();
+      // Prefer order's caseUnit; fall back to log's (saved from form when user submitted)
+      // Support both camelCase and snake_case from API
+      const caseUnit = String(logCase.caseUnit || log.caseUnit || log.case_unit || '').toLowerCase();
+
+      // Helper: is this an hours-type case unit (hours, hour, hrs, h)
+      const isHoursCase = /^hours?$|^hrs?$|^h$/.test(caseUnit);
+      const isInterviewsCase = /^interview(s)?$/.test(caseUnit);
 
       // Decide which numeric field is the canonical "unit" for this case type
       let canonicalUnits = logQuantityCompleted;
-      if (caseUnit === 'hours') {
-        // For hourly cases, prefer explicit hours if provided
-        const hours = Number(log.hours ?? logQuantityCompleted) || 0;
+      if (isHoursCase) {
+        // For hourly cases, use log.hours if set and > 0; else quantityCompleted (form may store in Results)
+        const hours = Number(log.hours) || Number(logQuantityCompleted) || 0;
         canonicalUnits = hours;
-      } else if (caseUnit === 'interviews') {
+      } else if (isInterviewsCase) {
         // For interview cases, prefer completedInterviews, then interviews, then quantityCompleted
         const interviews = Number(log.completedInterviews ?? log.interviews ?? logQuantityCompleted) || 0;
         canonicalUnits = interviews;
@@ -739,26 +755,35 @@ const revenueGenerated = computed(() => {
       const logMyRateRevenue = agentRate > 0 ? canonicalUnits * agentRate : 0;
       totalMyRateRevenue += logMyRateRevenue;
       
-      // Track units by type
-      // Interviews: prefer completedInterviews, then interviews, across all logs
-      const interviewUnits = Number(log.completedInterviews ?? log.interviews ?? 0);
+      // Track units by type (use quantityCompleted fallback when explicit field missing - same as revenue)
+      // Interviews: for interview cases use completedInterviews ?? interviews ?? quantityCompleted
+      const interviewUnits = isInterviewsCase
+        ? Number(log.completedInterviews ?? log.interviews ?? logQuantityCompleted) || 0
+        : Number(log.completedInterviews ?? log.interviews ?? 0);
       if (Number.isFinite(interviewUnits) && !Number.isNaN(interviewUnits)) {
         unitsByType.interviews += interviewUnits;
       }
 
-      // Hours: sum hours field across all logs
-      const hourUnits = Number(log.hours ?? 0);
+      // Hours: for hourly cases use log.hours if > 0, else quantityCompleted (form may store in Results);
+      // for other cases only count explicit log.hours
+      const hourUnits = isHoursCase
+        ? Number(log.hours) || Number(logQuantityCompleted) || 0
+        : Number(log.hours ?? 0);
       if (Number.isFinite(hourUnits) && !Number.isNaN(hourUnits)) {
         unitsByType.hours += hourUnits;
       }
 
       // Meetings: keep using quantityCompleted for meeting-type cases
-      if (caseUnit === 'meetings') {
+      const isMeetingsCase = /^meeting(s)?$/.test(caseUnit);
+      if (isMeetingsCase) {
         unitsByType.meetings += logQuantityCompleted;
       }
       
-      // Track A-leads from the log entry
-      const aLeads = Number(log.aLeads || 0);
+      // Track A-leads: for a-leads/aleads case types use log.aLeads ?? quantityCompleted; else log.aLeads only
+      const isALeadsCase = /^a[-_]?leads?$/i.test(String(logCase.caseUnit || ''));
+      const aLeads = isALeadsCase
+        ? Number(log.aLeads ?? logQuantityCompleted) || 0
+        : Number(log.aLeads ?? 0);
       if (Number.isFinite(aLeads) && !Number.isNaN(aLeads)) {
         unitsByType.aLeads += aLeads;
       }
@@ -767,7 +792,9 @@ const revenueGenerated = computed(() => {
         logIndex: index + 1,
         date: log.date,
         caseName: log.caseName,
+        caseUnit,
         quantityCompleted: logQuantityCompleted,
+        hoursValue: isHoursCase ? hourUnits : undefined,
         pricePerUnit: pricePerUnit,
         revenue: logRevenue,
         logId: log._id || log.id,
@@ -859,10 +886,10 @@ const weeklyTotals = computed(() => {
     return [];
   }
 
-  // Get all cases the agent is assigned to
+  // Get all cases the agent is assigned to (handle both object and string assignedCallers)
   const agentId = String(selectedGcAgent.value._id ?? selectedGcAgent.value.id);
-  const agentCases = allOrders.filter(order => 
-    order.assignedCallers && order.assignedCallers.includes(agentId)
+  const agentCases = allOrders.filter(order =>
+    isAgentAssignedToOrder(order, agentId)
   );
 
   // Filter logs to only include those within the selected date range AND for the specific agent
@@ -1010,10 +1037,10 @@ const individualLogs = computed(() => {
     return [];
   }
 
-  // Get all cases the agent is assigned to
+  // Get all cases the agent is assigned to (handle both object and string assignedCallers)
   const agentId = String(selectedGcAgent.value._id ?? selectedGcAgent.value.id);
-  const agentCases = allOrders.filter(order => 
-    order.assignedCallers && order.assignedCallers.includes(agentId)
+  const agentCases = allOrders.filter(order =>
+    isAgentAssignedToOrder(order, agentId)
   );
 
   // Filter logs to only include those within the selected date range AND for the specific agent
@@ -1519,6 +1546,16 @@ watch(selectedAgentName, (newName) => {
   })
 })
 
+// Helper: check if agent is assigned to order (handles both object and string ID formats)
+function isAgentAssignedToOrder(order, agentId) {
+  if (!order?.assignedCallers || !Array.isArray(order.assignedCallers)) return false;
+  const aid = String(agentId);
+  return order.assignedCallers.some(caller => {
+    const callerId = caller?._id ?? caller?.id ?? caller;
+    return String(callerId) === aid;
+  });
+}
+
 // Function to fetch all case stats for the agent across all cases
 const fetchCaseStats = async () => {
   if (!selectedGcAgent.value || !orders.value) {
@@ -1529,11 +1566,10 @@ const fetchCaseStats = async () => {
   isLoadingDashboard.value = true;
 
   try {
-    // Get all cases the agent is assigned to
+    // Get all cases the agent is assigned to (handle both object and string assignedCallers)
     const agentId = String(selectedGcAgent.value._id ?? selectedGcAgent.value.id);
-    
-    const agentCases = orders.value.filter(order => 
-      order.assignedCallers && order.assignedCallers.includes(agentId)
+    const agentCases = orders.value.filter(order =>
+      isAgentAssignedToOrder(order, agentId)
     );
 
 
