@@ -6,12 +6,22 @@ const isDev = process.env.NODE_ENV === 'development';
 module.exports = defineConfig({
   transpileDependencies: true,
   lintOnSave: false,
-  configureWebpack: {
-    plugins: [
+  configureWebpack: (config) => {
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      http: require.resolve('stream-http'),
+      https: require.resolve('https-browserify'),
+      http2: false,
+      util: require.resolve('util/'),
+      stream: require.resolve('stream-browserify'),
+      zlib: require.resolve('browserify-zlib'),
+    };
+    config.plugins = config.plugins || [];
+    config.plugins.push(
       new ESLintPlugin({
         fix: true,
-      }),
-    ],
+      })
+    );
   },
   devServer: isDev
     ? (() => {

@@ -1,7 +1,16 @@
 <template>
   <v-container fluid style="width: 90%;" class="assign-goals">
+    <!-- Date Navigation Header (matches ordersDashboard) -->
+    <DateHeader
+      :currentDateRange="currentDateRange"
+      :monthWeeks="monthWeeks"
+      :showMonthOnly="true"
+      @prev="getPreviousMonth"
+      @next="getNextMonth"
+    />
+
     <v-card elevation="1" class="mb-4">
-        <div class="d-flex align-center justify-space-around responsive-toolbar">
+        <div class="d-flex align-center justify-space-around responsive-toolbar flex-wrap" style="gap: 12px;">
 
             <v-btn color="primary" @click="openAddAgentModal">
                 {{ t('assignGoals.buttons.addAgent') }}
@@ -10,17 +19,6 @@
             <v-btn color="primary" @click="openAddCaseModal">
                 {{ t('assignGoals.buttons.addCustomer') }}
             </v-btn>
-
-            <!-- Date Range Display (center) -->
-            <div class="d-flex align-center">
-                <v-btn icon flat class="pa-0 ma-0" @click="getPreviousMonth">
-                <v-icon>mdi-chevron-left</v-icon>
-                </v-btn>
-                <div class="text-h6 font-weight-medium mx-3">{{ getFormattedDateRange() }}</div>
-                <v-btn icon flat @click="getNextMonth">
-                <v-icon>mdi-chevron-right</v-icon>
-                </v-btn>
-            </div>
 
             <v-btn color="primary" @click="openAddOrderModal">
                 {{ t('assignGoals.buttons.addCampaign') }}
@@ -44,6 +42,8 @@
             </v-btn>
         </div>
     </v-card>
+
+    <h1 class="text-h4 mb-4" style="width: 100%;">{{ t('buttons.assignGoals') }} - {{ getFormattedDateRange() }}</h1>
 
     <v-row>
       <!-- Orders Table -->
@@ -80,23 +80,27 @@
           </template>
 
           <template #item.caseName="{ item }">
-            <span>
-              <span
-                class="text-primary"
-                style="cursor: pointer; text-decoration: underline;"
+            <div class="d-flex align-center">
+              <span class="mr-2">{{ item.caseName }}</span>
+              <v-btn
+                icon
+                variant="text"
+                size="small"
+                color="grey"
+                :title="t('orderDetails.editCase')"
                 @click.stop="editCaseFromOrder(item)"
               >
-                {{ item.caseName }}
-              </span>
+                <v-icon>mdi-pencil</v-icon>
+              </v-btn>
               <v-chip
                 v-if="orderSpansMultipleMonths(item)"
                 size="x-small"
                 color="primary"
-                class="ml-2"
+                class="ml-1"
               >
                 {{ t('ordersDashboard.multiMonth') }}
               </v-chip>
-            </span>
+            </div>
           </template>
 
           <template #item.goalsDistributed="{ item }">
@@ -516,8 +520,9 @@ import { ref, onMounted, computed, reactive, watch, toRaw } from 'vue'
 import { useRouter } from 'vue-router'
 import { useStore } from 'vuex'
 import { useI18n } from 'vue-i18n'
-import { goToNextMonth, goToPreviousMonth, formattedDateRange, isCurrentMonth } from '@/js/dateUtils';
+import { goToNextMonth, goToPreviousMonth, formattedDateRange, isCurrentMonth, getMonthWeeks } from '@/js/dateUtils';
 import { getOrderMonths, orderSpansMultipleMonths } from '@/js/statsUtils';
+import DateHeader from '@/components/DateHeader.vue';
 import axios from 'axios'
 import urls from '@/js/config.js'
 
@@ -812,6 +817,7 @@ const gcAgents = computed(() => store.getters['gcAgents'])
 const dailyLogs = computed(() => store.getters['dailyLogs'] || [])
 const agents = gcAgents
 const currentDateRange = computed(() => store.getters['currentDateRange'])
+const monthWeeks = ref([])
 const cases = computed(() => store.getters['GcCases'])
 const roles = ['admin', 'caller', 'manager']
 const message = ref('')
@@ -1643,6 +1649,19 @@ const submitCaseForm = async () => {
 }
 
 
+async function loadMonthWeeks() {
+  try {
+    if (!currentDateRange.value || currentDateRange.value.length < 2) return
+    const [startDate] = currentDateRange.value
+    const d = new Date(startDate)
+    const year = d.getFullYear()
+    const month = d.getMonth() + 1
+    monthWeeks.value = await getMonthWeeks(year, month)
+  } catch (e) {
+    monthWeeks.value = []
+  }
+}
+
 onMounted(async () => {
 
   await fetchAllData()
@@ -1653,7 +1672,9 @@ onMounted(async () => {
   // derive historical copied flags so past copies show up (e.g., Oct -> Nov)
   try { deriveCopiedFlagsFromOrders(orders.value || []); } catch {}
 
-  if (!currentDateRange || currentDateRange.length < 2) {
+  await loadMonthWeeks()
+
+  if (!currentDateRange.value || currentDateRange.value.length < 2) {
       const now = new Date();
       const year = now.getFullYear();
       const month = now.getMonth();
@@ -1673,6 +1694,8 @@ watch(
   },
   { deep: true }
 )
+
+watch(currentDateRange, loadMonthWeeks, { deep: true })
 
 </script>
 <style>

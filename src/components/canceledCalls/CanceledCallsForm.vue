@@ -1,7 +1,7 @@
 <template>
   <v-card class="pa-4" elevation="2">
     <v-card-title class="text-h6 mb-4 d-flex align-center">
-      {{ editingId ? 'Edit Canceled Call' : 'Add Canceled Call' }}
+      {{ editingId ? 'Edit Canceled Meeting' : 'Add Canceled Meeting' }}
       <v-spacer />
       <v-btn
         v-if="editingId"
@@ -45,27 +45,6 @@
           />
         </v-col>
         <v-col cols="12" sm="6">
-          <v-text-field
-            v-model="form.company"
-            label="Company"
-            density="comfortable"
-          />
-        </v-col>
-        <v-col cols="12" sm="6">
-          <v-text-field
-            v-model="form.phoneNumber"
-            label="Phone Number"
-            density="comfortable"
-          />
-        </v-col>
-        <v-col cols="12" sm="6">
-          <v-text-field
-            v-model="form.contactPerson"
-            label="Contact Person"
-            density="comfortable"
-          />
-        </v-col>
-        <v-col cols="12" sm="6">
           <v-select
             v-model="form.caseId"
             :items="caseOptions"
@@ -74,6 +53,9 @@
             label="Case"
             density="comfortable"
             clearable
+            :disabled="!form.agent"
+            :hint="form.agent ? '' : 'Select an agent first'"
+            persistent-hint
             @update:model-value="onCaseChange"
           />
         </v-col>
@@ -85,34 +67,6 @@
             readonly
             hint="Auto-set from case selection"
             persistent-hint
-          />
-        </v-col>
-        <v-col cols="12" sm="6">
-          <v-select
-            v-model="form.rebookAgent"
-            :items="activeGcAgents"
-            item-title="name"
-            :item-value="(a) => a._id ?? a.id"
-            label="Rebook Agent"
-            density="comfortable"
-            clearable
-          />
-        </v-col>
-        <v-col cols="12" sm="6">
-          <v-text-field
-            v-model="form.rebookDate"
-            label="Rebook Date"
-            type="date"
-            density="comfortable"
-          />
-        </v-col>
-        <v-col cols="12" sm="6">
-          <v-text-field
-            v-model.number="form.attempts"
-            label="Attempts"
-            type="number"
-            min="0"
-            density="comfortable"
           />
         </v-col>
         <v-col cols="12">
@@ -128,7 +82,7 @@
       </v-row>
       <div class="d-flex align-center mt-4" style="gap: 12px;">
         <v-btn type="submit" :disabled="!formValid || isSubmitting" color="primary" :loading="isSubmitting">
-          {{ editingId ? 'Update Canceled Call' : 'Add Canceled Call' }}
+          {{ editingId ? 'Update Canceled Meeting' : 'Add Canceled Meeting' }}
         </v-btn>
         <v-alert
           v-if="submitMessage"
@@ -165,12 +119,28 @@ const submitMessage = ref('')
 const submitAlertType = ref('success')
 
 const orders = computed(() => store.getters['orders'] || [])
+const currentDateRange = computed(() => store.getters['currentDateRange'] || [])
 const gcAgents = computed(() => store.getters['gcAgents'] || [])
 const activeGcAgents = computed(() => (gcAgents.value || []).filter((a) => a.active !== false))
 
 const caseOptions = computed(() => {
+  const agentId = form.value.agent ? String(form.value.agent) : ''
+  if (!agentId) return []
   const list = orders.value || []
-  return list.filter((o) => o.caseName).sort((a, b) => (a.caseName || '').localeCompare(b.caseName || ''))
+  const range = currentDateRange.value
+  let filtered = list.filter((o) => {
+    if (!o.caseName) return false
+    const isAssigned = (o.assignedCallers || []).some((x) => String(x?._id ?? x?.id ?? x) === agentId)
+    if (!isAssigned) return false
+    if (!range || !Array.isArray(range) || range.length < 2) return true
+    const monthStart = new Date(range[0])
+    const monthEnd = new Date(range[1])
+    monthEnd.setHours(23, 59, 59, 999)
+    const orderStart = new Date(o?.startDate || 0)
+    const orderEnd = new Date(o?.deadline || 0)
+    return orderStart <= monthEnd && orderEnd >= monthStart
+  })
+  return filtered.sort((a, b) => (a.caseName || '').localeCompare(b.caseName || ''))
 })
 
 const editingId = ref(null)
@@ -246,6 +216,15 @@ watch(() => props.editItem, (item) => {
   if (item) populateForm(item)
 }, { immediate: true })
 
+watch(() => form.value.agent, () => {
+  const opts = caseOptions.value
+  const hasCurrent = opts.some((o) => String(o._id ?? o.id) === String(form.value.caseId))
+  if (!hasCurrent && form.value.caseId) {
+    form.value.caseId = ''
+    form.value.caseUnit = ''
+  }
+})
+
 function onCaseChange(caseId) {
   if (!caseId) {
     form.value.caseUnit = ''
@@ -279,16 +258,16 @@ async function submitForm() {
     if (editingId.value) {
       const id = String(editingId.value)
       await axios.patch(`${urls.backEndURL}/canceledCalls/${id}`, payload)
-      submitMessage.value = 'Canceled call updated successfully.'
+      submitMessage.value = 'Canceled meeting updated successfully.'
     } else {
       await axios.post(`${urls.backEndURL}/canceledCalls`, payload)
-      submitMessage.value = 'Canceled call added successfully.'
+      submitMessage.value = 'Canceled meeting added successfully.'
     }
     submitAlertType.value = 'success'
     clearForNew()
     emit('submitted')
   } catch (err) {
-    submitMessage.value = err?.response?.data?.message || err?.message || (editingId.value ? 'Failed to update canceled call.' : 'Failed to add canceled call.')
+    submitMessage.value = err?.response?.data?.message || err?.message || (editingId.value ? 'Failed to update canceled meeting.' : 'Failed to add canceled meeting.')
     submitAlertType.value = 'error'
   } finally {
     isSubmitting.value = false

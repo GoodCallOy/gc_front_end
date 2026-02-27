@@ -1,9 +1,9 @@
 <template>
   <v-container fluid>
     <v-card class="pa-4 mb-4" elevation="2">
-      <h1 class="text-h4 mb-4">Canceled Calls</h1>
+      <h1 class="text-h4 mb-4">Canceled Meetings</h1>
       <p class="text-body-2 text-medium-emphasis mb-0">
-        Track and view canceled calls. Add new entries using the form below.
+        Track and view canceled meetings. Add new entries using the form below.
       </p>
     </v-card>
 
@@ -18,7 +18,7 @@
       <v-col cols="12" md="7" lg="8">
         <v-card elevation="2">
           <v-card-title class="d-flex align-center">
-            <span>Canceled Calls List</span>
+            <span>Canceled Meetings List</span>
             <v-spacer />
             <v-btn
               icon
@@ -83,7 +83,7 @@
               </template>
               <template #item.no-data>
                 <div class="text-center pa-6 text-medium-emphasis">
-                  No canceled calls recorded yet. Add one using the form on the left.
+                  No canceled meetings recorded yet. Add one using the form on the left.
                 </div>
               </template>
             </v-data-table>
@@ -199,7 +199,7 @@ async function fetchCanceledCalls() {
     const raw = Array.isArray(res.data) ? res.data : res.data?.data ?? []
     canceledCalls.value = raw.map(normalizeRow)
   } catch (err) {
-    error.value = err?.response?.data?.message || err?.message || 'Failed to load canceled calls.'
+    error.value = err?.response?.data?.message || err?.message || 'Failed to load canceled meetings.'
     canceledCalls.value = []
   } finally {
     loading.value = false

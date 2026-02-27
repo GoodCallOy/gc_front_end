@@ -197,7 +197,7 @@ async function logout() {
       <v-list-item
         v-if="user?.user?.role === 'admin' || user?.user?.role === 'manager'"
         prepend-icon="mdi-phone-cancel"
-        title="Canceled Calls"
+        title="Canceled Meetings"
         :active="route.name === 'canceledCalls'"
         @click="navigateTo('canceledCalls')"
       />
