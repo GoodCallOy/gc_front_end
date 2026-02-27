@@ -716,28 +716,52 @@ const revenueGenerated = computed(() => {
     
     if (logCase && !isTestCase(logCase)) {
       const pricePerUnit = Number(logCase.pricePerUnit) || 0;
-      const logRevenue = logQuantityCompleted * pricePerUnit;
+      const caseUnit = String(logCase.caseUnit || '').toLowerCase();
+
+      // Decide which numeric field is the canonical "unit" for this case type
+      let canonicalUnits = logQuantityCompleted;
+      if (caseUnit === 'hours') {
+        // For hourly cases, prefer explicit hours if provided
+        const hours = Number(log.hours ?? logQuantityCompleted) || 0;
+        canonicalUnits = hours;
+      } else if (caseUnit === 'interviews') {
+        // For interview cases, prefer completedInterviews, then interviews, then quantityCompleted
+        const interviews = Number(log.completedInterviews ?? log.interviews ?? logQuantityCompleted) || 0;
+        canonicalUnits = interviews;
+      }
+
+      const logRevenue = canonicalUnits * pricePerUnit;
       totalRevenue += logRevenue;
 
       // Agent-specific rate revenue (from agentRates on the order)
       const rawAgentRates = logCase.agentRates || logCase.agentPrices || {};
       const agentRate = Number(rawAgentRates[agentId]) || 0;
-      const logMyRateRevenue = agentRate > 0 ? logQuantityCompleted * agentRate : 0;
+      const logMyRateRevenue = agentRate > 0 ? canonicalUnits * agentRate : 0;
       totalMyRateRevenue += logMyRateRevenue;
       
-      // Track units by case unit type
-      const caseUnit = String(logCase.caseUnit || '').toLowerCase();
-      if (caseUnit === 'interviews') {
-        unitsByType.interviews += logQuantityCompleted;
-      } else if (caseUnit === 'hours') {
-        unitsByType.hours += logQuantityCompleted;
-      } else if (caseUnit === 'meetings') {
+      // Track units by type
+      // Interviews: prefer completedInterviews, then interviews, across all logs
+      const interviewUnits = Number(log.completedInterviews ?? log.interviews ?? 0);
+      if (Number.isFinite(interviewUnits) && !Number.isNaN(interviewUnits)) {
+        unitsByType.interviews += interviewUnits;
+      }
+
+      // Hours: sum hours field across all logs
+      const hourUnits = Number(log.hours ?? 0);
+      if (Number.isFinite(hourUnits) && !Number.isNaN(hourUnits)) {
+        unitsByType.hours += hourUnits;
+      }
+
+      // Meetings: keep using quantityCompleted for meeting-type cases
+      if (caseUnit === 'meetings') {
         unitsByType.meetings += logQuantityCompleted;
       }
       
       // Track A-leads from the log entry
       const aLeads = Number(log.aLeads || 0);
-      unitsByType.aLeads += aLeads;
+      if (Number.isFinite(aLeads) && !Number.isNaN(aLeads)) {
+        unitsByType.aLeads += aLeads;
+      }
       
       const breakdown = {
         logIndex: index + 1,
