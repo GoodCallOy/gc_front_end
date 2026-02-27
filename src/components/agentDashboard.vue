@@ -324,7 +324,6 @@ import { fetchAgentgoalsByAgentAndMonth } from '@/js/statsUtils';
 import agentCaseCard from './agentCaseCard.vue'
 import axios from 'axios'
 import urls from '@/js/config.js'
-
 const store = useStore()
 const router = useRouter()
 const route = useRoute()

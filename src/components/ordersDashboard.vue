@@ -89,7 +89,8 @@
                 <td :colspan="tableHeaders.length">
                   <div class="pa-4 bg-grey-lighten-4">
                     <h3 class="text-h6 mb-3">{{ t('ordersDashboard.monthlyBreakdown.title') }}</h3>
-                    <v-table density="compact">
+                    <div class="monthly-breakdown-scroll" style="overflow-x: auto; overflow-y: visible;">
+                    <v-table density="compact" style="min-width: 600px;">
                       <thead>
                         <tr>
                           <th>{{ t('ordersDashboard.monthlyBreakdown.month') }}</th>
@@ -105,7 +106,7 @@
                         <tr v-for="month in item.monthlyBreakdown" :key="month.monthKey">
                           <td>{{ getMonthName(month.month) }} {{ month.year }}</td>
                           <td>{{ formatDateDetailed(month.startDateStr) }} - {{ formatDateDetailed(month.endDateStr) }}</td>
-                          <td>{{ month.quantityCompleted }}</td>
+                          <td>{{ month.quantityCompleted }} / {{ item.campaignGoal ?? item.campaign_goal ?? 0 }}</td>
                           <td>{{ formatCurrency(month.revenue) }}</td>
                           <td>{{ formatCurrency(getMonthlyRevenueGoal(item, month)) }}</td>
                           <td>
@@ -113,18 +114,19 @@
                               {{ getMonthlyPercentageToGoal(item, month) }}%
                             </span>
                           </td>
-                          <td>{{ Math.max(0, item.totalQuantity - getTotalCompletedUpToMonth(item.monthlyBreakdown, month.monthKey)) }}</td>
+                          <td>{{ Math.max(0, (item.campaignGoal ?? item.campaign_goal ?? 0) - getTotalCompletedUpToMonth(item.monthlyBreakdown, month.monthKey)) }}</td>
                         </tr>
                         <tr class="font-weight-bold">
                           <td colspan="2">{{ t('ordersDashboard.monthlyBreakdown.total') }}</td>
-                          <td>{{ getTotalQuantity(item.monthlyBreakdown) }}</td>
+                          <td>{{ getTotalQuantity(item.monthlyBreakdown) }} / {{ item.campaignGoal ?? item.campaign_goal ?? 0 }}</td>
                           <td>{{ formatCurrency(getTotalRevenue(item.monthlyBreakdown)) }}</td>
                           <td></td>
                           <td></td>
-                          <td>{{ Math.max(0, item.totalQuantity - getTotalQuantity(item.monthlyBreakdown)) }}</td>
+                          <td>{{ Math.max(0, (item.campaignGoal ?? item.campaign_goal ?? 0) - getTotalQuantity(item.monthlyBreakdown)) }}</td>
                         </tr>
                       </tbody>
                     </v-table>
+                    </div>
                   </div>
                 </td>
               </tr>
@@ -162,7 +164,7 @@
               </span>
             </template>
             <template #item.teamGoals="{ item }">
-              {{ computeOrderQuantity(item) }} / {{ item.totalQuantity || 0 }}
+              {{ computeOrderQuantity(item) }} / {{ item.campaignGoal ?? item.campaign_goal ?? 0 }}
             </template>
             <template #item.startDate="{ item }">
               {{ formatDate(item.startDate) }}
@@ -593,12 +595,12 @@ function computeOrderRevenue(order) {
 }
 
 function computePercentageToGoal(order) {
-  const goal = Number(order?.estimatedRevenue) || 0
-  if (!goal) {
+  const monthlyGoal = Number(order?.totalQuantity) || 0
+  if (!monthlyGoal) {
     return 0
   }
-  const revenue = computeOrderRevenue(order)
-  const percentage = (revenue / goal) * 100
+  const quantityCompleted = computeOrderQuantity(order)
+  const percentage = (quantityCompleted / monthlyGoal) * 100
   if (!isFinite(percentage) || isNaN(percentage)) {
     return 0
   }
@@ -835,6 +837,10 @@ async function loadMonthWeeks() {
 </script>
 
 <style scoped>
+.monthly-breakdown-scroll {
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 4px;
+}
   .sticky-toolbar {
     position: sticky;
     top: 0;

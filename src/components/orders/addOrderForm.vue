@@ -31,10 +31,17 @@
       />
       <v-text-field
         v-model.number="form.totalQuantity"
-        label="Team goal"
+        label="Month goal"
         type="number"
-        :rules="[v => (v === 0 || !!v) || 'Team goal is required']"
+        :rules="[v => (v === 0 || !!v) || 'Month goal is required']"
         required
+      />
+
+      <v-text-field
+        v-model.number="form.campaignGoal"
+        label="Campaign goal"
+        type="number"
+        min="0"
       />
 
       <v-text-field
@@ -199,6 +206,7 @@ const form = reactive({
   caseUnit: '',
   pricePerUnit: '',
   totalQuantity: '',
+  campaignGoal: null,
   startDate: '',
   deadline: '',
   orderStatus: '',
@@ -288,6 +296,7 @@ const loadOrderData = async (orderId) => {
     form.caseUnit = orderData.caseUnit || '';
     form.pricePerUnit = orderData.pricePerUnit || '';
     form.totalQuantity = orderData.totalQuantity || '';
+    form.campaignGoal = orderData.campaignGoal ?? orderData.campaign_goal ?? null;
     form.startDate = orderData.startDate ? orderData.startDate.split('T')[0] : '';
     form.deadline = orderData.deadline ? orderData.deadline.split('T')[0] : '';
     form.orderStatus = orderData.orderStatus || '';
@@ -356,6 +365,7 @@ const submitForm = async () => {
       form.caseId = '';
       form.caseUnit = '';
       form.totalQuantity = '';
+      form.campaignGoal = null;
       form.pricePerUnit = '';
       form.startDate = '';
       form.deadline = '';

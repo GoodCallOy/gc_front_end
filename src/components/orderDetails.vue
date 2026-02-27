@@ -40,7 +40,7 @@
                <strong>{{ t('orderDetails.deadline') }}:</strong> {{ formatDate(order.deadline) }}
             </v-col>
             <v-col cols="3">
-               <strong>{{ t('orderDetails.teamGoal') }}:</strong> {{ order.totalQuantity }}
+               <strong>{{ t('orderDetails.campaignGoal') }}:</strong> {{ order.campaignGoal ?? order.campaign_goal ?? 0 }}
             </v-col>
             <v-col cols="3">
                 <strong>{{ t('orderDetails.estimatedRevenue') }}:</strong> €{{ order.estimatedRevenue }}
