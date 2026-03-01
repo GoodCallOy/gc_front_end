@@ -249,8 +249,12 @@
     "agentDashboard": {
       "agentStatistics": "Agent Stats",
       "revenue": "Team Revenue",
+      "totalRevenue": "Total Revenue",
+      "revenueToGoal": "Revenue to Goal",
       "revenueGenerated": "Revenue Generated",
+      "myRevenue": "My revenue",
       "myRateRevenue": "My revenue",
+      "myPaycheck": "My paycheck",
       "myRate": "My rate",
       "totalUnits": "Total Units",
       "casesFor": "Cases for",

@@ -16,35 +16,19 @@
     <!-- Agent Statistics Header -->
     <v-card v-if="userOrders.length > 0" class="mx-auto my-2 pa-4 elevation-4" style="background-color: #eeeff1;">
       <v-row align="center" dense>
-        <v-col cols="12" md="3" class="py-0">
-          <div class="text-h5">
-            {{ t('agentDashboard.agentStatistics') }} - {{ getFormattedDateRange() }}
-          </div>
-        </v-col>
-        <v-col cols="12" md="3" class="py-0">
+        <v-col cols="12" sm="4" class="py-0">
           <div class="text-h6">
-            {{ t('agentDashboard.revenue') }}: €{{ revenueGenerated.revenue }}
+            {{ t('agentDashboard.totalRevenue') }}: €{{ revenueGenerated.revenue }}
           </div>
         </v-col>
-        <v-col cols="12" md="3" class="py-0">
+        <v-col cols="12" sm="4" class="py-0">
           <div class="text-h6">
-            {{ t('agentDashboard.myRateRevenue') }}: €{{ revenueGenerated.myRateRevenue }}
+            {{ t('agentDashboard.revenueToGoal') }}: {{ topBoxStats.revenueToGoalPercent }}%
           </div>
         </v-col>
-        <v-col cols="12" md="3" class="py-0">  
-          <div class="d-flex flex-wrap" style="gap: 12px;">
-            <div class="text-body-2">
-              {{ t('agentCaseCard.interviews') }}: {{ revenueGenerated.unitsByType.interviews }}
-            </div>
-            <div class="text-body-2">
-              {{ t('agentCaseCard.hours') }}: {{ revenueGenerated.unitsByType.hours }}
-            </div>
-            <div class="text-body-2">
-              {{ t('agentCaseCard.meetings') }}: {{ revenueGenerated.unitsByType.meetings }}
-            </div>
-            <div class="text-body-2">
-              {{ t('dailyLogForm.aLeads') }}: {{ revenueGenerated.unitsByType.aLeads }}
-            </div>
+        <v-col cols="12" sm="4" class="py-0">
+          <div class="text-h6">
+            {{ t('agentDashboard.myPaycheck') }}: €{{ revenueGenerated.myPaycheck }}
           </div>
         </v-col>
       </v-row>
@@ -329,6 +313,7 @@ const router = useRouter()
 const route = useRoute()
 const userOrders = ref([])
 const caseStats = ref([])
+const allCaseStats = ref([]) // For revenue-to-goal (same for every agent)
 const isLoadingDashboard = ref(false)
 const monthWeeks = ref([])
 const agentWeeklyGoals = ref([])
@@ -496,7 +481,9 @@ const revenueGenerated = computed(() => {
     return { 
       totalUnits: 0, 
       revenue: '0.00',
+      myRevenue: '0.00',
       myRateRevenue: '0.00',
+      myPaycheck: '0.00',
       myRate: '0.00',
       unitsByType: {
         interviews: 0,
@@ -835,10 +822,17 @@ const revenueGenerated = computed(() => {
     breakdown: revenueBreakdown
   });
   
+  // My revenue = agent's results × case rate (pricePerUnit) per log, summed
+  const myRevenue = totalRevenue.toFixed(2);
+  // My paycheck = sum over all cases of (my results * my rate) for each case
+  const myPaycheck = totalMyRateRevenue.toFixed(2);
+
   return { 
     totalUnits, 
     revenue,
+    myRevenue,
     myRateRevenue,
+    myPaycheck,
     myRate,
     unitsByType: {
       interviews: unitsByType.interviews,
@@ -1190,17 +1184,14 @@ const individualHeaders = computed(() => [
 // Headers for cases table view (agent dashboard)
 const casesTableHeaders = computed(() => [
   { title: t('ordersDashboard.tableHeaders.caseName'), key: 'caseName', sortable: true },
-  { title: t('ordersDashboard.tableHeaders.status'), key: 'orderStatus', sortable: true },
-  { title: t('ordersDashboard.tableHeaders.callers'), key: 'callers', sortable: false },
-  { title: t('ordersDashboard.tableHeaders.unit'), key: 'caseUnit', sortable: true },
-  { title: t('ordersDashboard.tableHeaders.totalQty'), key: 'totalQuantity', sortable: true },
-  { title: t('agentCaseCard.myGoal'), key: 'myGoal', sortable: true },
   { title: t('agentTables.personalResults'), key: 'myUnits', sortable: true },
+  { title: t('ordersDashboard.tableHeaders.unit'), key: 'caseUnit', sortable: true },
   { title: t('agentTables.teamResults'), key: 'teamUnits', sortable: true },
-  { title: t('agentCaseCard.myRevenueGoal'), key: 'myRevenueGoal', sortable: true },
   { title: t('agentCaseCard.myCurrentRevenue'), key: 'currentRevenue', sortable: true },
-  { title: t('agentDashboard.myRate'), key: 'myRate', sortable: true },
+  { title: t('agentCaseCard.myRevenueGoal'), key: 'myRevenueGoal', sortable: true },
   { title: '%', key: 'percentage', sortable: true },
+  { title: t('agentDashboard.myRate'), key: 'myRate', sortable: true },
+  { title: t('ordersDashboard.tableHeaders.callers'), key: 'callers', sortable: false },
   { title: t('ordersDashboard.tableHeaders.deadline'), key: 'deadline', sortable: true },
 ])
 
@@ -1488,6 +1479,60 @@ const casesTableRows = computed(() => {
   });
 });
 
+// Top box: revenue to goal = current revenue / total revenue goal across ALL cases (same % for every agent)
+const topBoxStats = computed(() => {
+  const allOrders = orders.value || [];
+  const stats = allCaseStats.value || [];
+  const dateRange = currentDateRange.value;
+
+  if (!dateRange || dateRange.length < 2 || allOrders.length === 0) {
+    return { revenueToGoalPercent: 0 };
+  }
+
+  const [startStr, endStr] = dateRange;
+  const from = new Date(startStr);
+  const to = new Date(endStr);
+  to.setHours(23, 59, 59, 999);
+
+  let currentRevenue = 0;
+  let totalRevenueGoal = 0;
+
+  for (const order of allOrders) {
+    if (isTestCase(order)) continue;
+
+    const orderId = String(order._id ?? order.id ?? '');
+    const pricePerUnit = Number(order?.pricePerUnit ?? 0);
+    const teamGoal = Number(order?.totalQuantity ?? 0);
+    totalRevenueGoal += teamGoal * pricePerUnit;
+
+    // Team units: all logs for this order in date range (all agents)
+    const candidateLogs = stats.filter((log) => {
+      const logOrderId = String(log?.order?._id ?? log?.order ?? log?.orderId ?? '');
+      const logCaseName = log?.caseName ?? '';
+      const sameOrder = logOrderId === orderId || logCaseName === (order?.caseName ?? '');
+      if (!sameOrder) return false;
+      const d = new Date(log?.date);
+      return d >= from && d <= to;
+    });
+
+    const seen = new Set();
+    let teamUnits = 0;
+    for (const log of candidateLogs) {
+      const key = `${log?.date}_${log?.agentName ?? log?.agent}_${log?.caseName}_${log?._id ?? log?.id}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        teamUnits += Number(log?.quantityCompleted ?? 0);
+      }
+    }
+    currentRevenue += teamUnits * pricePerUnit;
+  }
+
+  const revenueToGoalPercent = totalRevenueGoal > 0
+    ? Math.round((currentRevenue / totalRevenueGoal) * 100)
+    : 0;
+  return { revenueToGoalPercent };
+});
+
 const currentUser = computed(() => {
   return store.state.user?.user
       ?? JSON.parse(localStorage.getItem('auth_user') || 'null')
@@ -1597,6 +1642,43 @@ const fetchCaseStats = async () => {
   }
 }
 
+// Fetch stats for ALL orders (for revenue-to-goal - same % for every agent)
+const fetchAllCaseStats = async () => {
+  const allOrders = orders.value || [];
+  const dateRange = currentDateRange.value;
+  if (!Array.isArray(allOrders) || allOrders.length === 0 || !dateRange || dateRange.length < 2) {
+    allCaseStats.value = [];
+    return;
+  }
+
+  const caseNames = [...new Set(
+    allOrders.filter(o => !isTestCase(o)).map(o => o.caseName).filter(Boolean)
+  )];
+
+  if (caseNames.length === 0) {
+    allCaseStats.value = [];
+    return;
+  }
+
+  try {
+    const allStats = [];
+    for (const caseName of caseNames) {
+      try {
+        const response = await axios.get(
+          `${urls.backEndURL}/dailyLogs/${encodeURIComponent(caseName)}`
+        );
+        allStats.push(...(response.data || []));
+      } catch (err) {
+        console.warn(`AgentDashboard: Error fetching all-case stats for ${caseName}:`, err);
+      }
+    }
+    allCaseStats.value = allStats;
+  } catch (error) {
+    console.error('AgentDashboard: Error fetching all case stats:', error);
+    allCaseStats.value = [];
+  }
+};
+
 async function fetchAgentWeeklyGoals() {
   const agent = selectedGcAgent.value;
   const dateRange = currentDateRange.value;
@@ -1699,6 +1781,9 @@ watch([orders, selectedGcAgent, currentDateRange], async ([allOrders, agent, dat
   userOrders.value = agent
     ? findOrdersForUser(allOrders, agent._id ?? agent.id)
     : [];
+
+  // Fetch all case stats for revenue-to-goal (same % for every agent)
+  await fetchAllCaseStats();
 
   // Fetch case stats when agent or orders change
   if (agent) {

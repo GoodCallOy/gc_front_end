@@ -232,8 +232,12 @@
     "agentDashboard": {
       "agentStatistics": "Agenttitilastot",
       "revenue": "Tiimin liikevaihto",
+      "totalRevenue": "Kokonaisliikevaihto",
+      "revenueToGoal": "Liikevaihto tavoitteeseen",
       "revenueGenerated": "Tuotettu liikevaihto",
+      "myRevenue": "Oma liikevaihto",
       "myRateRevenue": "Oma liikevaihto",
+      "myPaycheck": "Oma palkka",
       "myRate": "Oma taksa",
       "totalUnits": "Yksiköt yhteensä",
       "casesFor": "Tapaukset",
