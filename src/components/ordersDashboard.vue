@@ -44,6 +44,49 @@
           <div class="text-h6 font-weight-bold">€{{ currentRevenueTotal.toFixed(2) }}</div>
         </v-col>
       </v-row>
+      <v-expand-transition v-if="isAdmin">
+        <div v-show="showRevenueBreakdown">
+          <v-divider class="my-2" />
+          <div class="px-2 pb-2">
+            <div class="text-caption font-weight-bold mb-2">Estimated revenue by case (included + excluded)</div>
+            <v-table density="compact" class="text-caption">
+              <thead>
+                <tr>
+                  <th class="text-left">Case</th>
+                  <th class="text-left">Status</th>
+                  <th class="text-right">Goal</th>
+                  <th class="text-right">€/Unit</th>
+                  <th class="text-right">Revenue</th>
+                  <th class="text-left">Included</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(row, i) in estimatedRevenueBreakdown" :key="i" :class="{ 'bg-grey-lighten-4': !row.included }">
+                  <td>{{ row.caseName }}</td>
+                  <td>{{ row.status }}</td>
+                  <td class="text-right">{{ row.monthlyGoal }}</td>
+                  <td class="text-right">{{ row.pricePerUnit.toFixed(2) }}</td>
+                  <td class="text-right">€{{ row.revenue.toFixed(2) }}</td>
+                  <td>
+                    <span v-if="row.included" class="text-success">✓ Yes</span>
+                    <span v-else class="text-error">{{ row.excludedReason }}</span>
+                  </td>
+                </tr>
+              </tbody>
+            </v-table>
+          </div>
+        </div>
+      </v-expand-transition>
+      <v-btn
+        v-if="isAdmin"
+        variant="text"
+        size="small"
+        density="compact"
+        class="mt-1"
+        @click="showRevenueBreakdown = !showRevenueBreakdown"
+      >
+        {{ showRevenueBreakdown ? 'Hide' : 'Show' }} breakdown
+      </v-btn>
     </v-card>
     
     <h1 class="text-h4 mb-4" style="width: 100%;">{{ t('ordersDashboard.allCases') }} - {{ getFormattedDateRange() }}</h1>
@@ -252,6 +295,13 @@ const expandedRows = ref(new Set())
 // Case type filter
 const selectedCaseType = ref(null)
 
+// Toggle for estimated revenue breakdown (admin only)
+const showRevenueBreakdown = ref(false)
+const isAdmin = computed(() => {
+  const user = store.state.user?.user ?? JSON.parse(localStorage.getItem('auth_user') || 'null')
+  return user?.role === 'admin'
+})
+
 // Filter orders by the selected month
 const filteredOrders = computed(() => {
   if (!orders.value || !currentDateRange.value || currentDateRange.value.length < 2) {
@@ -434,6 +484,13 @@ function isTestCase(order) {
   return false;
 }
 
+// Helper function to check if an order is the "case good call" case
+function isGoodCallCase(order) {
+  if (!order) return false;
+  const caseName = String(order.caseName || '').toLowerCase();
+  return caseName === 'case good call' || caseName === 'good call';
+}
+
 // Calculate estimated revenue total from filtered orders (monthlyGoal * pricePerUnit per order)
 const estimatedRevenueTotal = computed(() => {
   const ordersToCalculate = selectedCaseType.value ? filteredOrdersByCaseType.value : filteredOrders.value;
@@ -441,14 +498,48 @@ const estimatedRevenueTotal = computed(() => {
     return 0;
   }
   
-  // Filter out test cases
-  const nonTestOrders = ordersToCalculate.filter(order => !isTestCase(order));
+  // Filter out test cases, good call case, and non-in-progress orders
+  const nonTestOrders = ordersToCalculate.filter(order => {
+    if (isTestCase(order) || isGoodCallCase(order)) return false;
+    const status = String(order?.orderStatus ?? order?.status ?? '').toLowerCase().replace(/\s/g, '-');
+    return status === 'in-progress';
+  });
   
   return nonTestOrders.reduce((total, order) => {
     const monthlyGoal = Number(order?.monthlyGoal ?? order?.totalQuantity) || 0;
     const pricePerUnit = Number(order?.pricePerUnit) || 0;
     return total + (monthlyGoal * pricePerUnit);
   }, 0);
+});
+
+// Per-case breakdown of estimated revenue (for verification)
+const estimatedRevenueBreakdown = computed(() => {
+  const ordersToCalculate = selectedCaseType.value ? filteredOrdersByCaseType.value : filteredOrders.value;
+  if (!ordersToCalculate || ordersToCalculate.length === 0) return [];
+
+  return ordersToCalculate.map((order) => {
+    const monthlyGoal = Number(order?.monthlyGoal ?? order?.totalQuantity) || 0;
+    const pricePerUnit = Number(order?.pricePerUnit) || 0;
+    const revenue = monthlyGoal * pricePerUnit;
+
+    let excludedReason = null;
+    if (isTestCase(order)) excludedReason = 'Test case';
+    else if (isGoodCallCase(order)) excludedReason = 'Good call case';
+    else {
+      const status = String(order?.orderStatus ?? order?.status ?? '').toLowerCase().replace(/\s/g, '-');
+      if (status !== 'in-progress') excludedReason = `Status: ${order?.orderStatus ?? order?.status ?? 'unknown'}`;
+    }
+
+    return {
+      caseName: order.caseName || '—',
+      status: order?.orderStatus ?? order?.status ?? '—',
+      monthlyGoal,
+      pricePerUnit,
+      revenue,
+      included: !excludedReason,
+      excludedReason,
+    };
+  });
 });
 
 // Calculate current revenue from daily logs for filtered orders using custom weeks
