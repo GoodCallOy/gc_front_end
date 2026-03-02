@@ -250,6 +250,8 @@
       "myRate": "Oma taksa",
       "billedHours": "Laskutettu aika",
       "callingHours": "Puheluaika",
+      "canceledMeeting": "Peruutettu tapaaminen",
+      "rebookedMeetings": "Uudelleen varatut tapaamiset",
       "totalUnits": "Yksiköt yhteensä",
       "casesFor": "Tapaukset",
       "weeklySummary": "Kuukausiyhteenveto viikoittain",

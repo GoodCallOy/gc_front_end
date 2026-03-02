@@ -267,6 +267,8 @@
       "myRate": "My rate",
       "billedHours": "Billed hours",
       "callingHours": "Calling hours",
+      "canceledMeeting": "Canceled meeting",
+      "rebookedMeetings": "Rebooked meetings",
       "totalUnits": "Total Units",
       "casesFor": "Cases for",
       "weeklySummary": "Monthly summary by week",

@@ -57,7 +57,8 @@
         </v-col>
         <v-col cols="6" sm="3" class="py-0">
           <div class="d-flex flex-wrap align-center" style="gap: 6px 10px;">
-            <span class="text-caption">{{ t('dailyLogForm.aLeads') }} {{ t('agentDashboard.callingHours') }}: {{ revenueGenerated.callTimeByType.aLeads }}</span>
+            <span class="text-caption">{{ t('agentDashboard.canceledMeeting') }}: {{ canceledMeetingCount }}</span>
+            <span class="text-caption">{{ t('agentDashboard.rebookedMeetings') }}: {{ rebookedMeetingsCount }}</span>
           </div>
         </v-col>
       </v-row>
@@ -351,6 +352,7 @@ const editWeeklyGoalDialog = ref(false)
 const editWeeklyGoalValue = ref(0)
 const editWeeklyGoalSaving = ref(false)
 const editingGoalRow = ref(null)
+const canceledCalls = ref([])
 const { t } = useI18n()
 
 const orders = computed(() => store.getters['orders'])
@@ -1728,6 +1730,74 @@ const fetchAllCaseStats = async () => {
   }
 };
 
+// Fetch canceled calls for canceled/rebooked meeting counts
+const fetchCanceledCalls = async () => {
+  try {
+    const res = await axios.get(`${urls.backEndURL}/canceledCalls`);
+    const raw = Array.isArray(res.data) ? res.data : res.data?.data ?? [];
+    const SNAKE_TO_CAMEL = {
+      cancel_date: 'cancelDate',
+      rebook_agent: 'rebookAgent',
+      rebook_date: 'rebookDate',
+      call_date: 'callDate',
+    };
+    canceledCalls.value = raw.map((row) => {
+      if (!row || typeof row !== 'object') return row;
+      const out = { ...row };
+      for (const [snake, camel] of Object.entries(SNAKE_TO_CAMEL)) {
+        if (out[snake] !== undefined && out[camel] === undefined) out[camel] = out[snake];
+      }
+      return out;
+    });
+  } catch (err) {
+    console.warn('AgentDashboard: Error fetching canceled calls:', err);
+    canceledCalls.value = [];
+  }
+};
+
+// Canceled meeting and rebooked counts filtered by agent and date range
+const canceledMeetingCount = computed(() => {
+  const agent = selectedGcAgent.value;
+  const dateRange = currentDateRange.value;
+  if (!agent || !dateRange || dateRange.length < 2) return 0;
+  const agentId = String(agent._id ?? agent.id ?? '');
+  const [startDate, endDate] = dateRange;
+  const monthStart = new Date(startDate);
+  const monthEnd = new Date(endDate);
+  monthEnd.setHours(23, 59, 59, 999);
+  const list = canceledCalls.value || [];
+  return list.filter((item) => {
+    const itemAgentId = item.agent?._id ?? item.agent?.id ?? item.agent;
+    if (String(itemAgentId) !== agentId) return false;
+    const d = item.cancelDate || item.callDate;
+    if (!d) return false;
+    const date = new Date(typeof d === 'string' ? d.split('T')[0] : d);
+    return date >= monthStart && date <= monthEnd;
+  }).length;
+});
+
+const rebookedMeetingsCount = computed(() => {
+  const agent = selectedGcAgent.value;
+  const dateRange = currentDateRange.value;
+  if (!agent || !dateRange || dateRange.length < 2) return 0;
+  const agentId = String(agent._id ?? agent.id ?? '');
+  const [startDate, endDate] = dateRange;
+  const monthStart = new Date(startDate);
+  const monthEnd = new Date(endDate);
+  monthEnd.setHours(23, 59, 59, 999);
+  const list = canceledCalls.value || [];
+  return list.filter((item) => {
+    const itemAgentId = item.agent?._id ?? item.agent?.id ?? item.agent;
+    if (String(itemAgentId) !== agentId) return false;
+    const d = item.cancelDate || item.callDate;
+    if (!d) return false;
+    const date = new Date(typeof d === 'string' ? d.split('T')[0] : d);
+    if (date < monthStart || date > monthEnd) return false;
+    const hasRebook = !!(item.rebookDate || item.rebookAgent);
+    return hasRebook;
+  }).length;
+});
+
 async function fetchAgentWeeklyGoals() {
   const agent = selectedGcAgent.value;
   const dateRange = currentDateRange.value;
@@ -1838,8 +1908,10 @@ watch([orders, selectedGcAgent, currentDateRange], async ([allOrders, agent, dat
   if (agent) {
     await fetchCaseStats();
     await fetchAgentWeeklyGoals();
+    await fetchCanceledCalls();
   } else {
     agentWeeklyGoals.value = [];
+    canceledCalls.value = [];
   }
 }, { immediate: true });
 
