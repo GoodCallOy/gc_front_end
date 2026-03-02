@@ -52,6 +52,7 @@
             <v-table density="compact" class="text-caption">
               <thead>
                 <tr>
+                  <th class="text-left">Case Type</th>
                   <th class="text-left">Case</th>
                   <th class="text-left">Status</th>
                   <th class="text-right">Goal</th>
@@ -62,6 +63,7 @@
               </thead>
               <tbody>
                 <tr v-for="(row, i) in estimatedRevenueBreakdown" :key="i" :class="{ 'bg-grey-lighten-4': !row.included }">
+                  <td>{{ row.caseType }}</td>
                   <td>{{ row.caseName }}</td>
                   <td>{{ row.status }}</td>
                   <td class="text-right">{{ row.monthlyGoal }}</td>
@@ -517,7 +519,7 @@ const estimatedRevenueBreakdown = computed(() => {
   const ordersToCalculate = selectedCaseType.value ? filteredOrdersByCaseType.value : filteredOrders.value;
   if (!ordersToCalculate || ordersToCalculate.length === 0) return [];
 
-  return ordersToCalculate.map((order) => {
+  const rows = ordersToCalculate.map((order) => {
     const monthlyGoal = Number(order?.monthlyGoal ?? order?.totalQuantity) || 0;
     const pricePerUnit = Number(order?.pricePerUnit) || 0;
     const revenue = monthlyGoal * pricePerUnit;
@@ -531,6 +533,7 @@ const estimatedRevenueBreakdown = computed(() => {
     }
 
     return {
+      caseType: order.caseType || 'Unspecified',
       caseName: order.caseName || '—',
       status: order?.orderStatus ?? order?.status ?? '—',
       monthlyGoal,
@@ -539,6 +542,18 @@ const estimatedRevenueBreakdown = computed(() => {
       included: !excludedReason,
       excludedReason,
     };
+  });
+
+  // Sort: grouped by case type, then alphabetized by case name within each group
+  return rows.sort((a, b) => {
+    const typeA = a.caseType || 'Unspecified';
+    const typeB = b.caseType || 'Unspecified';
+    if (typeA !== typeB) {
+      if (typeA === 'Unspecified') return 1;
+      if (typeB === 'Unspecified') return -1;
+      return typeA.localeCompare(typeB);
+    }
+    return String(a.caseName).localeCompare(String(b.caseName));
   });
 });
 
