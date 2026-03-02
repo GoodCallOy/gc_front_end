@@ -33,6 +33,35 @@
         </v-col>
       </v-row>
     </v-card>
+
+    <!-- Units & Call Time Breakdown -->
+    <v-card v-if="userOrders.length > 0" class="mx-auto my-2 pa-4 elevation-4" style="background-color: #eeeff1;">
+      <v-row align="center" dense>
+        <v-col cols="6" sm="3" class="py-0">
+          <div class="d-flex flex-wrap align-center" style="gap: 6px 10px;">
+            <span class="text-caption">{{ t('dailyLogForm.aLeads') }}: {{ revenueGenerated.unitsByType.aLeads }}</span>
+            <span class="text-caption">{{ t('agentDashboard.billedHours') }}: {{ revenueGenerated.billedHours }}</span>
+          </div>
+        </v-col>
+        <v-col cols="6" sm="3" class="py-0">
+          <div class="d-flex flex-wrap align-center" style="gap: 6px 10px;">
+            <span class="text-caption">{{ t('agentCaseCard.meetings') }}: {{ revenueGenerated.unitsByType.meetings }}</span>
+            <span class="text-caption">{{ t('agentDashboard.callingHours') }}: {{ revenueGenerated.callTimeByType.meetings }}</span>
+          </div>
+        </v-col>
+        <v-col cols="6" sm="3" class="py-0">
+          <div class="d-flex flex-wrap align-center" style="gap: 6px 10px;">
+            <span class="text-caption">{{ t('agentCaseCard.interviews') }}: {{ revenueGenerated.unitsByType.interviews }}</span>
+            <span class="text-caption">{{ t('agentDashboard.callingHours') }}: {{ revenueGenerated.callTimeByType.interviews }}</span>
+          </div>
+        </v-col>
+        <v-col cols="6" sm="3" class="py-0">
+          <div class="d-flex flex-wrap align-center" style="gap: 6px 10px;">
+            <span class="text-caption">{{ t('dailyLogForm.aLeads') }} {{ t('agentDashboard.callingHours') }}: {{ revenueGenerated.callTimeByType.aLeads }}</span>
+          </div>
+        </v-col>
+      </v-row>
+    </v-card>
     
     <!-- Show simple message if no cases assigned -->
     <div v-if="userOrders.length === 0" class="text-center pa-8">
@@ -490,7 +519,9 @@ const revenueGenerated = computed(() => {
         hours: 0,
         meetings: 0,
         aLeads: 0
-      }
+      },
+      billedHours: 0,
+      callTimeByType: { aLeads: 0, meetings: 0, interviews: 0 }
     };
   }
   
@@ -658,6 +689,8 @@ const revenueGenerated = computed(() => {
     meetings: 0,
     aLeads: 0
   };
+  // Calling hours from call_time in daily log, by case type
+  const callTimeByType = { aLeads: 0, meetings: 0, interviews: 0 };
   
   uniqueLogs.forEach((log, index) => {
     const logId = String(log._id || log.id || '');
@@ -773,6 +806,16 @@ const revenueGenerated = computed(() => {
       if (Number.isFinite(aLeads) && !Number.isNaN(aLeads)) {
         unitsByType.aLeads += aLeads;
       }
+
+      // Calling hours from call_time in daily log (for non-hourly case types)
+      const logCallTime = Number(log.call_time ?? log.callTime ?? 0) || 0;
+      if (isALeadsCase) {
+        callTimeByType.aLeads += logCallTime;
+      } else if (isMeetingsCase) {
+        callTimeByType.meetings += logCallTime;
+      } else if (isInterviewsCase) {
+        callTimeByType.interviews += logCallTime;
+      }
       
       const breakdown = {
         logIndex: index + 1,
@@ -839,6 +882,12 @@ const revenueGenerated = computed(() => {
       hours: unitsByType.hours,
       meetings: unitsByType.meetings,
       aLeads: unitsByType.aLeads
+    },
+    billedHours: unitsByType.hours,
+    callTimeByType: {
+      aLeads: callTimeByType.aLeads,
+      meetings: callTimeByType.meetings,
+      interviews: callTimeByType.interviews
     }
   };
 });
@@ -1429,7 +1478,7 @@ const casesTableRows = computed(() => {
     );
 
     // Team goal: use the order's total quantity (project goal)
-    const teamGoal = Number(order?.totalQuantity ?? 0);
+    const teamGoal = Number(order?.monthlyGoal ?? order?.totalQuantity ?? 0);
 
     // Team units: all agents' quantityCompleted for this order in the same date range,
     // with basic de-duplication to avoid double-counting identical logs.
@@ -1470,7 +1519,7 @@ const casesTableRows = computed(() => {
       myAgentUnits,
       teamGoal,
       teamUnits,
-      totalQuantity: Number(order?.totalQuantity ?? 0),
+      totalQuantity: Number(order?.monthlyGoal ?? order?.totalQuantity ?? 0),
       myRevenueGoal,
       myRate: agentRate,
       currentRevenue,
@@ -1502,7 +1551,7 @@ const topBoxStats = computed(() => {
 
     const orderId = String(order._id ?? order.id ?? '');
     const pricePerUnit = Number(order?.pricePerUnit ?? 0);
-    const teamGoal = Number(order?.totalQuantity ?? 0);
+    const teamGoal = Number(order?.monthlyGoal ?? order?.totalQuantity ?? 0);
     totalRevenueGoal += teamGoal * pricePerUnit;
 
     // Team units: all logs for this order in date range (all agents)

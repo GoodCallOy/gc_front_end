@@ -36,7 +36,7 @@
                <strong>Deadline:</strong> {{ formatDate(order.deadline) }}
             </v-col>
             <v-col cols="3">
-               <strong>Quantity:</strong> {{ order.totalQuantity }}
+               <strong>Quantity:</strong> {{ order.monthlyGoal ?? order.totalQuantity }}
             </v-col>
             <v-col cols="3">
                 <strong>Estimated Revenue:</strong> €{{ order.estimatedRevenue }}

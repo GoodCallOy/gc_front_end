@@ -127,6 +127,7 @@
         "callers": "Callers",
         "pricePerUnit": "Price/Unit (€)",
         "unit": "Unit",
+        "monthlyGoal": "Monthly goal",
         "teamGoals": "Campaign goal",
         "revenueGoal": "Revenue goal",
         "currentRevenue": "Current Revenue",
@@ -206,7 +207,7 @@
         "selectCase": "Select Case",
         "caseUnit": "Case Unit",
         "pricePerUnit": "Price per Unit (€)",
-        "totalQuantity": "Team goal",
+        "totalQuantity": "Monthly goal",
         "startDate": "Start Date",
         "deadline": "Deadline",
         "orderStatus": "Order Status",
@@ -231,7 +232,7 @@
       "validation": {
         "caseUnitRequired": "Case Unit is required",
         "pricePerUnitRequired": "Price per unit is required",
-        "quantityRequired": "Team goal is required",
+        "quantityRequired": "Monthly goal is required",
         "startDateRequired": "Start date is required",
         "deadlineRequired": "Deadline is required",
         "orderStatusRequired": "Order status is required",
@@ -246,6 +247,14 @@
       "failedToSaveGoals": "Failed to save goals!",
       "unknownAgent": "Unknown Agent"
     },
+    "orderForm": {
+      "campaignGoal": "Campaign goal",
+      "enableSearchedPhoneNumbers": "Enable Searched Phone Numbers",
+      "assignedGoals": "Assigned Goals",
+      "orderUpdated": "Order updated successfully.",
+      "orderCreated": "Order created successfully.",
+      "saveFailed": "Failed to save order."
+    },
     "agentDashboard": {
       "agentStatistics": "Agent Stats",
       "revenue": "Team Revenue",
@@ -256,6 +265,8 @@
       "myRateRevenue": "My revenue",
       "myPaycheck": "My paycheck",
       "myRate": "My rate",
+      "billedHours": "Billed hours",
+      "callingHours": "Calling hours",
       "totalUnits": "Total Units",
       "casesFor": "Cases for",
       "weeklySummary": "Monthly summary by week",
@@ -298,7 +309,7 @@
       "status": "Status",
       "type": "Type",
       "deadline": "Deadline",
-      "teamGoal": "Team goal",
+      "teamGoal": "Monthly goal",
       "campaignGoal": "Campaign goal",
       "estimatedRevenue": "Estimated Revenue",
       "callers": "Callers",

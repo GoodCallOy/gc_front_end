@@ -284,7 +284,7 @@ const tableRowsFromOrders = computed(() => {
       })()
 
       // Month Goal and Revenue Goal from order
-      const monthGoal = Number(o.totalQuantity || 0)
+      const monthGoal = Number(o.monthlyGoal ?? o.totalQuantity ?? 0)
       const revenueGoal = Number(o.estimatedRevenue || 0)
 
       // Check if order spans multiple months

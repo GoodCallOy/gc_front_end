@@ -234,187 +234,21 @@
     <v-dialog v-model="showAddOrderModal" max-width="600">
     <v-card>
         <v-card-title>
-            {{ isEditMode ? t('assignGoals.modals.editOrder') : t('assignGoals.modals.addNewOrder') }}
+            {{ orderFormConfig.mode === 'edit' ? t('assignGoals.modals.editOrder') : t('assignGoals.modals.addNewOrder') }}
         </v-card-title>
-        <v-card-text>
-        <!-- Your add order form goes here -->
-
-        <div class="d-flex flex-column align-center" style="justify-content: center; overflow-y: auto;">
-        <v-form ref="formRef" style="width: 60%;" @submit.prevent="submitOredrForm">
-        <v-autocomplete
-            v-model="form.caseId"
-            :items="caseOptions"
-            item-value="value"
-            item-title="title"
-            :label="t('assignGoals.formLabels.selectCase')"
-            clearable
+        <v-card-text class="overflow-y-auto" style="max-height: 70vh;">
+        <OrderForm
+            :key="orderFormModalKey"
+            :order-id="orderFormConfig.orderId"
+            :initial-order="orderFormConfig.initialOrder"
+            :prefill="orderFormConfig.prefill"
+            :default-start-date="orderFormConfig.defaultDates?.startDate"
+            :default-deadline="orderFormConfig.defaultDates?.deadline"
+            :modal="true"
+            @saved="onOrderFormSaved"
+            @cancelled="closeAddOrderModal"
         />
-
-        <v-select
-            v-model="form.caseUnit"
-            :items="caseUnits"
-            :label="t('assignGoals.formLabels.caseUnit')"
-            :rules="[v => !!v || t('assignGoals.validation.caseUnitRequired')]"
-            required
-        />
-
-        <v-text-field
-            v-model.number="form.pricePerUnit"
-            :label="t('assignGoals.formLabels.pricePerUnit')"
-            type="number"
-            :rules="[v => !!v || t('assignGoals.validation.pricePerUnitRequired')]"
-            required
-        />
-        <v-text-field
-            v-model.number="form.totalQuantity"
-            :label="t('assignGoals.formLabels.totalQuantity')"
-            type="number"
-            :rules="[v => !!v || t('assignGoals.validation.quantityRequired')]"
-            required
-        />
-
-        <v-text-field
-            v-model="form.startDate"
-            :label="t('assignGoals.formLabels.startDate')"
-            type="date"
-            :rules="[v => !!v || t('assignGoals.validation.startDateRequired')]"
-            required
-        />
-
-        <v-text-field
-            v-model="form.deadline"
-            :label="t('assignGoals.formLabels.deadline')"
-            type="date"
-            :rules="[v => !!v || t('assignGoals.validation.deadlineRequired')]"
-            required
-        />
-
-        <!-- Monthly revenue goals for multi-month orders -->
-        <div v-if="monthlyGoalMonths.length" class="mt-4">
-          <div class="text-subtitle-2 mb-2">
-            {{ t('assignGoals.formLabels.monthlyRevenueGoals') }}
-          </div>
-          <v-row>
-            <v-col
-              v-for="month in monthlyGoalMonths"
-              :key="month.monthKey"
-              cols="12"
-              sm="6"
-            >
-              <v-text-field
-                v-model.number="form.monthlyRevenueGoals[month.monthKey]"
-                :label="`${month.year}-${String(month.month).padStart(2, '0')}`"
-                type="number"
-                min="0"
-              />
-            </v-col>
-          </v-row>
-        </div>
-
-        <v-select
-            v-model="form.orderStatus"
-            :items="orderStatuses"
-            :label="t('assignGoals.formLabels.orderStatus')"
-            :rules="[v => !!v || t('assignGoals.validation.orderStatusRequired')]"
-            required
-        />
-
-        <v-select
-            v-model="form.caseType"
-            :items="caseTypes"
-            :label="t('assignGoals.formLabels.caseType')"
-            :rules="[v => !!v || t('assignGoals.validation.caseTypeRequired')]"
-            required
-        />
-
-        <v-text-field
-            :model-value="estimatedRevenue"
-            :label="t('assignGoals.formLabels.estimatedRevenue')"
-            type="number"
-            :rules="[v => !!v || t('assignGoals.validation.estimatedRevenueRequired')]"
-            required
-        />
-
-        <v-select
-            v-model="form.managers"
-            :items="agentOptions"
-            item-value="value"
-            item-title="title"
-            :label="t('assignGoals.formLabels.selectManagers')"
-            multiple
-            chips
-            closable-chips
-            clearable
-        />
-
-        <v-select
-            v-model="form.assignedCallers"
-            :items="agentOptions"
-            item-value="value"
-            item-title="title"
-            :label="t('assignGoals.formLabels.assignCallers')"
-            multiple
-            chips
-            closable-chips
-            clearable
-        />
-
-        <v-text-field
-            v-model.number="form.ProjectStartFee"
-            :label="t('assignGoals.formLabels.projectStartFee')"
-            type="number"
-        />
-
-        <v-text-field
-            v-model.number="form.ProjectManagmentFee"
-            :label="t('assignGoals.formLabels.projectManagementFee')"
-            type="number"
-        />
-        <div v-if="form.assignedCallers.length" class="mt-4">
-          <v-list>
-            <v-list-item
-              v-for="agentId in form.assignedCallers"
-              :key="agentId"
-            >
-              <v-list-item-content>
-                <v-list-item-title>
-                  {{ agentName(agentId) }}
-                </v-list-item-title>
-              </v-list-item-content>
-              <v-list-item-action>
-                <v-text-field
-                v-model.number="agentGoals[agentId]"
-                :label="t('assignGoals.formLabels.goal')"
-                type="number"
-                min="0"
-                style="max-width: 100px"
-                />
-              <v-text-field
-                v-model.number="agentRates[agentId]"
-                :label="t('assignGoals.formLabels.rate')"
-                type="number"
-                min="0"
-                style="max-width: 120px"
-              />
-            </v-list-item-action>
-            </v-list-item>
-          </v-list>
-        </div>
-
-        <v-btn type="submit" color="primary" class="mt-4" :disabled="!addOrderFormValid">
-          {{ isEditMode ? t('assignGoals.buttons.saveChanges') : t('assignGoals.buttons.createOrder') }}
-        </v-btn>
-
-        </v-form>
-
-
-    </div>
-
         </v-card-text>
-        <v-card-actions>
-        <v-spacer />
-        <v-btn text @click="closeAddOrderModal">{{ t('assignGoals.buttons.close') }}</v-btn>
-        </v-card-actions>
     </v-card>
     </v-dialog>
 
@@ -516,22 +350,20 @@
 
 
 <script setup>
-import { ref, onMounted, computed, reactive, watch, toRaw } from 'vue'
+import { ref, onMounted, computed, reactive, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useStore } from 'vuex'
 import { useI18n } from 'vue-i18n'
 import { goToNextMonth, goToPreviousMonth, formattedDateRange, isCurrentMonth, getMonthWeeks } from '@/js/dateUtils';
-import { getOrderMonths, orderSpansMultipleMonths } from '@/js/statsUtils';
+import { orderSpansMultipleMonths } from '@/js/statsUtils';
 import DateHeader from '@/components/DateHeader.vue';
+import OrderForm from '@/components/orders/OrderForm.vue';
 import axios from 'axios'
 import urls from '@/js/config.js'
 
 const store = useStore()
 const router = useRouter()
 const { t } = useI18n()
-const formRef = ref(null)
-const agentGoals = reactive({});
-const agentRates = reactive({});
 const agentForm = ref(null);
 const caseForm = ref(null);
 const selectedOrder = ref(null)
@@ -543,6 +375,14 @@ const showEditOrderModal = ref(false);
 const showAddCaseModal = ref(false);
 const showAddAgentModal = ref(false);
 const showAddOrderModal = ref(false);
+const orderFormModalKey = ref(0);
+const orderFormConfig = ref({
+  mode: 'add',
+  orderId: null,
+  initialOrder: null,
+  prefill: null,
+  defaultDates: null
+});
 
 const copiedToNextMonth = reactive({});
 const pendingCopySourceId = ref(null);
@@ -764,11 +604,12 @@ async function bulkCopyOrdersToNextMonth() {
         (o.assignedCallers || []).map(x => String(x?._id ?? x?.id ?? x))
       )];
 
+      const monthlyGoal = Number(o.monthlyGoal ?? o.totalQuantity) || 0;
       const payload = {
         caseId: o.caseId || null,
         caseUnit: o.caseUnit || null,
         pricePerUnit: Number(o.pricePerUnit) || 0,
-        totalQuantity: Number(o.totalQuantity) || 0,
+        monthlyGoal,
         startDate: nextStart,
         deadline: nextEnd,
         orderStatus: o.orderStatus || 'pending',
@@ -779,7 +620,7 @@ async function bulkCopyOrdersToNextMonth() {
         assignedCallers: assignedIds,
         agentGoals: { ...(o.agentGoals || {}) },
         caseName: o.caseName || '',
-        estimatedRevenue: (Number(o.pricePerUnit) || 0) * (Number(o.totalQuantity) || 0),
+        estimatedRevenue: (Number(o.pricePerUnit) || 0) * monthlyGoal,
       };
 
       try {
@@ -840,7 +681,7 @@ const currentMonthLabel = computed(() => {
 
 const orderHeaders = computed(() => [
   { title: t('assignGoals.tableHeaders.caseName'), key: 'caseName' },
-  { title: t('assignGoals.tableHeaders.totalGoals'), key: 'totalQuantity' },
+  { title: t('assignGoals.tableHeaders.totalGoals'), key: 'monthlyGoal' },
   { title: t('assignGoals.tableHeaders.goalsDistributed'), key: 'goalsDistributed', sortable: false },
   { title: t('assignGoals.tableHeaders.priceUnit'), key: 'caseUnit' },
   { title: t('assignGoals.tableHeaders.copy'), key: 'copy', sortable: false },
@@ -861,61 +702,6 @@ const gcCase = ref({
     contactName: '',
     contactTitle: '',
     email: ''
-  }
-})
-
-const defaultForm = () => ({
-  caseId: null,
-  caseUnit: null,
-  pricePerUnit: 0,
-  totalQuantity: 0,
-  startDate: '',
-  deadline: '',
-  orderStatus: null,
-  caseType: null,
-  ProjectStartFee: 0,
-  ProjectManagmentFee: 0,
-  managers: [],
-  assignedCallers: [],
-  // Revenue goals per calendar month (for multi-month orders), keyed by monthKey YYYY-MM
-  monthlyRevenueGoals: {}
-})
-
-const form = ref(defaultForm())
-
-const estimatedRevenue = computed(() => {
-  const price = Number(form.value?.pricePerUnit ?? 0)
-  const qty = Number(form.value?.totalQuantity ?? 0)
-  return price * qty
-})
-
-// Add Order modal: button enabled only when case, caseUnit, pricePerUnit, totalQuantity are filled
-const addOrderFormValid = computed(() => {
-  const f = form.value;
-  return !!(
-    f?.caseId &&
-    f?.caseUnit &&
-    f?.pricePerUnit != null && f?.pricePerUnit !== '' &&
-    f?.totalQuantity != null && f?.totalQuantity !== ''
-  );
-});
-
-// If you also want to keep `form.estimatedRevenue` synced:
-watch(estimatedRevenue, (val) => {
-  form.value.estimatedRevenue = val
-})
-
-// Months spanned by the current order dates (for monthly revenue goals UI)
-const monthlyGoalMonths = computed(() => {
-  const f = form.value
-  if (!f.startDate || !f.deadline) return []
-  try {
-    return getOrderMonths({
-      startDate: f.startDate,
-      deadline: f.deadline
-    })
-  } catch {
-    return []
   }
 })
 
@@ -1054,11 +840,15 @@ function toDateInputString(dateStr) {
 }
 
 function openAddOrderModal() {
-  form.value = defaultForm()
-  Object.keys(agentGoals).forEach(k => agentGoals[k] = 0)
   const [startOfMonth, endOfMonth] = getCurrentMonthDateRange()
-  form.value.startDate = startOfMonth
-  form.value.deadline = endOfMonth
+  orderFormConfig.value = {
+    mode: 'add',
+    orderId: null,
+    initialOrder: null,
+    prefill: null,
+    defaultDates: { startDate: startOfMonth, deadline: endOfMonth }
+  }
+  orderFormModalKey.value++
   isEditMode.value = false
   showAddOrderModal.value = true
 }
@@ -1066,38 +856,43 @@ function openAddOrderModal() {
 function copyOrder(item) {
   if (!item) return;
 
-  // reset form and local goals
-  form.value = defaultForm();
-  Object.keys(agentGoals).forEach(k => agentGoals[k] = 0);
-  Object.keys(agentRates).forEach(k => agentRates[k] = 0);
-
-  // remember the source order to highlight after successful copy
   pendingCopySourceId.value = item._id;
 
   const assignedIds = [...new Set(
     (item.assignedCallers || []).map(x => String(x?._id ?? x?.id ?? x))
   )];
-
-  form.value.caseId = item.caseId || null;
-  form.value.caseUnit = item.caseUnit || null;
-  form.value.pricePerUnit = Number(item.pricePerUnit) || 0;
-  form.value.totalQuantity = Number(item.totalQuantity) || 0;
   const [nextStart, nextEnd] = monthDateRangeForNextMonthFrom(item.startDate || currentDateRange.value?.[0]);
-  form.value.startDate = nextStart;
-  form.value.deadline = nextEnd;
-  form.value.orderStatus = item.orderStatus || 'pending';
-  form.value.assignedCallers = assignedIds;
 
-  // hydrate agent goals for assigned agents
   const goals = item.agentGoals || {};
   const rates = item.agentRates || {};
   const prices = item.agentPrices || {};
+  const agentGoalsPrefill = {};
+  const agentRatesPrefill = {};
   assignedIds.forEach(id => {
-    agentGoals[id] = Number(goals[id]) || 0;
-    agentRates[id] = Number(rates[id]) || Number(prices[id]) || 0;
+    agentGoalsPrefill[id] = Number(goals[id]) || 0;
+    agentRatesPrefill[id] = Number(rates[id]) || Number(prices[id]) || 0;
   });
 
-  isEditMode.value = false; // ensure we're creating a new order
+  orderFormConfig.value = {
+    mode: 'copy',
+    orderId: null,
+    initialOrder: null,
+    prefill: {
+      caseId: item.caseId || null,
+      caseUnit: item.caseUnit || null,
+      pricePerUnit: Number(item.pricePerUnit) || 0,
+      totalQuantity: Number(item.monthlyGoal ?? item.totalQuantity) || 0,
+      startDate: nextStart,
+      deadline: nextEnd,
+      orderStatus: item.orderStatus || 'pending',
+      assignedCallers: assignedIds,
+      agentGoals: agentGoalsPrefill,
+      agentRates: agentRatesPrefill
+    },
+    defaultDates: null
+  };
+  orderFormModalKey.value++;
+  isEditMode.value = false;
   showAddOrderModal.value = true;
 }
 
@@ -1112,47 +907,34 @@ function openAddCaseModal() {
 }
 
 function openEditOrderModal() {
-  if (!selectedOrder.value) return
+  if (!selectedOrder.value) return;
 
-  // hydrate form from selected order and open modal in edit mode
   const o = selectedOrder.value;
-  form.value = defaultForm();
-
-  // basic fields
-  form.value.caseId = o.caseId || null;
-  form.value.caseUnit = o.caseUnit || null;
-  form.value.pricePerUnit = Number(o.pricePerUnit) || 0;
-  form.value.totalQuantity = Number(o.totalQuantity) || 0;
-  form.value.startDate = toDateInputString(o.startDate) || '';
-  form.value.deadline = toDateInputString(o.deadline) || '';
-  form.value.orderStatus = o.orderStatus || 'pending';
-  form.value.caseType = o.caseType || null;
-
-  // managers -> ids
-  const mgrs = Array.isArray(o.managers) ? o.managers : [];
-  form.value.managers = mgrs.map(m => m?.id || m?._id || m).filter(Boolean);
-
-  // assigned callers -> ids
-  const assignedIds = [...new Set(
-    (o.assignedCallers || []).map(x => String(x?._id ?? x?.id ?? x))
-  )];
-  form.value.assignedCallers = assignedIds;
-
-  // hydrate monthly revenue goals if present on the order
-  form.value.monthlyRevenueGoals = { ...(o.monthlyRevenueGoals || {}) }
-
-  // hydrate agent goals/rates for assigned agents
-  Object.keys(agentGoals).forEach(k => (agentGoals[k] = 0));
-  Object.keys(agentRates).forEach(k => (agentRates[k] = 0));
-  const goals = o.agentGoals || {};
-  const rates = o.agentRates || {};
-  assignedIds.forEach(id => {
-    agentGoals[id] = Number(goals[id]) || 0;
-    agentRates[id] = Number(rates[id]) || 0;
-  });
-
+  orderFormConfig.value = {
+    mode: 'edit',
+    orderId: o._id ?? o.id,
+    initialOrder: o,
+    prefill: null,
+    defaultDates: null
+  };
+  orderFormModalKey.value++;
   isEditMode.value = true;
   showAddOrderModal.value = true;
+}
+
+async function onOrderFormSaved() {
+  await fetchAllData();
+  try { deriveCopiedFlagsFromOrders(orders.value || []); } catch {}
+  if (isEditMode.value && selectedOrder.value) {
+    const updated = (orders.value || []).find(o => o._id === selectedOrder.value._id);
+    if (updated) selectedOrder.value = updated;
+  }
+  if (pendingCopySourceId.value) {
+    copiedToNextMonth[pendingCopySourceId.value] = true;
+    pendingCopySourceId.value = null;
+    saveCopiedFlags();
+  }
+  closeAddOrderModal();
 }
 
 function closeAddOrderModal() {
@@ -1288,9 +1070,6 @@ const selectOrder = async (order, event) => {
       agentAssignments: item?.agentAssignments,
       assignedCallers: item?.assignedCallers,
     });
-
-    // clear local goals cache
-    Object.keys(agentGoals).forEach(k => (agentGoals[k] = 0));
 
     // full-month window for the currently selected month in the toolbar (fallback to order start)
     const baseDate = (currentDateRange.value && currentDateRange.value[0]) || item.startDate;
@@ -1462,17 +1241,13 @@ const deleteOrder = async (orderId) => {
 const assignGoals = async () => {
   if (!selectedOrder.value) return;
   try {
-    // Prepare the updated order object
+    const summary = selectedOrder.value.agentSummary || [];
     const updatedOrder = {
       ...selectedOrder.value,
-      agentGoals: { ...agentGoals },
-      agentRates: Object.fromEntries(
-        (selectedOrder.value.agentSummary || []).map(a => [a.id, Number(a.rateForThisOrder) || 0])
-      ),
-      agentPrices: Object.fromEntries(
-        (selectedOrder.value.agentSummary || []).map(a => [a.id, Number(a.rateForThisOrder) || 0])
-      ),
-      agentAssignments: (selectedOrder.value.agentSummary || []).map(a => ({
+      agentGoals: Object.fromEntries(summary.map(a => [a.id, Number(a.goalForThisOrder) || 0])),
+      agentRates: Object.fromEntries(summary.map(a => [a.id, Number(a.rateForThisOrder) || 0])),
+      agentPrices: Object.fromEntries(summary.map(a => [a.id, Number(a.rateForThisOrder) || 0])),
+      agentAssignments: summary.map(a => ({
         id: a.id,
         name: a.name,
         goal: Number(a.goalForThisOrder) || 0,
@@ -1502,41 +1277,6 @@ const submitGoals = async () => {
   }
 }
 
-const agentOptions = computed(() => agents.value.map(a => ({
-  value: a._id,
-  title: a.name
-})))
-
-const caseOptions = computed(() => (cases.value || []).map(c => ({
-  value: c._id,
-  title: c.name
-})))
-
-const caseUnits = ['hours', 'interviews', 'meetings']
-const orderStatuses = ['pending', 'in-progress', 'completed', 'cancelled', 'on-hold']
-
-const assignedGoalsCount = computed(() =>
-  form.assignedCallers.reduce((sum, id) => sum + (Number(agentGoals[id]) || 0), 0)
-);
-
-const agentName = id => {
-  const agent = agents.value.find(a => a._id === id);
-  return agent ? agent.name : id;
-};
-
-const resetForm = () => {
-  form.caseId = '';
-  form.caseUnit = '';
-  form.totalQuantity = '';
-  form.pricePerUnit = '';
-  form.startDate = '';
-  form.deadline = '';
-  form.orderStatus = '';
-  form.estimatedRevenue = '';
-  form.assignedCallers = [];
-  Object.keys(agentGoals).forEach(k => agentGoals[k] = 0);
-};
-
 function resetAgentForm() {
   agent.value = {
     name: '',
@@ -1557,62 +1297,6 @@ function resetCaseForm() {
       email: ''
     }
   };
-}
-
-const submitOredrForm = async () => {
-  try {
-    const selectedCase = cases.value.find(c => c._id === form.value.caseId)
-
-    const payload = {
-      ...toRaw(form.value), // remove Vue reactivity
-      estimatedRevenue: estimatedRevenue.value, // ensure computed is included
-      caseName: selectedCase ? selectedCase.name : '',
-      agentGoals: { ...agentGoals },
-      agentRates: { ...agentRates },
-    agentPrices: { ...agentRates }, // legacy mirror for backend compatibility
-      agentAssignments: (form.value.assignedCallers || []).map(id => ({
-        id,
-        name: agentName(id),
-        goal: Number(agentGoals[id]) || 0,
-        rate: Number(agentRates[id]) || 0,
-      })),
-      managers: (form.value.managers || []).map(id => {
-        const agent = gcAgents.value.find(a => a._id === id)
-        return agent ? { id, name: agent.name } : { id, name: '' }
-      })
-    }
-
-    if (isEditMode.value && selectedOrder.value) {
-      // Edit mode: update the order
-      console.log('Updating order:', selectedOrder.value._id, payload)
-      await axios.put(`${urls.backEndURL}/orders/${selectedOrder.value._id}`, {
-        ...toRaw(selectedOrder.value),
-        ...payload
-      })
-    } else {
-      // Add mode: create a new order
-      await axios.post(`${urls.backEndURL}/orders/`, payload)
-      // mark the source order as copied for green highlight
-      if (pendingCopySourceId.value) {
-        copiedToNextMonth[String(pendingCopySourceId.value)] = true;
-        pendingCopySourceId.value = null;
-        saveCopiedFlags();
-      }
-    }
-
-    await fetchAllData()
-    try { deriveCopiedFlagsFromOrders(orders.value || []); } catch {}
-
-    if (isEditMode.value && selectedOrder.value) {
-      const updated = orders.value.find(o => o._id === selectedOrder.value._id)
-      if (updated) selectedOrder.value = updated
-    }
-
-    resetForm()
-    closeAddOrderModal()
-  } catch (err) {
-    console.error('Failed to save order:', err.response?.data || err.message)
-  }
 }
 
 const submitAgentForm = async () => {

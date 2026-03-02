@@ -128,7 +128,8 @@ const store = createStore({
             dispatch('fetchOrders'),
             dispatch('fetchgcAgents'),
             dispatch('fetchDailyLogs'),
-            dispatch('fetchCaseTypes')
+            dispatch('fetchCaseTypes'),
+            dispatch('fetchGcCases')
           );
           break;
           
@@ -437,7 +438,10 @@ const store = createStore({
       state.dateRange = range
     },
     setOrders(state, orders) {
-      state.orders = orders
+      state.orders = (orders || []).map(o => ({
+        ...o,
+        monthlyGoal: o.monthlyGoal ?? o.totalQuantity
+      }))
     },
     setgcAgents(state, gcAgents) {
       state.gcAgents = gcAgents

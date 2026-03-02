@@ -40,7 +40,7 @@
                <strong>{{ t('orderDetails.deadline') }}:</strong> {{ formatDate(order.deadline) }}
             </v-col>
             <v-col cols="3">
-               <strong>{{ t('orderDetails.campaignGoal') }}:</strong> {{ order.campaignGoal ?? order.campaign_goal ?? 0 }}
+               <strong>{{ t('orderDetails.campaignGoal') }}:</strong> {{ displayCampaignGoal }}
             </v-col>
             <v-col cols="3">
                 <strong>{{ t('orderDetails.estimatedRevenue') }}:</strong> €{{ order.estimatedRevenue }}
@@ -233,6 +233,19 @@
   const monthWeeks = ref([])
   const orders = computed(() => store.getters['orders'])
   const gcCases = computed(() => store.getters['gcCases'])
+  const displayCampaignGoal = computed(() => {
+    const ord = order.value
+    if (!ord) return 0
+    const fromOrder = ord.campaignGoal ?? ord.campaign_goal
+    if (fromOrder != null && fromOrder !== '') return Number(fromOrder) || 0
+    const caseId = ord.caseId?._id ?? ord.caseId?.id ?? ord.caseId
+    if (caseId && gcCases.value?.length) {
+      const c = gcCases.value.find(x => String(x._id ?? x.id) === String(caseId))
+      const fromCase = c?.campaignGoal ?? c?.campaign_goal
+      if (fromCase != null && fromCase !== '') return Number(fromCase) || 0
+    }
+    return Number(ord.monthlyGoal ?? ord.totalQuantity) || 0
+  })
   
   const goalTypes = ['hours', 'interviews', 'meetings']
   const orderStatuses = ['pending', 'in-progress', 'completed', 'cancelled', 'on-hold']

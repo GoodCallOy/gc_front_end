@@ -110,6 +110,7 @@
         "callers": "Soittajat",
         "pricePerUnit": "Hinta/yksikkö (€)",
         "unit": "Yksikkö",
+        "monthlyGoal": "Kuukausitavoite",
         "teamGoals": "Kampanjatavoite",
         "revenueGoal": "Liikevaihtotavoite",
         "currentRevenue": "Nykyinen liikevaihto",
@@ -189,7 +190,7 @@
         "selectCase": "Valitse tapaus",
         "caseUnit": "Tapauksen yksikkö",
         "pricePerUnit": "Hinta per yksikkö (€)",
-        "totalQuantity": "Tiimin tavoite",
+        "totalQuantity": "Kuukausitavoite",
         "startDate": "Aloituspäivä",
         "deadline": "Määräaika",
         "orderStatus": "Tilauksen tila",
@@ -214,7 +215,7 @@
       "validation": {
         "caseUnitRequired": "Tapauksen yksikkö on pakollinen",
         "pricePerUnitRequired": "Hinta per yksikkö on pakollinen",
-        "quantityRequired": "Tiimin tavoite on pakollinen",
+        "quantityRequired": "Kuukausitavoite on pakollinen",
         "startDateRequired": "Aloituspäivä on pakollinen",
         "deadlineRequired": "Määräaika on pakollinen",
         "orderStatusRequired": "Tilauksen tila on pakollinen",
@@ -229,6 +230,14 @@
       "failedToSaveGoals": "Tavoitteiden tallennus epäonnistui!",
       "unknownAgent": "Tuntematon agentti"
     },
+    "orderForm": {
+      "campaignGoal": "Kampanjan tavoite",
+      "enableSearchedPhoneNumbers": "Ota haetut puhelinnumerot käyttöön",
+      "assignedGoals": "Määritetyt tavoitteet",
+      "orderUpdated": "Tilaus päivitetty onnistuneesti.",
+      "orderCreated": "Tilaus luotu onnistuneesti.",
+      "saveFailed": "Tilauksen tallennus epäonnistui."
+    },
     "agentDashboard": {
       "agentStatistics": "Agenttitilastot",
       "revenue": "Tiimin liikevaihto",
@@ -239,6 +248,8 @@
       "myRateRevenue": "Oma liikevaihto",
       "myPaycheck": "Oma palkka",
       "myRate": "Oma taksa",
+      "billedHours": "Laskutettu aika",
+      "callingHours": "Puheluaika",
       "totalUnits": "Yksiköt yhteensä",
       "casesFor": "Tapaukset",
       "weeklySummary": "Kuukausiyhteenveto viikoittain",
@@ -281,7 +292,7 @@
       "status": "Tila",
       "type": "Tyyppi",
       "deadline": "Määräaika",
-      "teamGoal": "Tiimin tavoite",
+      "teamGoal": "Kuukausitavoite",
       "campaignGoal": "Kampanjatavoite",
       "estimatedRevenue": "Arvioitu liikevaihto",
       "callers": "Soittajat",

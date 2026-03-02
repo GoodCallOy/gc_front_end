@@ -402,7 +402,7 @@ async function loadReportData() {
 
     // Team goal per week: sum of (totalQuantity/numWeeks) for orders agent is in
     for (const order of agentOrders) {
-      const teamQty = Number(order?.totalQuantity ?? 0)
+      const teamQty = Number(order?.monthlyGoal ?? order?.totalQuantity ?? 0)
       const perWeek = teamQty / numWeeks
       for (const [, bucket] of weekBuckets) {
         bucket.teamGoal += perWeek

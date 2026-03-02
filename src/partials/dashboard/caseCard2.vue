@@ -33,7 +33,7 @@
         </div>
       </div>
       <div>
-       <strong>{{ order.caseUnit }}:</strong> {{ totalUnits }} / {{ order.totalQuantity }}
+       <strong>{{ order.caseUnit }}:</strong> {{ totalUnits }} / {{ order.monthlyGoal ?? order.totalQuantity }}
       </div>
       <div>
         <strong>Start:</strong> {{ formatDate(order.startDate) }}

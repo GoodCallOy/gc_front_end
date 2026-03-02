@@ -58,7 +58,7 @@ onMounted(async () => {
   try {
     const res = await axios.get(`${urls.backEndURL}/orders/${props.orderId}/progress`)
     progressData.value = res.data.assignedCallers
-    totalQuantity.value = res.data.totalQuantity
+    totalQuantity.value = res.data.monthlyGoal ?? res.data.totalQuantity
   } catch (err) {
     console.error('Failed to load order progress:', err)
   }

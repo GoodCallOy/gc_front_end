@@ -175,7 +175,7 @@
 
       // Total project goal (for reference)
       const totalProjectGoal = computed(() => {
-        return Number(props.order?.totalQuantity ?? 0);
+        return Number(props.order?.monthlyGoal ?? props.order?.totalQuantity ?? 0);
       });
 
       const euro = new Intl.NumberFormat(undefined, { style: 'currency', currency: 'EUR' })

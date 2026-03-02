@@ -106,7 +106,7 @@
                         <tr v-for="month in item.monthlyBreakdown" :key="month.monthKey">
                           <td>{{ getMonthName(month.month) }} {{ month.year }}</td>
                           <td>{{ formatDateDetailed(month.startDateStr) }} - {{ formatDateDetailed(month.endDateStr) }}</td>
-                          <td>{{ month.quantityCompleted }} / {{ item.campaignGoal ?? item.campaign_goal ?? 0 }}</td>
+                          <td>{{ month.quantityCompleted }} / {{ getDisplayGoal(item) }}</td>
                           <td>{{ formatCurrency(month.revenue) }}</td>
                           <td>{{ formatCurrency(getMonthlyRevenueGoal(item, month)) }}</td>
                           <td>
@@ -114,15 +114,15 @@
                               {{ getMonthlyPercentageToGoal(item, month) }}%
                             </span>
                           </td>
-                          <td>{{ Math.max(0, (item.campaignGoal ?? item.campaign_goal ?? 0) - getTotalCompletedUpToMonth(item.monthlyBreakdown, month.monthKey)) }}</td>
+                          <td>{{ Math.max(0, getDisplayGoal(item) - getTotalCompletedUpToMonth(item.monthlyBreakdown, month.monthKey)) }}</td>
                         </tr>
                         <tr class="font-weight-bold">
                           <td colspan="2">{{ t('ordersDashboard.monthlyBreakdown.total') }}</td>
-                          <td>{{ getTotalQuantity(item.monthlyBreakdown) }} / {{ item.campaignGoal ?? item.campaign_goal ?? 0 }}</td>
+                          <td>{{ getTotalQuantity(item.monthlyBreakdown) }} / {{ getDisplayGoal(item) }}</td>
                           <td>{{ formatCurrency(getTotalRevenue(item.monthlyBreakdown)) }}</td>
                           <td></td>
                           <td></td>
-                          <td>{{ Math.max(0, (item.campaignGoal ?? item.campaign_goal ?? 0) - getTotalQuantity(item.monthlyBreakdown)) }}</td>
+                          <td>{{ Math.max(0, getDisplayGoal(item) - getTotalQuantity(item.monthlyBreakdown)) }}</td>
                         </tr>
                       </tbody>
                     </v-table>
@@ -152,6 +152,9 @@
             <template #item.callers="{ item }">
               {{ getCallerNames(item) }}
             </template>
+            <template #item.monthlyGoal="{ item }">
+              {{ computeOrderQuantity(item) }} / {{ item.monthlyGoal ?? item.totalQuantity ?? 0 }}
+            </template>
             <template #item.goal="{ item }">
               {{ formatCurrency(Number(item.estimatedRevenue) || 0) }}
             </template>
@@ -164,7 +167,7 @@
               </span>
             </template>
             <template #item.teamGoals="{ item }">
-              {{ computeOrderQuantity(item) }} / {{ item.campaignGoal ?? item.campaign_goal ?? 0 }}
+              {{ computeOrderQuantity(item) }} / {{ getDisplayGoal(item) }}
             </template>
             <template #item.startDate="{ item }">
               {{ formatDate(item.startDate) }}
@@ -225,6 +228,7 @@ const tableHeaders = computed(() => [
   { title: t('ordersDashboard.tableHeaders.callers'), key: 'callers', sortable: false },
   { title: t('ordersDashboard.tableHeaders.pricePerUnit'), key: 'pricePerUnit' },
   { title: t('ordersDashboard.tableHeaders.unit'), key: 'caseUnit' },
+  { title: t('ordersDashboard.tableHeaders.monthlyGoal'), key: 'monthlyGoal', sortable: false },
   { title: t('ordersDashboard.tableHeaders.teamGoals'), key: 'teamGoals', sortable: false },
   { title: t('ordersDashboard.tableHeaders.revenueGoal'), key: 'goal', sortable: false },
   { title: t('ordersDashboard.tableHeaders.currentRevenue'), key: 'revenue', sortable: false },
@@ -235,6 +239,7 @@ const tableHeaders = computed(() => [
 
 const orders = computed(() => store.getters['orders'])
 const gcAgents = computed(() => store.getters['gcAgents'])
+const gcCases = computed(() => store.getters['gcCases'] || store.getters['GcCases'] || [])
 const dailyLogs = computed(() => store.getters['dailyLogs'])
 const currentDateRange = computed(() => store.getters['currentDateRange'])
 const caseTypes = computed(() => store.getters['caseTypes'] || [])
@@ -429,7 +434,7 @@ function isTestCase(order) {
   return false;
 }
 
-// Calculate estimated revenue total from filtered orders (respects case type filter, excludes test cases)
+// Calculate estimated revenue total from filtered orders (monthlyGoal * pricePerUnit per order)
 const estimatedRevenueTotal = computed(() => {
   const ordersToCalculate = selectedCaseType.value ? filteredOrdersByCaseType.value : filteredOrders.value;
   if (!ordersToCalculate || ordersToCalculate.length === 0) {
@@ -440,7 +445,9 @@ const estimatedRevenueTotal = computed(() => {
   const nonTestOrders = ordersToCalculate.filter(order => !isTestCase(order));
   
   return nonTestOrders.reduce((total, order) => {
-    return total + (Number(order.estimatedRevenue) || 0);
+    const monthlyGoal = Number(order?.monthlyGoal ?? order?.totalQuantity) || 0;
+    const pricePerUnit = Number(order?.pricePerUnit) || 0;
+    return total + (monthlyGoal * pricePerUnit);
   }, 0);
 });
 
@@ -595,7 +602,7 @@ function computeOrderRevenue(order) {
 }
 
 function computePercentageToGoal(order) {
-  const monthlyGoal = Number(order?.totalQuantity) || 0
+  const monthlyGoal = Number(order?.monthlyGoal ?? order?.totalQuantity) || 0
   if (!monthlyGoal) {
     return 0
   }
@@ -636,6 +643,18 @@ function getMonthlyPercentageToGoalClass(order, month) {
   if (pct > 25 && pct <= 50) return 'percentage-orange'
   if (pct > 50 && pct <= 75) return 'percentage-yellow'
   return 'percentage-green'
+}
+
+function getDisplayGoal(order) {
+  const fromOrder = order?.campaignGoal ?? order?.campaign_goal
+  if (fromOrder != null && fromOrder !== '') return Number(fromOrder) || 0
+  const caseId = order?.caseId?._id ?? order?.caseId?.id ?? order?.caseId
+  if (caseId && gcCases.value?.length) {
+    const c = gcCases.value.find(x => String(x._id ?? x.id) === String(caseId))
+    const fromCase = c?.campaignGoal ?? c?.campaign_goal
+    if (fromCase != null && fromCase !== '') return Number(fromCase) || 0
+  }
+  return Number(order?.monthlyGoal ?? order?.totalQuantity) || 0
 }
 
 function getCallerNames(order) {
