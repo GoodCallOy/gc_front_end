@@ -125,7 +125,7 @@ const store = createStore({
           
         case 'ordersDashboard':
           fetchPromises.push(
-            dispatch('fetchOrders'),
+            dispatch('fetchOrders', true), // force refresh so edits from orderDetails/assignGoals appear
             dispatch('fetchgcAgents'),
             dispatch('fetchDailyLogs'),
             dispatch('fetchCaseTypes'),

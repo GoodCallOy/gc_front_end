@@ -921,24 +921,30 @@ const refreshInterval = ref(null)
 const focusHandler = ref(null)
 
 function setupAutoRefresh() {
-  // Refresh every 30 seconds if component is active
+  // Refresh orders and daily logs every 30 seconds if component is active
   refreshInterval.value = setInterval(async () => {
     if (document.hasFocus() && store.state.activeComponents.has('ordersDashboard')) {
       try {
-        await store.dispatch('fetchDailyLogs', true) // Force refresh
+        await Promise.all([
+          store.dispatch('fetchOrders', true),
+          store.dispatch('fetchDailyLogs', true)
+        ])
       } catch (e) {
-        console.warn('Failed to refresh daily logs:', e)
+        console.warn('Failed to refresh data:', e)
       }
     }
   }, 30000)
   
-  // Also refresh when window gains focus
+  // Also refresh when window gains focus (e.g. after editing order in another tab/modal)
   focusHandler.value = async () => {
     if (store.state.activeComponents.has('ordersDashboard')) {
       try {
-        await store.dispatch('fetchDailyLogs', true) // Force refresh
+        await Promise.all([
+          store.dispatch('fetchOrders', true),
+          store.dispatch('fetchDailyLogs', true)
+        ])
       } catch (e) {
-        console.warn('Failed to refresh daily logs on focus:', e)
+        console.warn('Failed to refresh data on focus:', e)
       }
     }
   }
