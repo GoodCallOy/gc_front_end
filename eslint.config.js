@@ -1,9 +1,9 @@
-import vue from 'eslint-plugin-vue'
-import vueParser from 'vue-eslint-parser'
-import babelParser from '@babel/eslint-parser'
-import vueRecommended from 'eslint-plugin-vue/dist/configs/vue3-recommended.js'
+const vue = require('eslint-plugin-vue')
+const vueParser = require('vue-eslint-parser')
+const babelParser = require('@babel/eslint-parser')
+const vueRecommended = require('eslint-plugin-vue/dist/configs/vue3-recommended.js')
 
-export default [
+module.exports = [
   {
     files: ['**/*.vue'],
     languageOptions: {

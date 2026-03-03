@@ -42,9 +42,6 @@
               <v-card-title class="text-truncate text-center">
                 {{ agent.name || 'Unknown Agent' }}
               </v-card-title>
-              <v-card-subtitle v-if="agent.case" class="text-truncate">
-                {{ agent.case }}
-              </v-card-subtitle>
 
               <!-- Assigned cases and total revenue -->
               <v-card-text class="pt-0 pb-1 flex-grow-1 agent-card-content">
@@ -173,8 +170,7 @@ import AgentCard from './agentCard.vue';
             completed_calls: totalCompletedCalls,
             quantityCompleted: totalQuantityCompleted,
             response_rate: responseRate.toFixed(1),
-            meetings: agentLogs.length, // Number of daily log entries (meetings)
-            case: agentLogs.length > 0 ? agentLogs[0].caseName || 'Unknown' : ''
+            meetings: agentLogs.length
           };
         });
       }
