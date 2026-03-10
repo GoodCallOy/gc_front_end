@@ -100,28 +100,35 @@
         // If we have custom weeks, base total on current month weeks; otherwise fallback to all logs
         const weeks = Array.isArray(props.monthWeeks) ? props.monthWeeks : []
         let totalUnits = 0
+        const orderId = String(props.order._id ?? props.order.id ?? '')
+        const toId = (x) => String(x?._id ?? x?.id ?? x ?? '')
+        const isAssigned = (logAgentId) => assignedIds.some(id => toId(id) === logAgentId)
+
         if (weeks.length) {
           for (const w of weeks) {
             const start = new Date(w.start)
             const end = new Date(w.end)
             const weekUnits = props.dailyLogs
-              .filter(log =>
-                assignedIds.includes(log.agent._id) &&
-                log.order._id === props.order._id &&
-                new Date(log.date) >= start && new Date(log.date) <= end &&
-                typeof log.quantityCompleted === 'number'
-              )
+              .filter(log => {
+                const logAgentId = toId(log.agent)
+                const logOrderId = toId(log.order) || toId(log.orderId)
+                return logAgentId && isAssigned(logAgentId) &&
+                  logOrderId === orderId &&
+                  new Date(log.date) >= start && new Date(log.date) <= end &&
+                  typeof log.quantityCompleted === 'number'
+              })
               .reduce((sum, log) => sum + log.quantityCompleted, 0)
             totalUnits += weekUnits
           }
         } else {
           totalUnits = props.dailyLogs
-            .filter(
-              log =>
-                assignedIds.includes(log.agent._id) &&
-                log.order._id === props.order._id &&
+            .filter(log => {
+              const logAgentId = toId(log.agent)
+              const logOrderId = toId(log.order) || toId(log.orderId)
+              return logAgentId && isAssigned(logAgentId) &&
+                logOrderId === orderId &&
                 typeof log.quantityCompleted === 'number'
-            )
+            })
             .reduce((sum, log) => sum + log.quantityCompleted, 0)
         }
 
@@ -154,13 +161,18 @@
           return 0;
 
         const assignedIds = props.order.assignedCallers;
+        const orderId = String(props.order._id ?? props.order.id ?? '');
+        const toId = (x) => String(x?._id ?? x?.id ?? x ?? '');
+        const isAssigned = (logAgentId) => assignedIds.some(id => toId(id) === logAgentId);
+
         return props.dailyLogs
-          .filter(
-            log =>
-              assignedIds.includes(log.agent._id) &&
-              log.order._id === props.order._id &&
-              typeof log.quantityCompleted === 'number'
-          )
+          .filter(log => {
+            const logAgentId = toId(log.agent);
+            const logOrderId = toId(log.order) || toId(log.orderId);
+            return logAgentId && isAssigned(logAgentId) &&
+              logOrderId === orderId &&
+              typeof log.quantityCompleted === 'number';
+          })
           .reduce((sum, log) => sum + log.quantityCompleted, 0);
       });
 

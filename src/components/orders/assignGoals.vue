@@ -106,6 +106,11 @@
           <template #item.goalsDistributed="{ item }">
             {{ getDistributedGoals(item) }}
           </template>
+          <template #item.goalsRemaining="{ item }">
+            <span :class="{ 'text-primary font-weight-medium': getRemainingGoals(item) > 0 }" :title="getRemainingGoals(item) > 0 ? t('assignGoals.goalsRemainingTooltip') : ''">
+              {{ getRemainingGoals(item) }}
+            </span>
+          </template>
 
           <template #item.edit="{ item }">
             <v-btn
@@ -144,6 +149,15 @@
   <h3 class="text-h6 mb-2">
     {{ t('assignGoals.assignGoalsFor') }} ({{ selectedOrder && selectedOrder.caseName || t('assignGoals.noOrderSelected') }})
   </h3>
+  <v-alert
+    v-if="selectedOrder && selectedOrderRemainingGoals > 0"
+    type="info"
+    variant="tonal"
+    density="compact"
+    class="mb-3"
+  >
+    {{ t('assignGoals.goalsRemainingToAssign') }}: <strong>{{ selectedOrderRemainingGoals }}</strong>
+  </v-alert>
 
   <div v-if="rightPanelLoading" class="d-flex align-center justify-center pa-8">
     <v-progress-circular indeterminate color="primary" size="48" />
@@ -683,6 +697,7 @@ const orderHeaders = computed(() => [
   { title: t('assignGoals.tableHeaders.caseName'), key: 'caseName' },
   { title: t('assignGoals.tableHeaders.totalGoals'), key: 'monthlyGoal' },
   { title: t('assignGoals.tableHeaders.goalsDistributed'), key: 'goalsDistributed', sortable: false },
+  { title: t('assignGoals.tableHeaders.goalsRemaining'), key: 'goalsRemaining', sortable: false },
   { title: t('assignGoals.tableHeaders.priceUnit'), key: 'caseUnit' },
   { title: t('assignGoals.tableHeaders.copy'), key: 'copy', sortable: false },
   { title: t('assignGoals.tableHeaders.edit'), key: 'edit', sortable: false },
@@ -718,6 +733,20 @@ const hasGoalChanges = computed(() => {
     const oldRate = Number(originalRates[a.id]) || 0;
     return newGoal !== oldGoal || newRate !== oldRate;
   });
+});
+
+// Remaining goals for selected order using live form values (updates as user edits)
+const selectedOrderRemainingGoals = computed(() => {
+  const ord = selectedOrder.value;
+  if (!ord) return 0;
+  const total = Number(ord.monthlyGoal ?? ord.totalQuantity ?? 0) || 0;
+  let distributed = 0;
+  if (ord.agentSummary?.length) {
+    distributed = ord.agentSummary.reduce((sum, a) => sum + (Number(a.goalForThisOrder) || 0), 0);
+  } else {
+    distributed = getDistributedGoals(ord);
+  }
+  return Math.max(0, total - distributed);
 });
 
 const selectOrderForEdit = (item) => {
@@ -951,6 +980,13 @@ function closeAddCaseModal() {
 
 const getDistributedGoals = (order) => {
   return Object.values(order.agentGoals || {}).reduce((sum, val) => sum + val, 0)
+}
+
+// Goals not yet assigned to any agent (available to give out when removing from others)
+const getRemainingGoals = (order) => {
+  const total = Number(order?.monthlyGoal ?? order?.totalQuantity ?? 0) || 0
+  const distributed = getDistributedGoals(order)
+  return Math.max(0, total - distributed)
 }
 
 function editCaseFromOrder(order) {

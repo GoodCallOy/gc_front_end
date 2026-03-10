@@ -18,12 +18,18 @@
       <v-row align="center" dense>
         <v-col cols="12" sm="4" class="py-0">
           <div class="text-h6">
-            {{ t('agentDashboard.totalRevenue') }}: €{{ revenueGenerated.revenue }}
+            {{ t('agentDashboard.totalRevenue') }}: €{{ topBoxStats.totalTeamRevenue }}
+          </div>
+          <div class="text-h6">
+            {{ t('agentDashboard.myTotalRevenue') }}: €{{ revenueGenerated.myRevenue }}
           </div>
         </v-col>
         <v-col cols="12" sm="4" class="py-0">
           <div class="text-h6">
             {{ t('agentDashboard.revenueToGoal') }}: {{ topBoxStats.revenueToGoalPercent }}%
+          </div>
+          <div class="text-h6">
+            {{ t('agentDashboard.myRevenueToGoal') }}: {{ myRevenueToGoalPercent }}%
           </div>
         </v-col>
         <v-col cols="12" sm="4" class="py-0">
@@ -156,10 +162,10 @@
           </v-window-item>
 
           <v-window-item value="cards">
-            <div class="grid-container ">
+            <div v-if="selectedGcAgent" class="grid-container ">
               <agentCaseCard
                 v-for="(userOrder, index) in userOrders"
-                :key="index"
+                :key="userOrder?._id ?? userOrder?.caseName ?? index"
                 :order="userOrder"
                 :agents="gcAgents"
                 :dailyLogs="caseStats"
@@ -356,6 +362,7 @@ const canceledCalls = ref([])
 const { t } = useI18n()
 
 const orders = computed(() => store.getters['orders'])
+const dailyLogs = computed(() => store.getters['dailyLogs'] || [])
 const gcAgents = computed(() => store.getters['gcAgents'])
 const activeGcAgents = computed(() =>
   (gcAgents.value || []).filter(agent => agent.active !== false)
@@ -1531,57 +1538,88 @@ const casesTableRows = computed(() => {
 });
 
 // Top box: revenue to goal = current revenue / total revenue goal across ALL cases (same % for every agent)
+// Total team revenue uses SAME logic as orders dashboard currentRevenueTotal for consistency
 const topBoxStats = computed(() => {
   const allOrders = orders.value || [];
-  const stats = allCaseStats.value || [];
+  const logs = dailyLogs.value || [];
   const dateRange = currentDateRange.value;
+  const weeks = monthWeeks.value || [];
 
   if (!dateRange || dateRange.length < 2 || allOrders.length === 0) {
-    return { revenueToGoalPercent: 0 };
+    return { revenueToGoalPercent: 0, totalTeamRevenue: '0.00' };
   }
 
-  const [startStr, endStr] = dateRange;
-  const from = new Date(startStr);
-  const to = new Date(endStr);
-  to.setHours(23, 59, 59, 999);
+  // Use monthWeeks for date range when available (matches orders dashboard), else currentDateRange
+  let monthStart, monthEnd;
+  if (Array.isArray(weeks) && weeks.length > 0) {
+    const starts = weeks.map(w => new Date(w.start));
+    const ends = weeks.map(w => new Date(w.end));
+    monthStart = new Date(Math.min.apply(null, starts));
+    monthEnd = new Date(Math.max.apply(null, ends));
+    monthEnd.setHours(23, 59, 59, 999);
+  } else {
+    const [startStr, endStr] = dateRange;
+    monthStart = new Date(startStr);
+    monthEnd = new Date(endStr);
+    monthEnd.setHours(23, 59, 59, 999);
+  }
+
+  // Filter orders by overlap with date range (matches orders dashboard filteredOrders)
+  const ordersToCalculate = allOrders.filter(order => {
+    const orderStart = new Date(order.startDate || 0);
+    const orderEnd = new Date(order.deadline || 0);
+    return orderStart <= monthEnd && orderEnd >= monthStart;
+  });
+
+  // Same logic as orders dashboard currentRevenueTotal: filter logs, exclude case good call & test
+  const logsInMonth = logs.filter(log => {
+    const logDate = new Date(log.date);
+    const isInDateRange = logDate >= monthStart && logDate <= monthEnd;
+    const isNotCaseGoodCall = log.caseName !== 'case good call';
+    const caseName = String(log.caseName || '').toLowerCase();
+    const isNotTest = !caseName.includes('test');
+    return isInDateRange && isNotCaseGoodCall && isNotTest;
+  });
 
   let currentRevenue = 0;
   let totalRevenueGoal = 0;
 
-  for (const order of allOrders) {
-    if (isTestCase(order)) continue;
+  // Revenue: sum quantityCompleted * pricePerUnit per log (match orders dashboard)
+  logsInMonth.forEach(log => {
+    const quantityCompleted = Number(log.quantityCompleted) || 0;
+    const order = ordersToCalculate.find(o =>
+      o.caseName === log.caseName ||
+      String(o._id) === String(log.order?._id || log.order || log.orderId)
+    );
+    if (order && !isTestCase(order)) {
+      const pricePerUnit = Number(order.pricePerUnit) || 0;
+      currentRevenue += quantityCompleted * pricePerUnit;
+    }
+  });
 
-    const orderId = String(order._id ?? order.id ?? '');
+  // Total revenue goal: from orders that overlap the month (for revenue-to-goal %)
+  for (const order of ordersToCalculate) {
+    if (isTestCase(order)) continue;
     const pricePerUnit = Number(order?.pricePerUnit ?? 0);
     const teamGoal = Number(order?.monthlyGoal ?? order?.totalQuantity ?? 0);
     totalRevenueGoal += teamGoal * pricePerUnit;
-
-    // Team units: all logs for this order in date range (all agents)
-    const candidateLogs = stats.filter((log) => {
-      const logOrderId = String(log?.order?._id ?? log?.order ?? log?.orderId ?? '');
-      const logCaseName = log?.caseName ?? '';
-      const sameOrder = logOrderId === orderId || logCaseName === (order?.caseName ?? '');
-      if (!sameOrder) return false;
-      const d = new Date(log?.date);
-      return d >= from && d <= to;
-    });
-
-    const seen = new Set();
-    let teamUnits = 0;
-    for (const log of candidateLogs) {
-      const key = `${log?.date}_${log?.agentName ?? log?.agent}_${log?.caseName}_${log?._id ?? log?.id}`;
-      if (!seen.has(key)) {
-        seen.add(key);
-        teamUnits += Number(log?.quantityCompleted ?? 0);
-      }
-    }
-    currentRevenue += teamUnits * pricePerUnit;
   }
 
   const revenueToGoalPercent = totalRevenueGoal > 0
     ? Math.round((currentRevenue / totalRevenueGoal) * 100)
     : 0;
-  return { revenueToGoalPercent };
+  return {
+    revenueToGoalPercent,
+    totalTeamRevenue: currentRevenue.toFixed(2)
+  };
+});
+
+// Average of all % column values from cases table (agent's revenue-to-goal per case, averaged)
+const myRevenueToGoalPercent = computed(() => {
+  const rows = casesTableRows.value || [];
+  if (rows.length === 0) return 0;
+  const sum = rows.reduce((acc, row) => acc + (Number(row?.percentage) || 0), 0);
+  return Math.round((sum / rows.length) * 10) / 10; // 1 decimal place
 });
 
 const currentUser = computed(() => {
