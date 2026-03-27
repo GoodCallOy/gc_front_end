@@ -80,33 +80,50 @@
     <!-- Show cases if assigned -->
     <div v-else>
       <div class="d-flex align-center justify-space-between mb-4 flex-wrap" style="gap: 12px;">
-        <h1 class="text-h4 mb-0">
-          {{ t('agentDashboard.casesFor') }} {{ selectedGcAgent ? selectedGcAgent.name : '—' }}
-        </h1>
-        <v-select
+        <div class="d-flex align-center flex-wrap" style="gap: 8px;">
+          <h1 class="text-h4 mb-0">
+            {{ t('agentDashboard.casesFor') }} {{ selectedGcAgent ? selectedGcAgent.name : '—' }}
+          </h1>
+          <v-btn
+            v-if="canManageWeeklyNotes"
+            size="small"
+            color="primary"
+            variant="text"
+            class="ml-2"
+            @click="showWeeklyNotesDialog = true"
+          >
+            {{ t('agentDashboard.weeklyNotes') }}
+          </v-btn>
+        </div>
+        <div
           v-if="currentUser?.role === 'admin' || currentUser?.role === 'manager'"
-          v-model="viewReportCaseId"
-          :items="reportCaseOptions"
-          item-title="caseName"
-          :item-value="(item) => item._id ?? item.id ?? ''"
-          density="compact"
-          hide-details
-          style="max-width: 260px;"
-          label="View Report"
-          :disabled="!reportCaseOptions.length"
-          @update:model-value="onViewReportCaseSelect"
-        />
-        <v-select
-          v-if="currentUser?.role === 'admin' || currentUser?.role === 'manager'"
-          v-model="selectedAgentName"
-          :items="activeGcAgents"
-          item-title="name"
-          item-value="name"
-          density="compact"
-          hide-details
-          style="max-width: 260px;"
-          :label="t('agentDashboard.casesFor')"
-        />
+          class="header-actions"
+        >
+          <div class="header-action-item">
+            <v-select
+              v-model="viewReportCaseId"
+              :items="reportCaseOptions"
+              item-title="caseName"
+              :item-value="(item) => item._id ?? item.id ?? ''"
+              density="compact"
+              hide-details
+              label="View Report"
+              :disabled="!reportCaseOptions.length"
+              @update:model-value="onViewReportCaseSelect"
+            />
+          </div>
+          <div class="header-action-item">
+            <v-select
+              v-model="selectedAgentName"
+              :items="activeGcAgents"
+              item-title="name"
+              item-value="name"
+              density="compact"
+              hide-details
+              :label="t('agentDashboard.casesFor')"
+            />
+          </div>
+        </div>
       </div>
 
       <div v-if="isLoadingDashboard" class="text-center py-8">
@@ -256,6 +273,119 @@
     </div>
   </v-card>
 
+  <!-- Weekly notes dialog -->
+  <v-dialog
+    v-model="showWeeklyNotesDialog"
+    max-width="720"
+  >
+    <v-card>
+      <v-card-title class="d-flex align-center justify-space-between">
+        <span>{{ t('agentDashboard.weeklyNotes') }}</span>
+        <v-btn icon size="small" variant="text" @click="showWeeklyNotesDialog = false">
+          <v-icon>mdi-close</v-icon>
+        </v-btn>
+      </v-card-title>
+
+      <v-card-text>
+        <div v-if="weeklyNotesLoading" class="text-center py-6">
+          <v-progress-circular indeterminate color="primary" size="32" />
+        </div>
+        <div v-else-if="monthWeeks.length === 0" class="text-body-2 text-grey">
+          {{ t('agentDashboard.noWeeklyNotesWeeks') }}
+        </div>
+        <div v-else>
+          <!-- Form to edit note for selected week -->
+          <div class="mb-4">
+            <v-row dense>
+              <v-col cols="12" sm="5">
+                <v-select
+                  v-model="selectedWeekIndexForNotes"
+                  :items="monthWeeks.map((w, idx) => ({ label: getWeeklyNoteWeekLabel(w), value: idx }))"
+                  item-title="label"
+                  item-value="value"
+                  density="comfortable"
+                  hide-details
+                  :label="t('agentDashboard.week')"
+                />
+              </v-col>
+              <v-col cols="12" sm="7">
+                <v-textarea
+                  v-if="monthWeeks[selectedWeekIndexForNotes]"
+                  v-model="weeklyNotes[getWeeklyNoteWeekKey(monthWeeks[selectedWeekIndexForNotes])]"
+                  :label="t('agentDashboard.weeklyNotePlaceholder')"
+                  auto-grow
+                  rows="2"
+                  max-rows="6"
+                  density="comfortable"
+                />
+              </v-col>
+            </v-row>
+            <div class="d-flex align-center mt-2" style="gap: 10px;">
+              <v-btn
+                size="small"
+                color="primary"
+                :loading="weeklyNoteSaving[getWeeklyNoteWeekKey(monthWeeks[selectedWeekIndexForNotes])] === true"
+                :disabled="!monthWeeks[selectedWeekIndexForNotes]"
+                @click="monthWeeks[selectedWeekIndexForNotes] && saveWeeklyNote(monthWeeks[selectedWeekIndexForNotes])"
+              >
+                {{ t('agentDashboard.saveWeeklyNote') }}
+              </v-btn>
+              <span class="text-caption text-grey-darken-1">
+                {{
+                  monthWeeks[selectedWeekIndexForNotes]
+                    ? (weeklyNoteStatus[getWeeklyNoteWeekKey(monthWeeks[selectedWeekIndexForNotes])] || '')
+                    : ''
+                }}
+              </span>
+            </div>
+          </div>
+
+          <!-- Existing notes list -->
+          <div class="mt-4">
+            <div class="text-subtitle-2 mb-2">
+              {{ t('agentDashboard.weeklyNotes') }}
+            </div>
+            <v-list density="compact">
+              <v-list-item
+                v-for="(week, idx) in monthWeeks"
+                :key="getWeeklyNoteWeekKey(week)"
+                class="py-2"
+              >
+                <v-list-item-title class="text-body-2 font-weight-medium">
+                  {{ getWeeklyNoteWeekLabel(week) }}
+                </v-list-item-title>
+                <v-list-item-subtitle class="text-body-2">
+                  {{ weeklyNotes[getWeeklyNoteWeekKey(week)] || '—' }}
+                </v-list-item-subtitle>
+                <template #append>
+                  <div class="d-flex align-center" style="gap: 6px;">
+                    <v-btn
+                      size="x-small"
+                      variant="text"
+                      color="primary"
+                      @click="editWeeklyNoteFromList(idx)"
+                    >
+                      {{ t('agentDashboard.editWeeklyNoteNote') }}
+                    </v-btn>
+                    <v-btn
+                      size="x-small"
+                      variant="text"
+                      color="error"
+                      :loading="weeklyNoteSaving[getWeeklyNoteWeekKey(week)] === true"
+                      @click="deleteWeeklyNote(week)"
+                    >
+                      {{ t('agentDashboard.deleteWeeklyNoteNote') }}
+                    </v-btn>
+                  </div>
+                </template>
+              </v-list-item>
+            </v-list>
+          </div>
+        </div>
+      </v-card-text>
+    </v-card>
+  </v-dialog>
+
   <!-- Weekly goals by project (per week) -->
   <v-card v-if="userOrders.length > 0" class="mx-auto my-4 pa-4 elevation-4" style="background-color: #eeeff1;">
   <h3 class="text-h6 mb-3">{{ t('agentDashboard.weeklyGoalsByCase') }}</h3>
@@ -353,6 +483,12 @@ const allCaseStats = ref([]) // For revenue-to-goal (same for every agent)
 const isLoadingDashboard = ref(false)
 const monthWeeks = ref([])
 const agentWeeklyGoals = ref([])
+const weeklyNotes = ref({})
+const weeklyNotesLoading = ref(false)
+const weeklyNoteSaving = ref({})
+const weeklyNoteStatus = ref({})
+const showWeeklyNotesDialog = ref(false)
+const selectedWeekIndexForNotes = ref(0)
 const casesViewTab = ref('table')
 const editWeeklyGoalDialog = ref(false)
 const editWeeklyGoalValue = ref(0)
@@ -369,6 +505,10 @@ const activeGcAgents = computed(() =>
 )
 const currentDate = computed(() => store.getters['currentDate'])
 const currentDateRange = computed(() => store.getters['currentDateRange'])
+const canManageWeeklyNotes = computed(() => {
+  const role = currentUser.value?.role
+  return role === 'admin' || role === 'manager'
+})
 
 
 function formatNumber(n) {
@@ -410,6 +550,30 @@ function formatDateForTable(dateString) {
     : new Date(dateString);
   if (isNaN(date.getTime())) return dateString;
   return date.toLocaleDateString();
+}
+
+function getCurrentMonthKey() {
+  const range = currentDateRange.value
+  if (!Array.isArray(range) || range.length < 1 || !range[0]) return ''
+  return String(range[0]).slice(0, 7)
+}
+
+function getWeeklyNoteWeekKey(week) {
+  const monthKey = getCurrentMonthKey()
+  const weekNumber = Number(week?.weekNumber ?? 0)
+  return monthKey && weekNumber ? `${monthKey}-W${weekNumber}` : `${week?.start ?? ''}`
+}
+
+function getWeeklyNoteWeekLabel(week) {
+  const startDate = new Date(week?.start)
+  const endDate = new Date(week?.end)
+  const startStr = !isNaN(startDate.getTime())
+    ? startDate.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit' })
+    : '—'
+  const endStr = !isNaN(endDate.getTime())
+    ? endDate.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit' })
+    : '—'
+  return `${t('agentDashboard.week')} ${week?.weekNumber ?? ''} (${startStr} - ${endStr})`
 }
 
 function getCallerNames(order) {
@@ -477,7 +641,23 @@ function normalizeCaseName(name) {
 // Uses normalized comparison to tolerate minor spacing/casing differences
 function findOrderForLog(log, availableOrders) {
   if (!log || !availableOrders || !availableOrders.length) return null;
+
+  // 1) Prefer exact order ID match from the log (most reliable)
+  const logOrderId = String(
+    log?.order?._id ??
+    log?.order?.id ??
+    log?.orderId ??
+    log?.order ??
+    ''
+  );
+  if (logOrderId) {
+    const byId = availableOrders.find(order =>
+      String(order?._id ?? order?.id ?? '') === logOrderId
+    );
+    if (byId) return byId;
+  }
   
+  // 2) Fallback to case name match
   const logCaseName = normalizeCaseName(log.caseName);
   const matchingOrders = availableOrders.filter(order =>
     normalizeCaseName(order.caseName) === logCaseName
@@ -485,9 +665,20 @@ function findOrderForLog(log, availableOrders) {
   
   if (matchingOrders.length === 0) return null;
   if (matchingOrders.length === 1) return matchingOrders[0];
+
+  // 3) If multiple orders have same case name, choose the one active on log date
+  const logDate = new Date(log?.date);
+  if (!isNaN(logDate.getTime())) {
+    const activeOnDate = matchingOrders.find(order => {
+      const start = new Date(order?.startDate || 0);
+      const end = new Date(order?.deadline || 0);
+      end.setHours(23, 59, 59, 999);
+      return !isNaN(start.getTime()) && !isNaN(end.getTime()) && logDate >= start && logDate <= end;
+    });
+    if (activeOnDate) return activeOnDate;
+  }
   
-  // Multiple orders match - always use the most recent one (by deadline) to get latest pricePerUnit
-  // Sort by deadline descending (most recent first), then by startDate descending as fallback
+  // 4) Last fallback: most recent order
   return matchingOrders.sort((a, b) => {
     const deadlineA = new Date(a.deadline || a.startDate || 0);
     const deadlineB = new Date(b.deadline || b.startDate || 0);
@@ -1860,6 +2051,130 @@ async function fetchAgentWeeklyGoals() {
   }
 }
 
+async function fetchAgentWeeklyNotes() {
+  if (!canManageWeeklyNotes.value) return
+  const agent = selectedGcAgent.value
+  const monthKey = getCurrentMonthKey()
+  if (!agent || !monthKey) {
+    weeklyNotes.value = {}
+    return
+  }
+
+  weeklyNotesLoading.value = true
+  try {
+    const agentId = String(agent._id ?? agent.id ?? '')
+    let data = []
+
+    try {
+      const res = await axios.get(`${urls.backEndURL}/agentWeeklyNotes`, {
+        params: { agentId, monthKey },
+      })
+      data = Array.isArray(res.data) ? res.data : (res.data?.data || [])
+    } catch (_) {
+      const res = await axios.get(`${urls.backEndURL}/agent-weekly-notes`, {
+        params: { agentId, monthKey },
+      })
+      data = Array.isArray(res.data) ? res.data : (res.data?.data || [])
+    }
+
+    const next = {}
+    ;(monthWeeks.value || []).forEach((week) => {
+      const key = getWeeklyNoteWeekKey(week)
+      next[key] = ''
+    })
+    data.forEach((row) => {
+      const key = row?.weekKey || row?.week_key || ''
+      if (key) next[key] = row?.note ?? ''
+    })
+    weeklyNotes.value = next
+  } catch (err) {
+    console.warn('AgentDashboard: Error fetching weekly notes:', err)
+    weeklyNotes.value = {}
+  } finally {
+    weeklyNotesLoading.value = false
+  }
+}
+
+async function saveWeeklyNote(week) {
+  if (!canManageWeeklyNotes.value) return
+  const agent = selectedGcAgent.value
+  const monthKey = getCurrentMonthKey()
+  if (!agent || !monthKey || !week) return
+
+  const weekKey = getWeeklyNoteWeekKey(week)
+  const note = String(weeklyNotes.value?.[weekKey] ?? '')
+  const agentId = String(agent._id ?? agent.id ?? '')
+
+  weeklyNoteSaving.value = { ...weeklyNoteSaving.value, [weekKey]: true }
+  weeklyNoteStatus.value = { ...weeklyNoteStatus.value, [weekKey]: '' }
+
+  const payload = {
+    agentId,
+    monthKey,
+    weekKey,
+    weekStart: week?.start ?? '',
+    weekEnd: week?.end ?? '',
+    note,
+  }
+
+  try {
+    try {
+      await axios.put(`${urls.backEndURL}/agentWeeklyNotes/${agentId}/${monthKey}/${encodeURIComponent(weekKey)}`, payload)
+    } catch (_) {
+      await axios.post(`${urls.backEndURL}/agent-weekly-notes`, payload)
+    }
+    weeklyNoteStatus.value = { ...weeklyNoteStatus.value, [weekKey]: t('agentDashboard.weeklyNoteSaved') }
+  } catch (err) {
+    console.error('AgentDashboard: Error saving weekly note:', err)
+    weeklyNoteStatus.value = { ...weeklyNoteStatus.value, [weekKey]: t('agentDashboard.weeklyNoteSaveFailed') }
+  } finally {
+    weeklyNoteSaving.value = { ...weeklyNoteSaving.value, [weekKey]: false }
+  }
+}
+
+function editWeeklyNoteFromList(index) {
+  if (!Number.isInteger(index)) return
+  if (index < 0 || index >= monthWeeks.value.length) return
+  selectedWeekIndexForNotes.value = index
+}
+
+async function deleteWeeklyNote(week) {
+  if (!canManageWeeklyNotes.value) return
+  const agent = selectedGcAgent.value
+  const monthKey = getCurrentMonthKey()
+  if (!agent || !monthKey || !week) return
+  if (!window.confirm(t('agentDashboard.confirmDeleteWeeklyNoteNote'))) return
+
+  const weekKey = getWeeklyNoteWeekKey(week)
+  const agentId = String(agent._id ?? agent.id ?? '')
+  weeklyNoteSaving.value = { ...weeklyNoteSaving.value, [weekKey]: true }
+  weeklyNoteStatus.value = { ...weeklyNoteStatus.value, [weekKey]: '' }
+
+  const payload = {
+    agentId,
+    monthKey,
+    weekKey,
+    weekStart: week?.start ?? '',
+    weekEnd: week?.end ?? '',
+    note: '',
+  }
+
+  try {
+    try {
+      await axios.delete(`${urls.backEndURL}/agentWeeklyNotes/${agentId}/${monthKey}/${encodeURIComponent(weekKey)}`)
+    } catch (_) {
+      await axios.post(`${urls.backEndURL}/agent-weekly-notes`, payload)
+    }
+    weeklyNotes.value = { ...weeklyNotes.value, [weekKey]: '' }
+    weeklyNoteStatus.value = { ...weeklyNoteStatus.value, [weekKey]: t('agentDashboard.weeklyNoteDeleted') }
+  } catch (err) {
+    console.error('AgentDashboard: Error deleting weekly note:', err)
+    weeklyNoteStatus.value = { ...weeklyNoteStatus.value, [weekKey]: t('agentDashboard.weeklyNoteDeleteFailed') }
+  } finally {
+    weeklyNoteSaving.value = { ...weeklyNoteSaving.value, [weekKey]: false }
+  }
+}
+
 function openEditWeeklyGoalDialog(row) {
   const raw = (row?.raw ?? row)?._raw ?? row?._raw;
   if (!raw) return;
@@ -1947,9 +2262,11 @@ watch([orders, selectedGcAgent, currentDateRange], async ([allOrders, agent, dat
     await fetchCaseStats();
     await fetchAgentWeeklyGoals();
     await fetchCanceledCalls();
+    await fetchAgentWeeklyNotes();
   } else {
     agentWeeklyGoals.value = [];
     canceledCalls.value = [];
+    weeklyNotes.value = {};
   }
 }, { immediate: true });
 
@@ -2081,6 +2398,7 @@ onMounted(async () => {
 
     // Load custom weeks for the current month
     await loadMonthWeeks()
+    await fetchAgentWeeklyNotes()
     
     // Fetch case stats for the agent
     await fetchCaseStats();
@@ -2098,6 +2416,7 @@ onUnmounted(() => {
 watch(currentDateRange, async (newRange) => {
   if (newRange && newRange.length >= 2) {
     await loadMonthWeeks()
+    await fetchAgentWeeklyNotes()
   }
 })
 </script>
@@ -2127,6 +2446,18 @@ watch(currentDateRange, async (newRange) => {
     margin-right: auto;
     padding-left: 24px;
     padding-right: 24px;
+  }
+
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: min(560px, 100%);
+  }
+
+  .header-action-item {
+    flex: 1;
+    min-width: 180px;
   }
 
   .grid-container {
@@ -2171,6 +2502,15 @@ watch(currentDateRange, async (newRange) => {
   }
 
   @media (max-width: 600px) {
+    .header-actions {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .header-action-item {
+      min-width: 100%;
+    }
+
     .grid-container {
       grid-template-columns: 1fr; /* single column vertical list */
       width: 100% !important;

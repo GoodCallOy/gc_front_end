@@ -1,8 +1,8 @@
 <template>
   <v-container class="login-container" fluid>
     <v-row class="fill-height login-row" align="center" justify="center">
-      <v-col cols="12" sm="10" md="12" lg="12" xl="5">
-        <v-card :class="['mx-2 my-2', 'cardStyle']" :elevation="16">
+      <v-col cols="12" sm="12" md="10" lg="8" xl="6">
+        <v-card :class="['mx-4 my-4', 'cardStyle']" :elevation="16">
           <div class="title-box"></div>
           <div class="login-button">
             <GoogleLoginButton />
@@ -27,7 +27,8 @@
     width: 100%;
   }
   .login-row {
-    width: 40%;
+    width: 100%;
+    max-width: 1100px; /* make login card noticeably wider on large monitors */
   }
 
   .login-button {
@@ -36,7 +37,7 @@
     align-items: center;
     justify-content: center;
     height: 15vh;
-    width: 60%;
+    width: 100%;
   }
   .cardStyle {
     display: flex;
@@ -45,6 +46,7 @@
     justify-content: center;
     height: auto;
     width: 100%;
+    max-width: 1100px;
     padding: 20px;
     text-align: center;
     height: 80%;
