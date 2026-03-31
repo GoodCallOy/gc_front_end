@@ -1327,8 +1327,20 @@ function getTotalCompletedUpToMonth(monthlyBreakdown, upToMonthKey) {
 
 function getCampaignGoalDisplay(order) {
   const campaignGoal = getDisplayGoal(order)
-  const distributed = getDistributedGoals(order)
-  return `${distributed}/${campaignGoal}`
+
+  // Prefer actual completed units from monthlyBreakdown (multi‑month aware)
+  let current = 0
+  if (Array.isArray(order.monthlyBreakdown) && order.monthlyBreakdown.length) {
+    current = order.monthlyBreakdown.reduce(
+      (sum, m) => sum + (Number(m.quantityCompleted) || 0),
+      0
+    )
+  } else {
+    // Fallback: use distributed goals if we don't have breakdown
+    current = Number(getDistributedGoals(order)) || 0
+  }
+
+  return `${current}/${campaignGoal}`
 }
 
 // assumes you have: agents (list of agent docs), allOrders (list of all orders), currency() formatter
