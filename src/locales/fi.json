@@ -166,6 +166,7 @@
       "tableHeaders": {
         "caseName": "Tapauksen nimi",
         "totalGoals": "Tavoitteet yhteensä",
+        "campaignGoal": "Kampanjatavoite (nykyinen/yhteensä)",
         "goalsDistributed": "Jaetut tavoitteet",
         "goalsRemaining": "Jäljellä olevat tavoitteet",
         "priceUnit": "Hinnan yksikkö",
@@ -174,6 +175,7 @@
         "edit": "Muokkaa",
         "delete": "Poista"
       },
+      "remainingInCampaign": "jäljellä kampanjassa",
       "assignGoalsFor": "Määritä tavoitteet",
       "goalsRemainingToAssign": "Jaettavana olevat tavoitteet",
       "goalsRemainingTooltip": "Saatavilla muille agenteille poistettaessa tavoitteita",

@@ -183,6 +183,7 @@
       "tableHeaders": {
         "caseName": "Case Name",
         "totalGoals": "Total Goals",
+        "campaignGoal": "Campaign goal (current/total)",
         "goalsDistributed": "Goals Distributed",
         "goalsRemaining": "Goals Remaining",
         "priceUnit": "Price Unit",
@@ -191,6 +192,7 @@
         "edit": "Edit",
         "delete": "Delete"
       },
+      "remainingInCampaign": "remaining in campaign",
       "assignGoalsFor": "Assign Goals for",
       "goalsRemainingToAssign": "Goals remaining to assign",
       "goalsRemainingTooltip": "Available to give to other agents when you remove goals",

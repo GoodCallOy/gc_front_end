@@ -46,25 +46,57 @@
     <h1 class="text-h4 mb-4" style="width: 100%;">{{ t('buttons.assignGoals') }} - {{ getFormattedDateRange() }}</h1>
 
     <v-row>
-      <!-- Orders Table -->
+      <!-- Orders grouped by case type (match ordersDashboard layout) -->
       <v-col cols="12" md="7">
-        <v-data-table
-          v-if="orders && orders.length"
-          :headers="orderHeaders"
-          :items="filteredSortedOrders"
-          item-value="_id"
-          class="elevation-1 mobile-scroll"
-          :items-per-page="20"
-          density="comfortable"
-          :item-class="({ item }) => {
-            const id = item?.raw?._id ?? item?._id;
-            return [
-              id === selectedOrderId ? 'selected-row' : '',
-              copiedToNextMonth[String(id)] ? 'copied-row' : ''
-            ].filter(Boolean).join(' ');
-          }"
-          @click:row="selectOrder"
+        <div
+          v-for="group in groupedOrdersByCaseTypeAssignGoals"
+          :key="group.caseType"
+          class="mb-6"
         >
+          <v-card elevation="2" class="mb-2">
+            <v-card-title class="text-h6">
+              {{ group.caseType === 'Unspecified'
+                ? t('ordersDashboard.unspecified')
+                : (group.caseType || t('ordersDashboard.unspecified')) }}
+              <v-chip size="small" class="ml-2">
+                {{ group.items.length }}
+                {{ group.items.length === 1 ? t('ordersDashboard.case') : t('ordersDashboard.cases') }}
+              </v-chip>
+            </v-card-title>
+          </v-card>
+
+          <v-card elevation="1">
+            <v-data-table
+              :headers="orderHeaders"
+              :items="group.items"
+              item-value="_id"
+              class="elevation-1 mobile-scroll"
+              :items-per-page="20"
+              density="comfortable"
+              show-expand
+              :expanded="Array.from(expandedRows)"
+              @update:expanded="(value) => { expandedRows = new Set(value) }"
+              :item-class="({ item }) => {
+                const id = item?.raw?._id ?? item?._id;
+                return [
+                  id === selectedOrderId ? 'selected-row' : '',
+                  copiedToNextMonth[String(id)] ? 'copied-row' : ''
+                ].filter(Boolean).join(' ');
+              }"
+              @click:row="selectOrder"
+            >
+          <template #item.data-table-expand="{ item }">
+            <v-btn
+              v-if="orderSpansMultipleMonths(item)"
+              icon
+              size="small"
+              variant="text"
+              @click.stop="toggleExpand(item._id)"
+            >
+              <v-icon>{{ expandedRows.has(item._id) ? 'mdi-chevron-up' : 'mdi-chevron-down' }}</v-icon>
+            </v-btn>
+            <v-icon v-else size="small" color="transparent">mdi-circle-outline</v-icon>
+          </template>
           <template #item.copy="{ item }">
             <v-btn
               icon
@@ -97,14 +129,67 @@
                 size="x-small"
                 color="primary"
                 class="ml-1"
+                style="cursor: pointer;"
+                @click.stop="toggleExpand(item._id)"
               >
                 {{ t('ordersDashboard.multiMonth') }}
               </v-chip>
             </div>
           </template>
 
+          <template #expanded-row="{ item }">
+            <tr v-if="orderSpansMultipleMonths(item) && item.monthlyBreakdown">
+              <td :colspan="orderHeaders.length">
+                <div class="pa-4 bg-grey-lighten-4">
+                  <h3 class="text-h6 mb-3">{{ t('ordersDashboard.monthlyBreakdown.title') }}</h3>
+                  <div class="monthly-breakdown-scroll" style="overflow-x: auto; overflow-y: visible;">
+                    <v-table density="compact" style="min-width: 600px;">
+                      <thead>
+                        <tr>
+                          <th>{{ t('ordersDashboard.monthlyBreakdown.month') }}</th>
+                          <th>{{ t('ordersDashboard.monthlyBreakdown.dateRange') }}</th>
+                          <th>{{ t('ordersDashboard.monthlyBreakdown.quantityCompleted') }}</th>
+                          <th>{{ t('ordersDashboard.monthlyBreakdown.revenue') }}</th>
+                          <th>{{ t('ordersDashboard.monthlyBreakdown.goal') }}</th>
+                          <th>{{ t('ordersDashboard.monthlyBreakdown.percentageToGoal') }}</th>
+                          <th>{{ t('ordersDashboard.monthlyBreakdown.remaining') }}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr v-for="month in item.monthlyBreakdown" :key="month.monthKey">
+                          <td>{{ getMonthName(month.month) }} {{ month.year }}</td>
+                          <td>{{ formatDateDetailed(month.startDateStr) }} - {{ formatDateDetailed(month.endDateStr) }}</td>
+                          <td>{{ month.quantityCompleted }} / {{ getDisplayGoal(item) }}</td>
+                          <td>{{ formatCurrency(month.revenue) }}</td>
+                          <td>{{ formatCurrency(getMonthlyRevenueGoal(item, month)) }}</td>
+                          <td>
+                            <span :class="['percentage-badge', getMonthlyPercentageToGoalClass(item, month)]">
+                              {{ getMonthlyPercentageToGoal(item, month) }}%
+                            </span>
+                          </td>
+                          <td>{{ Math.max(0, getDisplayGoal(item) - getTotalCompletedUpToMonth(item.monthlyBreakdown, month.monthKey)) }}</td>
+                        </tr>
+                        <tr class="font-weight-bold">
+                          <td colspan="2">{{ t('ordersDashboard.monthlyBreakdown.total') }}</td>
+                          <td>{{ getTotalQuantity(item.monthlyBreakdown) }} / {{ getDisplayGoal(item) }}</td>
+                          <td>{{ formatCurrency(getTotalRevenue(item.monthlyBreakdown)) }}</td>
+                          <td></td>
+                          <td></td>
+                          <td>{{ Math.max(0, getDisplayGoal(item) - getTotalQuantity(item.monthlyBreakdown)) }}</td>
+                        </tr>
+                      </tbody>
+                    </v-table>
+                  </div>
+                </div>
+              </td>
+            </tr>
+          </template>
+
           <template #item.goalsDistributed="{ item }">
             {{ getDistributedGoals(item) }}
+          </template>
+          <template #item.campaignGoal="{ item }">
+            {{ getCampaignGoalDisplay(item) }}
           </template>
           <template #item.goalsRemaining="{ item }">
             <span :class="{ 'text-primary font-weight-medium': getRemainingGoals(item) > 0 }" :title="getRemainingGoals(item) > 0 ? t('assignGoals.goalsRemainingTooltip') : ''">
@@ -140,7 +225,8 @@
             </v-btn>
           </template>
         </v-data-table>
-
+      </v-card>
+    </div>
       </v-col>
 
       <!-- Agent Assignment -->
@@ -369,7 +455,7 @@ import { useRouter } from 'vue-router'
 import { useStore } from 'vuex'
 import { useI18n } from 'vue-i18n'
 import { goToNextMonth, goToPreviousMonth, formattedDateRange, isCurrentMonth, getMonthWeeks } from '@/js/dateUtils';
-import { orderSpansMultipleMonths } from '@/js/statsUtils';
+import { orderSpansMultipleMonths, calculateMonthlyProgress } from '@/js/statsUtils';
 import DateHeader from '@/components/DateHeader.vue';
 import OrderForm from '@/components/orders/OrderForm.vue';
 import axios from 'axios'
@@ -384,6 +470,7 @@ const selectedOrder = ref(null)
 const selectedOrderId = ref(null)
 const rightPanelLoading = ref(false)
 const isEditMode = ref(false);
+const expandedRows = ref(new Set())
 
 const showEditOrderModal = ref(false);
 const showAddCaseModal = ref(false);
@@ -401,6 +488,21 @@ const orderFormConfig = ref({
 const copiedToNextMonth = reactive({});
 const pendingCopySourceId = ref(null);
 const bulkCopying = ref(false);
+
+// Monthly breakdown helpers (mirrors ordersDashboard)
+const formatCurrency = (n) => new Intl.NumberFormat(undefined, { style: 'currency', currency: 'EUR' }).format(n || 0)
+function getMonthName(monthNum) {
+  const monthKeys = ['january', 'february', 'march', 'april', 'may', 'june',
+    'july', 'august', 'september', 'october', 'november', 'december']
+  const key = monthKeys[monthNum - 1]
+  return key ? t(`ordersDashboard.months.${key}`) : ''
+}
+
+function formatDateDetailed(dateStr) {
+  if (!dateStr) return ''
+  const d = new Date(dateStr)
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
 
 function formatLocalDate(date) {
   const d = new Date(date);
@@ -696,11 +798,12 @@ const currentMonthLabel = computed(() => {
 const orderHeaders = computed(() => [
   { title: t('assignGoals.tableHeaders.caseName'), key: 'caseName' },
   { title: t('assignGoals.tableHeaders.totalGoals'), key: 'monthlyGoal' },
+  { title: t('assignGoals.tableHeaders.campaignGoal'), key: 'campaignGoal', sortable: false },
   { title: t('assignGoals.tableHeaders.goalsDistributed'), key: 'goalsDistributed', sortable: false },
   { title: t('assignGoals.tableHeaders.goalsRemaining'), key: 'goalsRemaining', sortable: false },
   { title: t('assignGoals.tableHeaders.priceUnit'), key: 'caseUnit' },
-  { title: t('assignGoals.tableHeaders.copy'), key: 'copy', sortable: false },
   { title: t('assignGoals.tableHeaders.edit'), key: 'edit', sortable: false },
+  { title: t('assignGoals.tableHeaders.copy'), key: 'copy', sortable: false },
   { title: t('assignGoals.tableHeaders.delete'), key: 'actions', sortable: false }
 ])
 
@@ -843,7 +946,8 @@ const filteredSortedOrders = computed(() => {
   const rangeStart = currentDateRange.value[0]; // "YYYY-MM-DD"
   const rangeEnd = currentDateRange.value[1];   // "YYYY-MM-DD"
 
-  return orders.value
+  // Filter to orders overlapping the selected month
+  let list = orders.value
     .filter(order => {
       const start = toDateOnly(order.startDate);
       const end = toDateOnly(order.deadline);
@@ -852,10 +956,83 @@ const filteredSortedOrders = computed(() => {
       // String comparison works for YYYY-MM-DD format
       return start <= rangeEnd && end >= rangeStart;
     })
+    .map(order => {
+      // Enrich with multi-month information (same as ordersDashboard)
+      const isMultiMonth = orderSpansMultipleMonths(order);
+      const logs = Array.isArray(dailyLogs.value) ? dailyLogs.value : [];
+      const monthlyBreakdown = isMultiMonth ? calculateMonthlyProgress(order, logs) : null;
+      return {
+        ...order,
+        isMultiMonth,
+        monthlyBreakdown,
+      };
+    });
+
+  // Sort like ordersDashboard: by caseType, then by caseName; "Unspecified" last
+  list.sort((a, b) => {
+    const typeA = a.caseType || 'Unspecified';
+    const typeB = b.caseType || 'Unspecified';
+    if (typeA !== typeB) {
+      if (typeA === 'Unspecified') return 1;
+      if (typeB === 'Unspecified') return -1;
+      return String(typeA).localeCompare(String(typeB));
+    }
+    const nameA = String(a.caseName || '').toLowerCase();
+    const nameB = String(b.caseName || '').toLowerCase();
+    return nameA.localeCompare(nameB);
+  });
+
+  return list;
+});
+
+// Group filtered orders by case type (match ordersDashboard grouping)
+const groupedOrdersByCaseTypeAssignGoals = computed(() => {
+  const groups = {};
+
+  // Initialize groups for all known case types
+  (caseTypes.value || []).forEach(type => {
+    groups[type] = {
+      caseType: type,
+      items: [],
+    };
+  });
+
+  // Ensure an "Unspecified" group
+  if (!groups['Unspecified']) {
+    groups['Unspecified'] = {
+      caseType: 'Unspecified',
+      items: [],
+    };
+  }
+
+  // Distribute orders into groups
+  filteredSortedOrders.value.forEach(order => {
+    const type = order.caseType || 'Unspecified';
+    if (!groups[type]) {
+      groups[type] = {
+        caseType: type,
+        items: [],
+      };
+    }
+    groups[type].items.push(order);
+  });
+
+  // Sort items in each group alphabetically by case name
+  Object.values(groups).forEach(group => {
+    group.items.sort((a, b) => {
+      const nameA = String(a.caseName || '').toLowerCase();
+      const nameB = String(b.caseName || '').toLowerCase();
+      return nameA.localeCompare(nameB);
+    });
+  });
+
+  // Return non-empty groups, sorted by case type, with "Unspecified" last
+  return Object.values(groups)
+    .filter(group => group.items.length > 0)
     .sort((a, b) => {
-      const aDate = toDateOnly(a.startDate) || '';
-      const bDate = toDateOnly(b.startDate) || '';
-      return aDate.localeCompare(bDate);
+      if (a.caseType === 'Unspecified') return 1;
+      if (b.caseType === 'Unspecified') return -1;
+      return String(a.caseType).localeCompare(String(b.caseType));
     });
 });
 
@@ -1080,6 +1257,78 @@ function agentMonthlyStats(agentId, from, to, allOrders) {
     ordersCount += 1;
   }
   return { revenue, orders: ordersCount };
+}
+
+function toggleExpand(orderId) {
+  const newExpanded = new Set(expandedRows.value)
+  if (newExpanded.has(orderId)) {
+    newExpanded.delete(orderId)
+  } else {
+    newExpanded.add(orderId)
+  }
+  expandedRows.value = newExpanded
+}
+
+function getMonthlyRevenueGoal(order, month) {
+  const goals = order?.monthlyRevenueGoals || {}
+  const raw = goals[month.monthKey]
+  return Number(raw) || 0
+}
+
+function getMonthlyPercentageToGoal(order, month) {
+  const goal = getMonthlyRevenueGoal(order, month)
+  if (!goal) return 0
+  const revenue = Number(month?.revenue) || 0
+  const pct = (revenue / goal) * 100
+  if (!isFinite(pct) || isNaN(pct)) return 0
+  return Math.round(pct)
+}
+
+function getMonthlyPercentageToGoalClass(order, month) {
+  const pct = getMonthlyPercentageToGoal(order, month)
+  if (pct <= 25) return 'percentage-red'
+  if (pct > 25 && pct <= 50) return 'percentage-orange'
+  if (pct > 50 && pct <= 75) return 'percentage-yellow'
+  return 'percentage-green'
+}
+
+function getDisplayGoal(order) {
+  const fromOrder = order?.campaignGoal ?? order?.campaign_goal
+  if (fromOrder != null && fromOrder !== '') return Number(fromOrder) || 0
+  const caseId = order?.caseId?._id ?? order?.caseId?.id ?? order?.caseId
+  if (caseId && cases.value?.length) {
+    const c = cases.value.find(x => String(x._id ?? x.id) === String(caseId))
+    const fromCase = c?.campaignGoal ?? c?.campaign_goal
+    if (fromCase != null && fromCase !== '') return Number(fromCase) || 0
+  }
+  return Number(order?.monthlyGoal ?? order?.totalQuantity) || 0
+}
+
+function getTotalQuantity(monthlyBreakdown) {
+  if (!monthlyBreakdown || !Array.isArray(monthlyBreakdown)) return 0
+  return monthlyBreakdown.reduce((sum, m) => sum + (m.quantityCompleted || 0), 0)
+}
+
+function getTotalRevenue(monthlyBreakdown) {
+  if (!monthlyBreakdown || !Array.isArray(monthlyBreakdown)) return 0
+  return monthlyBreakdown.reduce((sum, m) => sum + (m.revenue || 0), 0)
+}
+
+function getTotalCompletedUpToMonth(monthlyBreakdown, upToMonthKey) {
+  if (!monthlyBreakdown || !Array.isArray(monthlyBreakdown)) return 0
+  let total = 0
+  for (const m of monthlyBreakdown) {
+    if (m.monthKey <= upToMonthKey) {
+      total += (m.quantityCompleted || 0)
+    }
+  }
+  return total
+}
+
+function getCampaignGoalDisplay(order) {
+  const campaignGoal = getDisplayGoal(order)
+  const distributed = getDistributedGoals(order)
+  return `${distributed}/${campaignGoal}`
 }
 
 // assumes you have: agents (list of agent docs), allOrders (list of all orders), currency() formatter

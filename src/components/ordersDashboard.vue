@@ -189,7 +189,14 @@
                 >
                   <v-icon>mdi-pencil</v-icon>
                 </v-btn>
-                <v-chip v-if="item.isMultiMonth" size="x-small" color="primary" class="ml-1">
+                <v-chip
+                  v-if="item.isMultiMonth"
+                  size="x-small"
+                  color="primary"
+                  class="ml-1"
+                  style="cursor: pointer;"
+                  @click.stop="toggleExpand(item._id)"
+                >
                   {{ t('ordersDashboard.multiMonth') }}
                 </v-chip>
               </div>
