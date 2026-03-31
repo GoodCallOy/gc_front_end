@@ -1390,12 +1390,9 @@ const weeklyLogGroups = computed(() => {
     }
   });
 
-  // Convert to array and sort by week number
-  const result = Object.values(weekGroups)
-    .sort((a, b) => a.weekInfo.weekNumber - b.weekInfo.weekNumber)
-    .slice(0, 4); // Limit to 4 weeks
-  
-  return result;
+  // Convert to array and sort by week number (show all weeks in the month)
+  return Object.values(weekGroups)
+    .sort((a, b) => a.weekInfo.weekNumber - b.weekInfo.weekNumber);
 });
 
 // Headers for weekly totals table
@@ -2268,7 +2265,7 @@ watch([orders, selectedGcAgent, currentDateRange], async ([allOrders, agent, dat
     canceledCalls.value = [];
     weeklyNotes.value = {};
   }
-}, { immediate: true });
+});
 
 function findOrdersForUser(allOrdersArray, agentId) {
   const wanted = String(agentId || '');
