@@ -85,7 +85,6 @@
             {{ t('agentDashboard.casesFor') }} {{ selectedGcAgent ? selectedGcAgent.name : '—' }}
           </h1>
           <v-btn
-            v-if="canManageWeeklyNotes"
             size="small"
             color="primary"
             variant="text"
@@ -317,6 +316,7 @@
                   rows="2"
                   max-rows="6"
                   density="comfortable"
+                  :readonly="!canManageWeeklyNotes"
                 />
               </v-col>
             </v-row>
@@ -325,7 +325,7 @@
                 size="small"
                 color="primary"
                 :loading="weeklyNoteSaving[getWeeklyNoteWeekKey(monthWeeks[selectedWeekIndexForNotes])] === true"
-                :disabled="!monthWeeks[selectedWeekIndexForNotes]"
+                :disabled="!monthWeeks[selectedWeekIndexForNotes] || !canManageWeeklyNotes"
                 @click="monthWeeks[selectedWeekIndexForNotes] && saveWeeklyNote(monthWeeks[selectedWeekIndexForNotes])"
               >
                 {{ t('agentDashboard.saveWeeklyNote') }}
@@ -357,7 +357,7 @@
                 <v-list-item-subtitle class="text-body-2">
                   {{ weeklyNotes[getWeeklyNoteWeekKey(week)] || '—' }}
                 </v-list-item-subtitle>
-                <template #append>
+                <template v-if="canManageWeeklyNotes" #append>
                   <div class="d-flex align-center" style="gap: 6px;">
                     <v-btn
                       size="x-small"
@@ -2246,25 +2246,30 @@ async function deleteWeeklyGoal(row) {
   }
 }
 
-watch([orders, selectedGcAgent, currentDateRange], async ([allOrders, agent, dateRange]) => {
-  userOrders.value = agent
-    ? findOrdersForUser(allOrders, agent._id ?? agent.id)
-    : [];
+async function refreshDashboardForCurrentSelection(allOrders, agent, dateRange) {
+  // Ensure we have basic data before attempting refresh
+  if (!agent || !allOrders || !Array.isArray(allOrders) || !dateRange || dateRange.length < 2) {
+    userOrders.value = [];
+    agentWeeklyGoals.value = [];
+    canceledCalls.value = [];
+    weeklyNotes.value = {};
+    return;
+  }
+
+  userOrders.value = findOrdersForUser(allOrders, agent._id ?? agent.id);
 
   // Fetch all case stats for revenue-to-goal (same % for every agent)
   await fetchAllCaseStats();
 
-  // Fetch case stats when agent or orders change
-  if (agent) {
-    await fetchCaseStats();
-    await fetchAgentWeeklyGoals();
-    await fetchCanceledCalls();
-    await fetchAgentWeeklyNotes();
-  } else {
-    agentWeeklyGoals.value = [];
-    canceledCalls.value = [];
-    weeklyNotes.value = {};
-  }
+  // Fetch case stats + related data for this agent
+  await fetchCaseStats();
+  await fetchAgentWeeklyGoals();
+  await fetchCanceledCalls();
+  await fetchAgentWeeklyNotes();
+}
+
+watch([orders, selectedGcAgent, currentDateRange], async ([allOrders, agent, dateRange]) => {
+  await refreshDashboardForCurrentSelection(allOrders, agent, dateRange);
 });
 
 function findOrdersForUser(allOrdersArray, agentId) {
@@ -2395,10 +2400,9 @@ onMounted(async () => {
 
     // Load custom weeks for the current month
     await loadMonthWeeks()
-    await fetchAgentWeeklyNotes()
-    
-    // Fetch case stats for the agent
-    await fetchCaseStats();
+
+    // Initial dashboard load for current orders/agent/month
+    await refreshDashboardForCurrentSelection(orders.value, selectedGcAgent.value, currentDateRange.value);
   } catch (error) {
     console.error('Error fetching data on mount:', error)
   }
