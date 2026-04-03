@@ -81,6 +81,7 @@ import { useI18n } from 'vue-i18n';
 import axios from 'axios';
 import urls from '@/js/config.js';
 import { getMonthKey, getMonthWeeks } from '@/js/dateUtils';
+import { resolveLinkedGcAgent } from '@/js/resolveLinkedGcAgent.js';
 
 const { t } = useI18n();
 const route = useRoute();
@@ -155,12 +156,9 @@ function onMonthChange() {
 
 // Current agent (linked gc agent for caller)
 const selectedGcAgent = computed(() => {
-  const user = store.state.user?.user ?? JSON.parse(localStorage.getItem('auth_user') || 'null');
-  const linkId = user?.linkedUserId ?? null;
-  if (!linkId) return null;
-  const agents = store.getters['gcAgents'] || [];
-  return agents.find(a => String(a._id ?? a.id) === String(linkId)) || null;
-});
+  const user = store.state.user?.user ?? JSON.parse(localStorage.getItem('auth_user') || 'null')
+  return resolveLinkedGcAgent(user, store.getters['gcAgents'] || [])
+})
 
 const orders = computed(() => store.getters['orders'] || []);
 

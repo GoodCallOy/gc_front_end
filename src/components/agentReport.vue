@@ -110,6 +110,7 @@ import { Bar, Doughnut } from 'vue-chartjs'
 import ChartDataLabels from 'chartjs-plugin-datalabels'
 import { goToNextMonth, goToPreviousMonth, formattedDateRange, getMonthWeeks } from '@/js/dateUtils'
 import { fetchAgentgoalsByAgentAndMonth } from '@/js/statsUtils'
+import { resolveLinkedGcAgent } from '@/js/resolveLinkedGcAgent.js'
 
 ChartJS.register(
   ArcElement,
@@ -154,7 +155,7 @@ const caseOptions = computed(() => {
   let agent = selectedGcAgent.value
   if (!agent && !isAdminOrManager.value) {
     const user = store.state.user?.user
-    if (user) agent = { _id: user.linkedUserId || user._id, id: user.linkedUserId || user._id }
+    if (user) agent = resolveLinkedGcAgent(user, gcAgents.value)
   }
   if (!agent) return []
   const agentId = String(agent._id ?? agent.id ?? '')
@@ -205,7 +206,7 @@ const donutChartData = computed(() => {
     let agent = selectedGcAgent.value
     if (!agent && !isAdminOrManager.value) {
       const user = store.state.user?.user
-      if (user) agent = { _id: user.linkedUserId || user._id, id: user.linkedUserId || user._id }
+      if (user) agent = resolveLinkedGcAgent(user, gcAgents.value)
     }
     if (!agent) return emptyDonutData
     const agentId = String(agent._id ?? agent.id ?? '')
@@ -333,7 +334,7 @@ async function loadReportData() {
   const user = store.state.user?.user
   let agent = selectedGcAgent.value
   if (!agent && !isAdminOrManager.value && user) {
-    agent = { _id: user.linkedUserId || user._id, id: user.linkedUserId || user._id, name: user.name || user.username }
+    agent = resolveLinkedGcAgent(user, gcAgents.value)
   }
   if (!agent) {
     agentVsTeamChartData.value = null

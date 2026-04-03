@@ -26,6 +26,7 @@ import { onMounted, ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useStore } from 'vuex'
 import urls from '@/js/config.js'
+import { resolveLinkedGcAgent } from '@/js/resolveLinkedGcAgent.js'
 
 const store = useStore()
 const router = useRouter()
@@ -39,10 +40,10 @@ const userFromStore = computed(() => store.state.user?.user || null)
 
 async function fetchAllData() {
   await store.dispatch('fetchOrders')
-  await store.dispatch('fetchgcAgents')
+  // Always refetch after login so session matches DB (see CACHE_TIMEOUT on gcAgents)
+  await store.dispatch('fetchgcAgents', true)
   await store.dispatch('fetchDailyLogs')
   await store.dispatch('fetchUsers')
-
 }
 
 function getHomeRouteNameForRole(role) {
@@ -67,10 +68,47 @@ onMounted(async () => {
 
     await fetchAllData()
 
+    const gcAgents = store.getters['gcAgents'] || []
+    const linkedAgent = resolveLinkedGcAgent(currentUser, gcAgents)
+
+    if (linkedAgent) {
+      console.log('[auth] Linked GC agent from backend (GET /gcAgents):', {
+        _id: linkedAgent._id,
+        name: linkedAgent.name,
+        email: linkedAgent.email,
+        role: linkedAgent.role,
+        linkedUserId: linkedAgent.linkedUserId,
+        active: linkedAgent.active,
+      })
+    } else {
+      console.log(
+        '[auth] No GC agent row linked to this user after fetch (user _id:',
+        currentUser._id ?? currentUser.id,
+        ')'
+      )
+    }
+
+    // /auth/me + cached gcAgents can diverge when both edit paths write the same backend fields.
+    // For non-admin sessions, prefer the gcAgent row we just loaded for role/name/email shown in the app.
+    let sessionUser = currentUser
+    if (linkedAgent && currentUser.role !== 'admin') {
+      sessionUser = {
+        ...currentUser,
+        role: linkedAgent.role ?? currentUser.role,
+        name: linkedAgent.name ?? currentUser.name,
+        email: linkedAgent.email ?? currentUser.email,
+      }
+      if (!sessionUser.linkedUserId && linkedAgent._id) {
+        sessionUser.linkedUserId = linkedAgent._id
+      }
+      localStorage.setItem('auth_user', JSON.stringify(sessionUser))
+      store.commit('SET_USER', { user: sessionUser })
+    }
+
     const dailyLogs = computed(() => store.getters['dailyLogs'])
     console.log('dailyLogs', dailyLogs.value)
 
-    const dest = getHomeRouteNameForRole(currentUser.role)
+    const dest = getHomeRouteNameForRole(sessionUser.role)
     statusMessage.value = `Loaded user. Redirecting to ${dest}…`
 
     if (REDIRECT_DELAY_MS > 0) await delay(REDIRECT_DELAY_MS)

@@ -166,10 +166,10 @@ async function submitForm() {
 
     alertType.value = 'success'
     message.value = 'Agent updated successfully.'
-    
-    // Refresh the gcAgents data
-    await store.dispatch('fetchgcAgents')
-    
+
+    await store.dispatch('fetchgcAgents', true)
+    await loadAgentData()
+
     setTimeout(() => (message.value = ''), 3000)
   } catch (err) {
     console.error('Error updating agent:', err.response?.data || err.message)

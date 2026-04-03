@@ -115,6 +115,7 @@ import axios from 'axios'
 import { mapState, mapActions } from 'vuex'
 import urls from '@/js/config.js'
 import { useRoute } from 'vue-router'
+import { resolveLinkedGcAgent } from '@/js/resolveLinkedGcAgent.js'
 
 
 export default {
@@ -183,8 +184,11 @@ export default {
   isCaller() {
     return this.user?.user?.role === 'caller'
   },
+  linkedGcAgentForUser() {
+    return resolveLinkedGcAgent(this.user?.user, this.gcAgents)
+  },
   isCallerLinkedToAgent() {
-    return this.isCaller && this.user?.user?.linkedUserId
+    return this.isCaller && !!this.linkedGcAgentForUser
   },
   ordersWithCaseName() {
     return this.orders.map(order => {
@@ -343,7 +347,7 @@ async mounted() {
       }
     } else if (this.isCallerLinkedToAgent) {
       // If caller is linked to an agent, auto-fill the agent field
-      const linkedAgent = this.gcAgents.find(agent => agent._id === this.user.user.linkedUserId)
+      const linkedAgent = this.linkedGcAgentForUser
       if (linkedAgent) {
         this.form.agent = linkedAgent._id
         this.form.agentName = linkedAgent.name

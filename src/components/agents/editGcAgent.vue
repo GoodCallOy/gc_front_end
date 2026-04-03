@@ -239,12 +239,22 @@ async function submitForm() {
     )
     alertType.value = 'success'
     message.value = 'Agent updated.'
-    // refresh stores so listGcAgents and other views see updated link
-    try { await store.dispatch('fetchUsers', true) } catch {}
+
+    const updated = data?.user ?? data
+    if (updated && typeof updated === 'object') loadFormData(updated)
+
+    try { await store.dispatch('fetchUsers') } catch {}
     try { await store.dispatch('fetchgcAgents', true) } catch {}
+
+    const sessionUser = store.state.user?.user
+    if (
+      sessionUser &&
+      String(sessionUser._id ?? sessionUser.id) === String(selectedUserId.value)
+    ) {
+      try { await store.dispatch('fetchUser', true) } catch {}
+    }
+
     console.log('Agent updated:', data)
-    // keep you on the page; or router.back() if you prefer
-    
     setTimeout(() => (message.value = ''), 3000)
   } catch (err) {
     console.error('Save failed:', err.response?.data || err.message)

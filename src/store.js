@@ -249,6 +249,11 @@ const store = createStore({
         console.log('✅ User data fetched successfully', response.data)
         if (response.data) {
           commit('SET_USER', response.data)
+          try {
+            const u = response.data?.user ?? response.data
+            if (u && typeof u === 'object')
+              localStorage.setItem('auth_user', JSON.stringify(u))
+          } catch { /* ignore */ }
         }
       } catch (error) {
         console.error('❌ Error fetching user:', error)
@@ -298,8 +303,13 @@ const store = createStore({
       try {
         console.log('🌍 Fetching gcAgents from API')
         const response = await axios.get(`${urls.backEndURL}/gcAgents?t=${Date.now()}`)
-        console.log('✅ gcAgents fetched successfully in store:')
-        commit('setgcAgents', response.data)
+        const list = response.data
+        const n = Array.isArray(list) ? list.length : 0
+        console.log(`[gcAgents] Backend returned ${n} agent record(s) (GET /gcAgents)`)
+        if (n > 0) {
+          console.log('[gcAgents] First row from API (example):', list[0])
+        }
+        commit('setgcAgents', list)
         commit('setLastFetch', { key: 'gcAgents', time: Date.now() })
       } catch (error) {
         console.error('❌ Error fetching gcAgents:', error)
@@ -465,6 +475,7 @@ const store = createStore({
     LOGOUT(state) {
       state.user = null
       localStorage.removeItem('user')
+      localStorage.removeItem('auth_user')
     },
     // Case types mutations
     setCaseTypes(state, caseTypes) {

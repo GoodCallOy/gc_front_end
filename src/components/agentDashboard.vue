@@ -474,6 +474,7 @@ import { fetchAgentgoalsByAgentAndMonth } from '@/js/statsUtils';
 import agentCaseCard from './agentCaseCard.vue'
 import axios from 'axios'
 import urls from '@/js/config.js'
+import { resolveLinkedGcAgent } from '@/js/resolveLinkedGcAgent.js'
 const store = useStore()
 const router = useRouter()
 const route = useRoute()
@@ -1827,14 +1828,7 @@ const selectedGcAgent = computed(() => {
     ) || null;
   }
   
-  // Fall back to current user's linked agent
-  const user = currentUser.value;
-  const linkId = user?.linkedUserId ?? null;
-  if (!linkId) return null;
-
-  return (gcAgents.value || []).find(a =>
-    String(a._id ?? a.id) === String(linkId)
-  ) || null;
+  return resolveLinkedGcAgent(currentUser.value, gcAgents.value);
 });
 
 // Admin/manager agent selector (kept in sync with ?agent= query)
