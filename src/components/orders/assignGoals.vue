@@ -1294,14 +1294,39 @@ function getMonthlyPercentageToGoalClass(order, month) {
 
 function getDisplayGoal(order) {
   const fromOrder = order?.campaignGoal ?? order?.campaign_goal
-  if (fromOrder != null && fromOrder !== '') return Number(fromOrder) || 0
+  if (fromOrder != null && fromOrder !== '') {
+    const n = Number(fromOrder)
+    if (n > 0) return n
+  }
   const caseId = order?.caseId?._id ?? order?.caseId?.id ?? order?.caseId
   if (caseId && cases.value?.length) {
     const c = cases.value.find(x => String(x._id ?? x.id) === String(caseId))
     const fromCase = c?.campaignGoal ?? c?.campaign_goal
-    if (fromCase != null && fromCase !== '') return Number(fromCase) || 0
+    if (fromCase != null && fromCase !== '') {
+      const n = Number(fromCase)
+      if (n > 0) return n
+    }
   }
   return Number(order?.monthlyGoal ?? order?.totalQuantity) || 0
+}
+
+function completedUnitsForOrderInDateRange(order, logs, dateRange) {
+  if (!order || !Array.isArray(logs) || !dateRange || dateRange.length < 2) return 0
+  const from = new Date(dateRange[0])
+  const to = new Date(dateRange[1])
+  to.setHours(23, 59, 59, 999)
+  const oid = String(order._id ?? order.id ?? '')
+  return logs.reduce((sum, log) => {
+    const logOid = String(log.order?._id ?? log.order ?? log.orderId ?? '')
+    const logCase = log.caseName ?? ''
+    const sameOrder =
+      (oid && logOid === oid) ||
+      !!(order.caseName && logCase && String(logCase) === String(order.caseName))
+    if (!sameOrder) return sum
+    const d = new Date(log.date)
+    if (d < from || d > to) return sum
+    return sum + (Number(log.quantityCompleted) || 0)
+  }, 0)
 }
 
 function getTotalQuantity(monthlyBreakdown) {
@@ -1326,9 +1351,9 @@ function getTotalCompletedUpToMonth(monthlyBreakdown, upToMonthKey) {
 }
 
 function getCampaignGoalDisplay(order) {
-  const campaignGoal = getDisplayGoal(order)
+  const logs = dailyLogs.value || []
+  const range = currentDateRange.value
 
-  // Prefer actual completed units from monthlyBreakdown (multi‑month aware)
   let current = 0
   if (Array.isArray(order.monthlyBreakdown) && order.monthlyBreakdown.length) {
     current = order.monthlyBreakdown.reduce(
@@ -1336,10 +1361,15 @@ function getCampaignGoalDisplay(order) {
       0
     )
   } else {
-    // Fallback: use distributed goals if we don't have breakdown
-    current = Number(getDistributedGoals(order)) || 0
+    const progress = calculateMonthlyProgress(order, logs)
+    if (progress.length) {
+      current = progress.reduce((sum, m) => sum + (Number(m.quantityCompleted) || 0), 0)
+    } else {
+      current = completedUnitsForOrderInDateRange(order, logs, range)
+    }
   }
 
+  const campaignGoal = getDisplayGoal(order)
   return `${current}/${campaignGoal}`
 }
 
