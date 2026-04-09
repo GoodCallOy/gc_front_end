@@ -38,7 +38,13 @@
         @update:modelValue="onSelectAgent"
       />
 
-      <!-- <v-switch v-model="agent.active" label="Active" /> -->
+      <v-switch
+        v-model="editUser.active"
+        label="Active"
+        color="primary"
+        inset
+        class="mt-2"
+      />
 
       <div class="button-alert-container">
         <v-btn type="submit" color="primary">Save Agent</v-btn>
@@ -96,6 +102,7 @@ const editUser = reactive({
   access: '',
   role: 'caller',
   linkedUserId: '',
+  active: true,
 })
 
 const agent = reactive({
@@ -116,6 +123,7 @@ function loadFormData(source) {
   editUser.avatar = source.avatar || ''
   editUser.access = source.access || ''
   editUser.role = source.role || 'caller'
+  editUser.active = typeof source.active === 'boolean' ? source.active : true
   // keep as string for the input; send null when empty
   editUser.linkedUserId = source.linkedUserId ? String(source.linkedUserId) : ''
 
@@ -228,6 +236,7 @@ async function submitForm() {
     name: editUser.name,
     email: editUser.email,
     role: editUser.role,
+    active: editUser.active,
 
     // link this auth user to a gcAgent
     linkedUserId: selectedAgentId.value ?? null,
