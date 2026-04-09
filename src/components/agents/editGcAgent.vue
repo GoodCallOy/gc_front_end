@@ -146,6 +146,11 @@ const isEditMode = computed(() => !!(selectedUserId.value))
 
 // Users from store → options for "Link to Google User"
 onMounted(async () => {
+  console.log('editGcAgent load input:', {
+    routeQuery: route.query,
+    selectedUserId: selectedUserId.value,
+  })
+
   if (!store.getters['users']?.length) {
     try { await store.dispatch('fetchUsers') } catch {}
   }

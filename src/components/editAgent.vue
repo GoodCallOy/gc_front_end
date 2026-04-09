@@ -1,6 +1,6 @@
 <template>
   <div class="d-flex flex-column align-center" style="height: 100vh; justify-content: center;">
-    <h1 class="mb-3 mt-5">Edit GcAgent: {{ activeAgent }}</h1>
+    <h1 class="mb-3 mt-5">Edit Agent: {{ activeAgent }}</h1>
 
     <v-form ref="formRef" @submit.prevent="submitForm">
       <v-text-field

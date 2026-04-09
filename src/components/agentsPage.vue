@@ -88,6 +88,7 @@
                 <v-spacer />
 
                 <v-btn size="small" color="grey" @click="editAgent(agent)">Edit</v-btn>
+                <v-btn size="small" color="grey" @click="editGCAgent(agent)">Edit2</v-btn>
                 <v-btn size="small" color="primary" @click="viewAgent(agent)">View</v-btn>
               </v-card-actions>
             </v-card>
@@ -114,7 +115,7 @@ import AgentCard from './agentCard.vue';
     },
     
     computed: {
-      ...mapGetters(['gcAgents', 'dailyLogs', 'currentPage', 'currentDateRange', 'orders']),
+      ...mapGetters(['gcAgents', 'dailyLogs', 'currentPage', 'currentDateRange', 'orders', 'users']),
       
       // Calculate combined stats from daily logs for each agent (current month only)
       agentsWithStats() {
@@ -182,6 +183,7 @@ import AgentCard from './agentCard.vue';
       // Fetch the required data for agents page
       try {
         await Promise.all([
+          this.fetchUsers(),
           this.fetchgcAgents(),
           this.fetchDailyLogs(),
           this.fetchOrders()
@@ -197,6 +199,17 @@ import AgentCard from './agentCard.vue';
         this.updateDateRange([format(firstDay), format(lastDay)]);
         
         console.log('🔍 agentsWithStats on mount:', this.agentsWithStats);
+        console.log(
+          '🔍 Agent info:',
+          (this.agentsWithStats || []).map(agent => ({
+            id: agent?._id ?? agent?.id ?? null,
+            name: agent?.name ?? '',
+            email: agent?.email ?? '',
+            role: agent?.role ?? '',
+            active: agent?.active !== false,
+            linkedUserId: agent?.linkedUserId ?? null,
+          }))
+        );
       } catch (error) {
         console.error('Error fetching agents data:', error);
       }
@@ -204,7 +217,7 @@ import AgentCard from './agentCard.vue';
 
     methods: {
       ...mapMutations(['setCurrentPage', 'setDateRange']),
-      ...mapActions(['fetchgcAgents', 'fetchDailyLogs', 'fetchOrders']),
+      ...mapActions(['fetchUsers', 'fetchgcAgents', 'fetchDailyLogs', 'fetchOrders']),
 
       // True if order's startDate–deadline overlaps the current calendar month
       orderOverlapsCurrentMonth(order) {
@@ -381,6 +394,38 @@ import AgentCard from './agentCard.vue';
       editAgent(agent) {
         // Restore original behavior
         this.$router.push({ name: 'editAgent', query: { activeAgent: agent.name } })
+      },
+      editGCAgent(agent) {
+        // Resolve user from user collection by EMAIL only and pass user _id to editGcAgent
+        const users = Array.isArray(this.users) ? this.users : [];
+        const agentEmail = String(agent?.email ?? '').trim().toLowerCase();
+
+        const foundUser = users.find((u) => {
+          const userEmail = String(u?.email ?? u?.emails?.[0]?.value ?? '').trim().toLowerCase();
+          if (agentEmail && userEmail && userEmail === agentEmail) return true;
+          return false;
+        }) || null;
+
+        const selectedUser = String(foundUser?._id ?? foundUser?.id ?? '');
+        const payload = { selectedUser };
+
+        console.log('editGCAgent() agent object:', agent);
+        console.log('editGCAgent() lookup:', {
+          usersCount: users.length,
+          agentEmail: agent?.email ?? null,
+          matchedUser: foundUser ? {
+            _id: foundUser._id ?? foundUser.id ?? null,
+            name: foundUser.name ?? null,
+            email: foundUser.email ?? null,
+          } : null,
+          selectedUserSent: selectedUser || null,
+        });
+        console.log('editGCAgent() route payload:', payload);
+        if (!selectedUser) {
+          console.warn('editGCAgent(): No matching user found in user collection for agent', agent);
+        }
+        // Restore original behavior
+        this.$router.push({ name: 'editGcAgent', query: payload });
       }
     },
   };
