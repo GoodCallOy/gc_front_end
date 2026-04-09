@@ -87,9 +87,9 @@
 
                 <v-spacer />
 
-                <v-btn size="small" color="grey" @click="editAgent(agent)">Edit</v-btn>
-                <v-btn size="small" color="grey" @click="editGCAgent(agent)">Edit2</v-btn>
+                <v-btn size="small" color="grey" @click="editGCAgent(agent)">Edit</v-btn>
                 <v-btn size="small" color="primary" @click="viewAgent(agent)">View</v-btn>
+                
               </v-card-actions>
             </v-card>
           </v-col>
