@@ -263,6 +263,12 @@
     "agentDashboard": {
       "agentStatistics": "Agent Stats",
       "revenue": "Team Revenue",
+      "teamStatsTitle": "Team stats",
+      "teamCombinedRevenue": "Combined revenue",
+      "teamRevenueVsMonthlyTarget": "Revenue vs. combined monthly target",
+      "personalStatsTitle": "My stats",
+      "personalMyRevenue": "My revenue",
+      "personalAvgCaseGoalProgress": "Average of all cases to goal",
       "totalRevenue": "Total Revenue",
       "myTotalRevenue": "My Total Revenue",
       "revenueToGoal": "Revenue to Goal",

@@ -13,32 +13,22 @@
       </div>
     </v-card>
 
-    <!-- Agent Statistics Header -->
-    <v-card v-if="userOrders.length > 0" class="mx-auto my-2 pa-4 elevation-4" style="background-color: #eeeff1;">
-      <v-row align="center" dense>
-        <v-col cols="12" sm="4" class="py-0">
-          <div class="text-h6">
-            {{ t('agentDashboard.totalRevenue') }}: €{{ topBoxStats.totalTeamRevenue }}
-          </div>
-          <div class="text-h6">
-            {{ t('agentDashboard.myTotalRevenue') }}: €{{ revenueGenerated.myRevenue }}
-          </div>
-        </v-col>
-        <v-col cols="12" sm="4" class="py-0">
-          <div class="text-h6">
-            {{ t('agentDashboard.revenueToGoal') }}: {{ topBoxStats.revenueToGoalPercent }}%
-          </div>
-          <div class="text-h6">
-            {{ t('agentDashboard.myRevenueToGoal') }}: {{ myRevenueToGoalPercent }}%
-          </div>
-        </v-col>
-        <v-col cols="12" sm="4" class="py-0">
-          <div class="text-h6">
-            {{ t('agentDashboard.myPaycheck') }}: €{{ revenueGenerated.myPaycheck }}
-          </div>
-        </v-col>
-      </v-row>
-    </v-card>
+    <!-- Agent statistics: team vs personal -->
+    <v-row v-if="userOrders.length > 0" class="mx-auto my-2 stats-summary-row" dense align="stretch">
+      <v-col cols="12">
+        <AgentDashboardTeamStatsCard
+          :total-team-revenue="topBoxStats.totalTeamRevenue"
+          :revenue-to-goal-percent="topBoxStats.revenueToGoalPercent"
+        />
+      </v-col>
+      <v-col cols="12">
+        <AgentDashboardPersonalStatsCard
+          :my-revenue="revenueGenerated.myRevenue"
+          :avg-case-goal-percent="myRevenueToGoalPercent"
+          :my-paycheck="revenueGenerated.myPaycheck"
+        />
+      </v-col>
+    </v-row>
 
     <!-- Units & Call Time Breakdown -->
     <v-card v-if="userOrders.length > 0" class="mx-auto my-2 pa-4 elevation-4" style="background-color: #eeeff1;">
@@ -501,6 +491,8 @@ import { useRouter, useRoute } from 'vue-router';
 import { goToNextMonth, goToPreviousMonth, formattedDateRange, isCurrentMonth, getMonthWeeks } from '@/js/dateUtils';
 import { fetchAgentgoalsByAgentAndMonth } from '@/js/statsUtils';
 import agentCaseCard from './agentCaseCard.vue'
+import AgentDashboardTeamStatsCard from './agentDashboardTeamStatsCard.vue'
+import AgentDashboardPersonalStatsCard from './agentDashboardPersonalStatsCard.vue'
 import axios from 'axios'
 import urls from '@/js/config.js'
 import { resolveLinkedGcAgent } from '@/js/resolveLinkedGcAgent.js'
@@ -2408,4 +2400,5 @@ watch(currentDateRange, async (newRange) => {
       margin-right: 0 !important;
     }
   }
+
 </style>

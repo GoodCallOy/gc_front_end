@@ -1,7 +1,7 @@
 <template>
   <v-container class="login-container" fluid>
     <v-row class="fill-height login-row" align="center" justify="center">
-      <v-col cols="12" sm="12" md="10" lg="8" xl="6">
+      <v-col cols="12">
         <v-card :class="['mx-4 my-4', 'cardStyle']" :elevation="16">
           <div class="title-box"></div>
           <div class="login-button">
@@ -28,7 +28,7 @@
   }
   .login-row {
     width: 100%;
-    max-width: 1100px; /* make login card noticeably wider on large monitors */
+    max-width: 560px;
   }
 
   .login-button {
@@ -46,7 +46,7 @@
     justify-content: center;
     height: auto;
     width: 100%;
-    max-width: 1100px;
+    max-width: 560px;
     padding: 20px;
     text-align: center;
     height: 80%;
@@ -57,10 +57,12 @@
     align-items: center;
     justify-content: center;
     height: 32vh;
+    min-height: 200px;
     width: 100%;
     background-image: url("@/assets/Back_v1.jpg");
     background-size: cover;
-   
+    background-position: center center;
+    background-repeat: no-repeat;
   }
   .full-width-card {
   width: 70%;
@@ -90,8 +92,9 @@
 
   .title-box {
     height: 24vh;
+    min-height: 160px;
     background-image: url("@/assets/Back_v1.jpg");
-    background-position: center;
+    background-position: center center;
     background-size: cover;
   }
 

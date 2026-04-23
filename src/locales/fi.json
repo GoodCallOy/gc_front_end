@@ -246,6 +246,12 @@
     "agentDashboard": {
       "agentStatistics": "Agenttitilastot",
       "revenue": "Tiimin liikevaihto",
+      "teamStatsTitle": "Tiimin tilastot",
+      "teamCombinedRevenue": "Yhdistetty liikevaihto",
+      "teamRevenueVsMonthlyTarget": "Liikevaihto suhteessa yhteiseen kuukausitavoitteeseen",
+      "personalStatsTitle": "Omat tilastot",
+      "personalMyRevenue": "Oma liikevaihto",
+      "personalAvgCaseGoalProgress": "Kaikkien tapausten keskiarvo tavoitteeseen",
       "totalRevenue": "Kokonaisliikevaihto",
       "myTotalRevenue": "Oma kokonaisliikevaihto",
       "revenueToGoal": "Liikevaihto tavoitteeseen",
