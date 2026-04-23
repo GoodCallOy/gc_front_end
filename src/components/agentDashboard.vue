@@ -70,8 +70,23 @@
       </v-row>
     </v-card>
     
+    <!-- Global loading state -->
+    <div v-if="isInitialLoading || isLoadingDashboard" class="dashboard-loading-placeholder">
+      <v-skeleton-loader
+        type="heading"
+        class="mb-4"
+      />
+      <v-skeleton-loader
+        type="image"
+        class="mb-4"
+      />
+      <v-skeleton-loader
+        type="table-heading, table-thead, table-row-divider@6"
+      />
+    </div>
+
     <!-- Show simple message if no cases assigned -->
-    <div v-if="userOrders.length === 0" class="text-center pa-8">
+    <div v-else-if="userOrders.length === 0" class="text-center pa-8">
       <v-icon size="64" color="grey-lighten-1" class="mb-4">mdi-clipboard-outline</v-icon>
       <h2 class="text-h5 mb-2 text-grey-darken-1">{{ t('messages.noCasesAssigned') }}</h2>
       <p class="text-body-1 text-grey">{{ t('messages.contactManagerForCases') }}</p>
@@ -482,6 +497,7 @@ const userOrders = ref([])
 const caseStats = ref([])
 const allCaseStats = ref([]) // For revenue-to-goal (same for every agent)
 const isLoadingDashboard = ref(false)
+const isInitialLoading = ref(true)
 const monthWeeks = ref([])
 const agentWeeklyGoals = ref([])
 const weeklyNotes = ref({})
@@ -698,18 +714,10 @@ const revenueGenerated = computed(() => {
   const stats = caseStats.value;
   const dateRange = currentDateRange.value;
   const allOrders = orders.value || [];
-  
-  console.log('💰 Revenue Calculation Started');
-  console.log('📊 Inputs:', {
-    statsCount: stats?.length || 0,
-    dateRange,
-    agent: selectedGcAgent.value?.name || 'N/A'
-  });
-  
+
   if (!selectedGcAgent.value || !Array.isArray(stats) || !dateRange) {
-    console.log('⚠️ Revenue Calculation: Missing required data');
-    return { 
-      totalUnits: 0, 
+    return {
+      totalUnits: 0,
       revenue: '0.00',
       myRevenue: '0.00',
       myRateRevenue: '0.00',
@@ -725,354 +733,128 @@ const revenueGenerated = computed(() => {
       callTimeByType: { aLeads: 0, meetings: 0, interviews: 0 }
     };
   }
-  
+
   const agentId = String(selectedGcAgent.value._id ?? selectedGcAgent.value.id);
-  console.log('👤 Agent ID:', agentId);
-  
-  // Filter logs to only include those within the selected date range AND for the specific agent
+
   const [startDate, endDate] = dateRange;
   const monthStart = new Date(startDate);
   const monthEnd = new Date(endDate);
   monthEnd.setHours(23, 59, 59, 999);
-  
-  console.log('📅 Date Range:', {
-    start: startDate,
-    end: endDate,
-    monthStart: monthStart.toISOString(),
-    monthEnd: monthEnd.toISOString()
-  });
-  
-  // Check if target log exists in stats
-  const targetLogId = '6932e3779ba092ac6bfc8fb6';
-  const targetLog = stats.find(log => String(log._id || log.id || '') === targetLogId);
-  if (targetLog) {
-    console.log('🎯 TARGET LOG FOUND in stats:', {
-      _id: targetLog._id,
-      date: targetLog.date,
-      agent: targetLog.agent,
-      agentId: targetLog.agent?._id || targetLog.agent?.id || targetLog.agent || targetLog.agentId,
-      caseName: targetLog.caseName,
-      quantityCompleted: targetLog.quantityCompleted,
-      fullLog: targetLog
-    });
-  } else {
-    console.log('⚠️ TARGET LOG NOT FOUND in stats array');
-  }
-  
+
   const filteredStats = stats.filter(log => {
-    const logId = String(log._id || log.id || '');
-    const isTargetLog = logId === targetLogId;
-    
     const logDate = new Date(log.date);
     const isInDateRange = logDate >= monthStart && logDate <= monthEnd;
-    
-    // Check if this log belongs to the specific agent
     const logAgentId = log.agent?._id || log.agent?.id || log.agent || log.agentId;
     const isAgentLog = String(logAgentId) === String(agentId);
-    
-    if (isTargetLog) {
-      console.log('🎯 TARGET LOG filtering check:', {
-        logDate: logDate.toISOString(),
-        monthStart: monthStart.toISOString(),
-        monthEnd: monthEnd.toISOString(),
-        isInDateRange,
-        logAgentId: String(logAgentId),
-        expectedAgentId: String(agentId),
-        isAgentLog,
-        willBeIncluded: isInDateRange && isAgentLog
-      });
-    }
-    
     return isInDateRange && isAgentLog;
   });
 
-  console.log(`🔍 Filtered ${filteredStats.length} logs after date/agent filtering (from ${stats.length} total)`);
-  
-  // Check if target log made it through filtering
-  const targetLogInFiltered = filteredStats.find(log => String(log._id || log.id || '') === targetLogId);
-  if (targetLogInFiltered) {
-    console.log('✅ TARGET LOG passed date/agent filtering');
-  } else if (targetLog) {
-    console.log('❌ TARGET LOG was filtered out during date/agent filtering');
-  }
-
-  // Add deduplication to prevent double counting
   const uniqueLogs = [];
   const seenLogs = new Set();
-  
   filteredStats.forEach(log => {
-    const logId = String(log._id || log.id || '');
-    const isTargetLog = logId === targetLogId;
-    
-    // Create a unique key for deduplication
     const logKey = `${log.date}_${log.agentName || log.agent}_${log.caseName}_${log._id || log.id}`;
-    
     if (!seenLogs.has(logKey)) {
       seenLogs.add(logKey);
       uniqueLogs.push(log);
-      if (isTargetLog) {
-        console.log('✅ TARGET LOG added to uniqueLogs:', { logKey, log });
-      }
-    } else {
-      if (isTargetLog) {
-        console.log('❌ TARGET LOG marked as duplicate and skipped:', {
-          date: log.date,
-          caseName: log.caseName,
-          agent: log.agentName || log.agent,
-          _id: log._id || log.id,
-          logKey
-        });
-      }
-      console.log('🚫 Duplicate log skipped:', {
-        date: log.date,
-        caseName: log.caseName,
-        agent: log.agentName || log.agent,
-        _id: log._id || log.id
-      });
     }
   });
 
-  console.log(`✅ After deduplication: ${uniqueLogs.length} unique logs`);
-  
-  // Check if target log is in uniqueLogs
-  const targetLogInUnique = uniqueLogs.find(log => String(log._id || log.id || '') === targetLogId);
-  if (targetLogInUnique) {
-    console.log('✅ TARGET LOG is in uniqueLogs');
-  } else if (targetLogInFiltered) {
-    console.log('❌ TARGET LOG was removed during deduplication');
-  }
-
-  // Calculate total units and revenue from deduplicated logs for ALL cases the agent is assigned to (excluding test cases)
   const agentCases = allOrders.filter(order => {
     if (!order.assignedCallers) return false;
-    
-    // Handle both object and string formats for assignedCallers
     const isAssigned = order.assignedCallers.some(caller => {
       const callerId = caller?._id || caller?.id || caller;
       return String(callerId) === String(agentId);
     });
-    
-    const isTest = isTestCase(order);
-    
-    return isAssigned && !isTest;
+    return isAssigned && !isTestCase(order);
   });
-  
-  console.log(`📦 Found ${agentCases.length} agent cases (excluding test cases):`, 
-    agentCases.map(c => ({ name: c.caseName, pricePerUnit: c.pricePerUnit, caseUnit: c.caseUnit, _id: c._id }))
-  );
-  
-  // Check if target log's case is in agentCases
-  if (targetLogInUnique) {
-    const targetCaseName = targetLogInUnique.caseName;
-    const targetCaseInAgentCases = agentCases.find(c => c.caseName === targetCaseName);
-    if (targetCaseInAgentCases) {
-      console.log('✅ TARGET LOG case found in agentCases:', {
-        caseName: targetCaseName,
-        order: targetCaseInAgentCases
-      });
-    } else {
-      console.log('❌ TARGET LOG case NOT found in agentCases:', {
-        caseName: targetCaseName,
-        availableCases: agentCases.map(c => c.caseName)
-      });
-    }
-  }
-  
+
   let totalUnits = 0;
   let totalRevenue = 0;
   let totalMyRateRevenue = 0;
-  const revenueBreakdown = [];
-  
-  // Track units by type
+
   const unitsByType = {
     interviews: 0,
     hours: 0,
     meetings: 0,
     aLeads: 0
   };
-  // Calling hours from call_time in daily log, by case type
   const callTimeByType = { aLeads: 0, meetings: 0, interviews: 0 };
-  
-  uniqueLogs.forEach((log, index) => {
-    const logId = String(log._id || log.id || '');
-    const isTargetLog = logId === targetLogId;
-    
-    if (isTargetLog) {
-      console.log('🎯 TARGET LOG in revenue calculation loop:', {
-        index: index + 1,
-        caseName: log.caseName,
-        quantityCompleted: log.quantityCompleted,
-        agentCases: agentCases.map(c => c.caseName)
-      });
-    }
-    
-    // Check if log case name indicates test
+
+  uniqueLogs.forEach((log) => {
     const caseName = String(log.caseName || '').toLowerCase();
-    if (caseName.includes('test')) {
-      if (isTargetLog) {
-        console.log('❌ TARGET LOG skipped: test case name');
-      }
-      console.log(`🚫 Log ${index + 1}: Skipped (test case) - ${log.caseName}`);
-      return;
-    }
-    
+    if (caseName.includes('test')) return;
+
     const logQuantityCompleted = Number(log.quantityCompleted) || 0;
     totalUnits += logQuantityCompleted;
-    
-    // Find the case for this log to get the correct price per unit and case unit type
+
     const logCase = findOrderForLog(log, agentCases);
-    
-    if (isTargetLog) {
-      const matchingOrders = agentCases.filter(c => c.caseName === log.caseName);
-      console.log('🎯 TARGET LOG case matching:', {
-        logCaseName: log.caseName,
-        logDate: log.date,
-        allMatchingOrders: matchingOrders.map(o => ({
-          _id: o._id,
-          caseName: o.caseName,
-          pricePerUnit: o.pricePerUnit,
-          startDate: o.startDate,
-          deadline: o.deadline
-        })),
-        selectedOrder: logCase ? {
-          _id: logCase._id,
-          caseName: logCase.caseName,
-          pricePerUnit: logCase.pricePerUnit,
-          startDate: logCase.startDate,
-          deadline: logCase.deadline
-        } : 'NOT FOUND'
-      });
+    if (!logCase || isTestCase(logCase)) return;
+
+    const pricePerUnit = Number(logCase.pricePerUnit) || 0;
+    const caseUnit = String(logCase.caseUnit || log.caseUnit || log.case_unit || '').toLowerCase();
+    const isHoursCase = /^hours?$|^hrs?$|^h$/.test(caseUnit);
+    const isInterviewsCase = /^interview(s)?$/.test(caseUnit);
+
+    let canonicalUnits = logQuantityCompleted;
+    if (isHoursCase) {
+      canonicalUnits = Number(log.hours) || Number(logQuantityCompleted) || 0;
+    } else if (isInterviewsCase) {
+      canonicalUnits = Number(log.completedInterviews ?? log.interviews ?? logQuantityCompleted) || 0;
     }
-    
-    if (logCase && !isTestCase(logCase)) {
-      const pricePerUnit = Number(logCase.pricePerUnit) || 0;
-      // Prefer order's caseUnit; fall back to log's (saved from form when user submitted)
-      // Support both camelCase and snake_case from API
-      const caseUnit = String(logCase.caseUnit || log.caseUnit || log.case_unit || '').toLowerCase();
 
-      // Helper: is this an hours-type case unit (hours, hour, hrs, h)
-      const isHoursCase = /^hours?$|^hrs?$|^h$/.test(caseUnit);
-      const isInterviewsCase = /^interview(s)?$/.test(caseUnit);
+    const logRevenue = canonicalUnits * pricePerUnit;
+    totalRevenue += logRevenue;
 
-      // Decide which numeric field is the canonical "unit" for this case type
-      let canonicalUnits = logQuantityCompleted;
-      if (isHoursCase) {
-        // For hourly cases, use log.hours if set and > 0; else quantityCompleted (form may store in Results)
-        const hours = Number(log.hours) || Number(logQuantityCompleted) || 0;
-        canonicalUnits = hours;
-      } else if (isInterviewsCase) {
-        // For interview cases, prefer completedInterviews, then interviews, then quantityCompleted
-        const interviews = Number(log.completedInterviews ?? log.interviews ?? logQuantityCompleted) || 0;
-        canonicalUnits = interviews;
-      }
+    const rawAgentRates = logCase.agentRates || logCase.agentPrices || {};
+    const agentRate = Number(rawAgentRates[agentId]) || 0;
+    const logMyRateRevenue = agentRate > 0 ? canonicalUnits * agentRate : 0;
+    totalMyRateRevenue += logMyRateRevenue;
 
-      const logRevenue = canonicalUnits * pricePerUnit;
-      totalRevenue += logRevenue;
+    const interviewUnits = isInterviewsCase
+      ? Number(log.completedInterviews ?? log.interviews ?? logQuantityCompleted) || 0
+      : Number(log.completedInterviews ?? log.interviews ?? 0);
+    if (Number.isFinite(interviewUnits) && !Number.isNaN(interviewUnits)) {
+      unitsByType.interviews += interviewUnits;
+    }
 
-      // Agent-specific rate revenue (from agentRates on the order)
-      const rawAgentRates = logCase.agentRates || logCase.agentPrices || {};
-      const agentRate = Number(rawAgentRates[agentId]) || 0;
-      const logMyRateRevenue = agentRate > 0 ? canonicalUnits * agentRate : 0;
-      totalMyRateRevenue += logMyRateRevenue;
-      
-      // Track units by type (use quantityCompleted fallback when explicit field missing - same as revenue)
-      // Interviews: for interview cases use completedInterviews ?? interviews ?? quantityCompleted
-      const interviewUnits = isInterviewsCase
-        ? Number(log.completedInterviews ?? log.interviews ?? logQuantityCompleted) || 0
-        : Number(log.completedInterviews ?? log.interviews ?? 0);
-      if (Number.isFinite(interviewUnits) && !Number.isNaN(interviewUnits)) {
-        unitsByType.interviews += interviewUnits;
-      }
+    const hourUnits = isHoursCase
+      ? Number(log.hours) || Number(logQuantityCompleted) || 0
+      : Number(log.hours ?? 0);
+    if (Number.isFinite(hourUnits) && !Number.isNaN(hourUnits)) {
+      unitsByType.hours += hourUnits;
+    }
 
-      // Hours: for hourly cases use log.hours if > 0, else quantityCompleted (form may store in Results);
-      // for other cases only count explicit log.hours
-      const hourUnits = isHoursCase
-        ? Number(log.hours) || Number(logQuantityCompleted) || 0
-        : Number(log.hours ?? 0);
-      if (Number.isFinite(hourUnits) && !Number.isNaN(hourUnits)) {
-        unitsByType.hours += hourUnits;
-      }
+    const isMeetingsCase = /^meeting(s)?$/.test(caseUnit);
+    if (isMeetingsCase) {
+      unitsByType.meetings += logQuantityCompleted;
+    }
 
-      // Meetings: keep using quantityCompleted for meeting-type cases
-      const isMeetingsCase = /^meeting(s)?$/.test(caseUnit);
-      if (isMeetingsCase) {
-        unitsByType.meetings += logQuantityCompleted;
-      }
-      
-      // Track A-leads: for a-leads/aleads case types use log.aLeads ?? quantityCompleted; else log.aLeads only
-      const isALeadsCase = /^a[-_]?leads?$/i.test(String(logCase.caseUnit || ''));
-      const aLeads = isALeadsCase
-        ? Number(log.aLeads ?? logQuantityCompleted) || 0
-        : Number(log.aLeads ?? 0);
-      if (Number.isFinite(aLeads) && !Number.isNaN(aLeads)) {
-        unitsByType.aLeads += aLeads;
-      }
+    const isALeadsCase = /^a[-_]?leads?$/i.test(String(logCase.caseUnit || ''));
+    const aLeads = isALeadsCase
+      ? Number(log.aLeads ?? logQuantityCompleted) || 0
+      : Number(log.aLeads ?? 0);
+    if (Number.isFinite(aLeads) && !Number.isNaN(aLeads)) {
+      unitsByType.aLeads += aLeads;
+    }
 
-      // Calling hours from call_time in daily log (for non-hourly case types)
-      const logCallTime = Number(log.call_time ?? log.callTime ?? 0) || 0;
-      if (isALeadsCase) {
-        callTimeByType.aLeads += logCallTime;
-      } else if (isMeetingsCase) {
-        callTimeByType.meetings += logCallTime;
-      } else if (isInterviewsCase) {
-        callTimeByType.interviews += logCallTime;
-      }
-      
-      const breakdown = {
-        logIndex: index + 1,
-        date: log.date,
-        caseName: log.caseName,
-        caseUnit,
-        quantityCompleted: logQuantityCompleted,
-        hoursValue: isHoursCase ? hourUnits : undefined,
-        pricePerUnit: pricePerUnit,
-        revenue: logRevenue,
-        logId: log._id || log.id,
-        orderId: logCase._id
-      };
-      
-      revenueBreakdown.push(breakdown);
-      if (isTargetLog) {
-        console.log('✅ TARGET LOG included in revenue:', breakdown);
-      }
-      console.log(`💰 Log ${index + 1}:`, breakdown);
-    } else {
-      if (isTargetLog) {
-        console.log('❌ TARGET LOG excluded from revenue:', {
-          logCaseName: log.caseName,
-          foundCase: logCase ? { name: logCase.caseName, isTest: isTestCase(logCase) } : 'NOT FOUND',
-          quantityCompleted: logQuantityCompleted,
-          logId: log._id || log.id
-        });
-      }
-      console.warn(`⚠️ Log ${index + 1}: No matching case found or is test case:`, {
-        logCaseName: log.caseName,
-        foundCase: logCase ? { name: logCase.caseName, isTest: isTestCase(logCase) } : 'NOT FOUND',
-        quantityCompleted: logQuantityCompleted,
-        logId: log._id || log.id
-      });
+    const logCallTime = Number(log.call_time ?? log.callTime ?? 0) || 0;
+    if (isALeadsCase) {
+      callTimeByType.aLeads += logCallTime;
+    } else if (isMeetingsCase) {
+      callTimeByType.meetings += logCallTime;
+    } else if (isInterviewsCase) {
+      callTimeByType.interviews += logCallTime;
     }
   });
-  
+
   const revenue = totalRevenue.toFixed(2);
   const myRateRevenue = totalMyRateRevenue.toFixed(2);
   const myRate = totalUnits > 0 ? (totalMyRateRevenue / totalUnits).toFixed(2) : '0.00';
-  
-  console.log('📊 Revenue Calculation Summary:', {
-    totalLogsProcessed: uniqueLogs.length,
-    totalUnits,
-    unitsByType,
-    totalRevenue: revenue,
-    breakdown: revenueBreakdown
-  });
-  
-  // My revenue = agent's results × case rate (pricePerUnit) per log, summed
   const myRevenue = totalRevenue.toFixed(2);
-  // My paycheck = sum over all cases of (my results * my rate) for each case
   const myPaycheck = totalMyRateRevenue.toFixed(2);
 
-  return { 
-    totalUnits, 
+  return {
+    totalUnits,
     revenue,
     myRevenue,
     myRateRevenue,
@@ -1877,8 +1659,6 @@ const fetchCaseStats = async () => {
     caseStats.value = [];
     return;
   }
-  
-  isLoadingDashboard.value = true;
 
   try {
     // Get all cases the agent is assigned to (handle both object and string assignedCallers)
@@ -1888,28 +1668,27 @@ const fetchCaseStats = async () => {
     );
 
 
-    // Fetch data for all cases the agent is assigned to
-    const caseNames = agentCases.map(c => c.caseName);
+    // Fetch data for all cases the agent is assigned to in parallel.
+    const caseNames = [...new Set(agentCases.map(c => c.caseName).filter(Boolean))];
     const allStats = [];
+    const responses = await Promise.allSettled(
+      caseNames.map((caseName) =>
+        axios.get(`${urls.backEndURL}/dailyLogs/${encodeURIComponent(caseName)}`)
+      )
+    );
 
-    for (const caseName of caseNames) {
-      try {
-        const encodedCaseName = encodeURIComponent(caseName);
-        const response = await axios.get(
-          `${urls.backEndURL}/dailyLogs/${encodedCaseName}`
-        );
-        allStats.push(...response.data);
-      } catch (error) {
-        console.warn(`AgentDashboard: Error fetching stats for case ${caseName}:`, error);
+    responses.forEach((result, index) => {
+      if (result.status === 'fulfilled') {
+        allStats.push(...(result.value.data || []));
+      } else {
+        console.warn(`AgentDashboard: Error fetching stats for case ${caseNames[index]}:`, result.reason);
       }
-    }
+    });
     
     caseStats.value = allStats;
   } catch (error) {
     console.error('AgentDashboard: Error fetching case stats:', error);
     caseStats.value = [];
-  } finally {
-    isLoadingDashboard.value = false;
   }
 }
 
@@ -1933,16 +1712,18 @@ const fetchAllCaseStats = async () => {
 
   try {
     const allStats = [];
-    for (const caseName of caseNames) {
-      try {
-        const response = await axios.get(
-          `${urls.backEndURL}/dailyLogs/${encodeURIComponent(caseName)}`
-        );
-        allStats.push(...(response.data || []));
-      } catch (err) {
-        console.warn(`AgentDashboard: Error fetching all-case stats for ${caseName}:`, err);
+    const responses = await Promise.allSettled(
+      caseNames.map((caseName) =>
+        axios.get(`${urls.backEndURL}/dailyLogs/${encodeURIComponent(caseName)}`)
+      )
+    );
+    responses.forEach((result, index) => {
+      if (result.status === 'fulfilled') {
+        allStats.push(...(result.value.data || []));
+      } else {
+        console.warn(`AgentDashboard: Error fetching all-case stats for ${caseNames[index]}:`, result.reason);
       }
-    }
+    });
     allCaseStats.value = allStats;
   } catch (error) {
     console.error('AgentDashboard: Error fetching all case stats:', error);
@@ -2241,25 +2022,34 @@ async function deleteWeeklyGoal(row) {
 }
 
 async function refreshDashboardForCurrentSelection(allOrders, agent, dateRange) {
+  isLoadingDashboard.value = true;
+
   // Ensure we have basic data before attempting refresh
   if (!agent || !allOrders || !Array.isArray(allOrders) || !dateRange || dateRange.length < 2) {
     userOrders.value = [];
     agentWeeklyGoals.value = [];
     canceledCalls.value = [];
     weeklyNotes.value = {};
+    isLoadingDashboard.value = false;
+    isInitialLoading.value = false;
     return;
   }
 
-  userOrders.value = findOrdersForUser(allOrders, agent._id ?? agent.id);
+  try {
+    userOrders.value = findOrdersForUser(allOrders, agent._id ?? agent.id);
 
-  // Fetch all case stats for revenue-to-goal (same % for every agent)
-  await fetchAllCaseStats();
-
-  // Fetch case stats + related data for this agent
-  await fetchCaseStats();
-  await fetchAgentWeeklyGoals();
-  await fetchCanceledCalls();
-  await fetchAgentWeeklyNotes();
+    // Fetch dashboard data in parallel to reduce total waiting time.
+    await Promise.all([
+      fetchAllCaseStats(),
+      fetchCaseStats(),
+      fetchAgentWeeklyGoals(),
+      fetchCanceledCalls(),
+      fetchAgentWeeklyNotes(),
+    ]);
+  } finally {
+    isLoadingDashboard.value = false;
+    isInitialLoading.value = false;
+  }
 }
 
 watch([orders, selectedGcAgent, currentDateRange], async ([allOrders, agent, dateRange]) => {
@@ -2479,6 +2269,11 @@ watch(currentDateRange, async (newRange) => {
 
   .grid-container::-webkit-scrollbar {
     display: none; /* Chrome, Safari, and Opera */
+  }
+
+  .dashboard-loading-placeholder {
+    width: 100%;
+    padding: 8px 0 20px;
   }
 
   /* Responsive grid */
