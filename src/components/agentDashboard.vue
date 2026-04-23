@@ -188,6 +188,20 @@
                 <template #item.deadline="{ item }">
                   {{ formatDateForTable((item?.raw ?? item)?.deadline) }}
                 </template>
+                <template #body.append>
+                  <tr class="cases-table-total-row">
+                    <td class="cases-table-total-cell cases-table-total-label">Total</td>
+                    <td class="cases-table-total-cell">{{ totalsRow.myUnits }}</td>
+                    <td class="cases-table-total-cell"></td>
+                    <td class="cases-table-total-cell">{{ totalsRow.teamUnits }}</td>
+                    <td class="cases-table-total-cell">{{ totalsRow.currentRevenue }}</td>
+                    <td class="cases-table-total-cell">{{ totalsRow.myRevenueGoal }}</td>
+                    <td class="cases-table-total-cell"></td>
+                    <td class="cases-table-total-cell"></td>
+                    <td class="cases-table-total-cell"></td>
+                    <td class="cases-table-total-cell"></td>
+                  </tr>
+                </template>
               </v-data-table>
             </v-card>
           </v-window-item>
@@ -1593,6 +1607,37 @@ const myRevenueToGoalPercent = computed(() => {
   return Math.round((sum / rows.length) * 10) / 10; // 1 decimal place
 });
 
+const casesTableTotals = computed(() => {
+  const rows = casesTableRows.value || [];
+  return rows.reduce((acc, row) => {
+    acc.myGoal += Number(row?.myGoal) || 0;
+    acc.myUnits += Number(row?.myAgentUnits) || 0;
+    acc.teamGoal += Number(row?.teamGoal) || 0;
+    acc.teamUnits += Number(row?.teamUnits) || 0;
+    acc.currentRevenue += Number(row?.currentRevenue) || 0;
+    acc.myRevenueGoal += Number(row?.myRevenueGoal) || 0;
+    return acc;
+  }, {
+    myGoal: 0,
+    myUnits: 0,
+    teamGoal: 0,
+    teamUnits: 0,
+    currentRevenue: 0,
+    myRevenueGoal: 0,
+  });
+});
+
+const totalsRow = computed(() => {
+  const totals = casesTableTotals.value;
+
+  return {
+    myUnits: `${totals.myUnits} / ${totals.myGoal}`,
+    teamUnits: `${totals.teamUnits} / ${totals.teamGoal}`,
+    currentRevenue: formatCurrency(totals.currentRevenue),
+    myRevenueGoal: formatCurrency(totals.myRevenueGoal),
+  };
+});
+
 const currentUser = computed(() => {
   return store.state.user?.user
       ?? JSON.parse(localStorage.getItem('auth_user') || 'null')
@@ -2274,6 +2319,21 @@ watch(currentDateRange, async (newRange) => {
   .dashboard-loading-placeholder {
     width: 100%;
     padding: 8px 0 20px;
+  }
+
+  .cases-table-total-row {
+    border-top: 1px solid rgba(0, 0, 0, 0.08) !important;
+    background-color: rgba(0, 0, 0, 0.015);
+  }
+
+  .cases-table-total-cell {
+    font-size: 0.9rem;
+    white-space: nowrap;
+    padding: 10px 8px !important;
+  }
+
+  .cases-table-total-label {
+    font-weight: 600;
   }
 
   /* Responsive grid */
