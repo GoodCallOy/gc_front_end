@@ -4,17 +4,23 @@
       {{ t('agentDashboard.personalStatsTitle') }}
     </div>
     <v-row align="center" dense>
-      <v-col cols="12" sm="4" class="py-0">
+      <v-col cols="12" sm="6" md="3" class="py-0">
         <div class="text-h6">
-          {{ t('agentDashboard.personalMyRevenue') }}: €{{ myRevenue }}
+          {{ t('agentDashboard.personalMonthlyGoal') }}: €{{ monthlyGoalEuros }}
         </div>
       </v-col>
-      <v-col cols="12" sm="4" class="py-0">
+      <v-col cols="12" sm="6" md="3" class="py-0">
         <div class="text-h6">
-          {{ t('agentDashboard.personalAvgCaseGoalProgress') }}: {{ avgCaseGoalPercent }}%
+          {{ t('agentDashboard.personalResultsNow') }}: €{{ resultsNowEuros }}
         </div>
       </v-col>
-      <v-col cols="12" sm="4" class="py-0">
+      <v-col cols="12" sm="6" md="3" class="py-0">
+        <div class="text-h6 d-flex align-center flex-wrap" style="gap: 6px;">
+          <span>{{ t('agentDashboard.personalMyProgress') }}:</span>
+          <span :class="['percentage-badge', myProgressBadgeClass]">{{ myProgressPercent }}%</span>
+        </div>
+      </v-col>
+      <v-col cols="12" sm="6" md="3" class="py-0">
         <div class="text-h6">
           {{ t('agentDashboard.myPaycheck') }}: €{{ myPaycheck }}
         </div>
@@ -24,14 +30,20 @@
 </template>
 
 <script setup>
+import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { getPercentageToGoalBadgeClass } from '@/js/percentageToGoalStyle';
 
-defineProps({
-  myRevenue: {
+const props = defineProps({
+  monthlyGoalEuros: {
     type: [String, Number],
     required: true,
   },
-  avgCaseGoalPercent: {
+  resultsNowEuros: {
+    type: [String, Number],
+    required: true,
+  },
+  myProgressPercent: {
     type: [String, Number],
     required: true,
   },
@@ -42,4 +54,8 @@ defineProps({
 });
 
 const { t } = useI18n();
+
+const myProgressBadgeClass = computed(() =>
+  getPercentageToGoalBadgeClass(props.myProgressPercent)
+);
 </script>

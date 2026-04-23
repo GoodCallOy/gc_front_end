@@ -144,7 +144,7 @@
 
       <div v-if="form.assignedCallers.length" class="mt-4">
         <div v-if="!modal">
-          <strong>{{ t('orderForm.assignedGoals') }}: {{ assignedGoalsCount }} / {{ form.totalQuantity || 0 }}</strong>
+          <strong>{{ t('orderForm.assignedGoals') }}: {{ formatSlashPair(assignedGoalsCount, form.totalQuantity || 0) }}</strong>
         </div>
         <v-list>
           <v-list-item v-for="agentId in form.assignedCallers" :key="agentId">
@@ -198,6 +198,7 @@ import { useI18n } from 'vue-i18n'
 import axios from 'axios'
 import urls from '@/js/config.js'
 import { getOrderMonths } from '@/js/statsUtils'
+import { formatSlashPair } from '@/js/formatNumbers'
 
 const { t } = useI18n()
 const store = useStore()

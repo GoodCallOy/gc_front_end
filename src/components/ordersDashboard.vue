@@ -151,23 +151,23 @@
                         <tr v-for="month in item.monthlyBreakdown" :key="month.monthKey">
                           <td>{{ getMonthName(month.month) }} {{ month.year }}</td>
                           <td>{{ formatDateDetailed(month.startDateStr) }} - {{ formatDateDetailed(month.endDateStr) }}</td>
-                          <td>{{ month.quantityCompleted }} / {{ getDisplayGoal(item) }}</td>
+                          <td>{{ formatSlashPair(month.quantityCompleted, getDisplayGoal(item)) }}</td>
                           <td>{{ formatCurrency(month.revenue) }}</td>
                           <td>{{ formatCurrency(getMonthlyRevenueGoal(item, month)) }}</td>
                           <td>
                             <span :class="['percentage-badge', getMonthlyPercentageToGoalClass(item, month)]">
-                              {{ getMonthlyPercentageToGoal(item, month) }}%
+                              {{ formatStatNumber(getMonthlyPercentageToGoal(item, month)) }}%
                             </span>
                           </td>
-                          <td>{{ Math.max(0, getDisplayGoal(item) - getTotalCompletedUpToMonth(item.monthlyBreakdown, month.monthKey)) }}</td>
+                          <td>{{ formatStatNumber(Math.max(0, getDisplayGoal(item) - getTotalCompletedUpToMonth(item.monthlyBreakdown, month.monthKey))) }}</td>
                         </tr>
                         <tr class="font-weight-bold">
                           <td colspan="2">{{ t('ordersDashboard.monthlyBreakdown.total') }}</td>
-                          <td>{{ getTotalQuantity(item.monthlyBreakdown) }} / {{ getDisplayGoal(item) }}</td>
+                          <td>{{ formatSlashPair(getTotalQuantity(item.monthlyBreakdown), getDisplayGoal(item)) }}</td>
                           <td>{{ formatCurrency(getTotalRevenue(item.monthlyBreakdown)) }}</td>
                           <td></td>
                           <td></td>
-                          <td>{{ Math.max(0, getDisplayGoal(item) - getTotalQuantity(item.monthlyBreakdown)) }}</td>
+                          <td>{{ formatStatNumber(Math.max(0, getDisplayGoal(item) - getTotalQuantity(item.monthlyBreakdown))) }}</td>
                         </tr>
                       </tbody>
                     </v-table>
@@ -205,7 +205,7 @@
               {{ getCallerNames(item) }}
             </template>
             <template #item.monthlyGoal="{ item }">
-              {{ computeOrderQuantity(item) }} / {{ item.monthlyGoal ?? item.totalQuantity ?? 0 }}
+              {{ formatSlashPair(computeOrderQuantity(item), item.monthlyGoal ?? item.totalQuantity ?? 0) }}
             </template>
             <template #item.goal="{ item }">
               {{ formatCurrency(Number(item.estimatedRevenue) || 0) }}
@@ -215,11 +215,11 @@
             </template>
             <template #item.percentageToGoal="{ item }">
               <span :class="['percentage-badge', getPercentageToGoalClass(item)]">
-                {{ computePercentageToGoal(item) }}%
+                {{ formatStatNumber(computePercentageToGoal(item)) }}%
               </span>
             </template>
             <template #item.teamGoals="{ item }">
-              {{ computeOrderQuantity(item) }} / {{ getDisplayGoal(item) }}
+              {{ formatSlashPair(computeOrderQuantity(item), getDisplayGoal(item)) }}
             </template>
             <template #item.startDate="{ item }">
               {{ formatDate(item.startDate) }}
@@ -267,6 +267,8 @@ import { goToNextMonth, goToPreviousMonth, formattedDateRange, isCurrentMonth, g
 import DashboardCard01 from '@/partials/dashboard/caseCard2.vue'
 import DateHeader from '@/components/DateHeader.vue'
 import { orderSpansMultipleMonths, calculateMonthlyProgress } from '@/js/statsUtils'
+import { getPercentageToGoalBadgeClass } from '@/js/percentageToGoalStyle'
+import { formatSlashPair, formatStatNumber, formatCurrencyEUR } from '@/js/formatNumbers'
 
 const store = useStore()
 const router = useRouter()
@@ -680,7 +682,7 @@ const formatDate = date => {
   return new Date(date).toLocaleDateString()
 }
 
-const formatCurrency = (n) => new Intl.NumberFormat(undefined, { style: 'currency', currency: 'EUR' }).format(n || 0)
+const formatCurrency = formatCurrencyEUR
 
 function getMonthBoundsFromWeeks() {
   if (!Array.isArray(monthWeeks.value) || monthWeeks.value.length === 0) return null
@@ -728,11 +730,7 @@ function computePercentageToGoal(order) {
 }
 
 function getPercentageToGoalClass(order) {
-  const pct = computePercentageToGoal(order)
-  if (pct <= 25) return 'percentage-red'
-  if (pct > 25 && pct <= 50) return 'percentage-orange'
-  if (pct > 50 && pct <= 75) return 'percentage-yellow'
-  return 'percentage-green'
+  return getPercentageToGoalBadgeClass(computePercentageToGoal(order))
 }
 
 function getMonthlyRevenueGoal(order, month) {
@@ -751,11 +749,7 @@ function getMonthlyPercentageToGoal(order, month) {
 }
 
 function getMonthlyPercentageToGoalClass(order, month) {
-  const pct = getMonthlyPercentageToGoal(order, month)
-  if (pct <= 25) return 'percentage-red'
-  if (pct > 25 && pct <= 50) return 'percentage-orange'
-  if (pct > 50 && pct <= 75) return 'percentage-yellow'
-  return 'percentage-green'
+  return getPercentageToGoalBadgeClass(getMonthlyPercentageToGoal(order, month))
 }
 
 function getDisplayGoal(order) {
@@ -1082,28 +1076,5 @@ async function loadMonthWeeks() {
   
   .revenue-summary .text-success {
     color: #198754 !important;
-  }
-
-  /* % to goal badge coloring (match case cards) */
-  .percentage-badge {
-    display: inline-block;
-    color: #151313;
-    font-weight: 600;
-    font-size: 0.875rem;
-    padding: 2px 8px;
-    border-radius: 9999px;
-  }
-
-  .percentage-red {
-    background-color: #f35555;
-  }
-  .percentage-orange {
-    background-color: #e8b731;
-  }
-  .percentage-yellow {
-    background-color: #eaea08;
-  }
-  .percentage-green {
-    background-color: #10b981;
   }
 </style>

@@ -24,16 +24,16 @@
             <h2 class="text-h6">{{ order.caseName }}</h2>
         </header>
         <div>
-          <strong> Goal: €{{ order.estimatedRevenue }}</strong>
+          <strong> Goal: {{ formatCurrencyEUR(order.estimatedRevenue) }}</strong>
         </div>
       <div class="pt-3">
         <div class="value">
-          €{{ Number(totalAgentUnitsValue || 0).toFixed(2) }}
-          <span :class="['percentage', percentageClass]">{{ percentage }}%</span>
+          {{ formatCurrencyEUR(totalAgentUnitsValue || 0) }}
+          <span :class="['percentage', percentageClass]">{{ formatStatNumber(percentage) }}%</span>
         </div>
       </div>
       <div>
-       <strong>{{ order.caseUnit }}:</strong> {{ totalUnits }} / {{ order.monthlyGoal ?? order.totalQuantity }}
+       <strong>{{ order.caseUnit }}:</strong> {{ formatSlashPair(totalUnits, order.monthlyGoal ?? order.totalQuantity) }}
       </div>
       <div>
         <strong>Start:</strong> {{ formatDate(order.startDate) }}
@@ -62,6 +62,7 @@
   
   // Import utilities
   import { adjustColorOpacity } from '../../utils/Utils'
+  import { formatSlashPair, formatCurrencyEUR, formatStatNumber } from '@/js/formatNumbers'
   
   export default {
     name: 'DashboardCard01',
@@ -178,6 +179,9 @@
 
   
       return {
+        formatSlashPair,
+        formatCurrencyEUR,
+        formatStatNumber,
         totalAgentUnitsValue,
         percentage,
         percentageClass,

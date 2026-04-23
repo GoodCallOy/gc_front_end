@@ -64,15 +64,15 @@
                     <tr v-for="month in item.monthlyBreakdown" :key="month.monthKey">
                       <td>{{ getMonthName(month.month) }} {{ month.year }}</td>
                       <td>{{ formatDate(month.startDateStr) }} - {{ formatDate(month.endDateStr) }}</td>
-                      <td>{{ month.quantityCompleted }}</td>
+                      <td>{{ formatStatNumber(month.quantityCompleted) }}</td>
                       <td>{{ formatCurrency(month.revenue) }}</td>
-                      <td>{{ Math.max(0, item.monthGoal - getTotalCompletedUpToMonth(item.monthlyBreakdown, month.monthKey)) }}</td>
+                      <td>{{ formatStatNumber(Math.max(0, item.monthGoal - getTotalCompletedUpToMonth(item.monthlyBreakdown, month.monthKey))) }}</td>
                     </tr>
                     <tr class="font-weight-bold">
                       <td colspan="2">Total</td>
-                      <td>{{ getTotalQuantity(item.monthlyBreakdown) }}</td>
+                      <td>{{ formatStatNumber(getTotalQuantity(item.monthlyBreakdown)) }}</td>
                       <td>{{ formatCurrency(getTotalRevenue(item.monthlyBreakdown)) }}</td>
-                      <td>{{ Math.max(0, item.monthGoal - getTotalQuantity(item.monthlyBreakdown)) }}</td>
+                      <td>{{ formatStatNumber(Math.max(0, item.monthGoal - getTotalQuantity(item.monthlyBreakdown))) }}</td>
                     </tr>
                   </tbody>
                 </v-table>
@@ -118,6 +118,7 @@ import DateHeader from '@/components/DateHeader.vue'
 import { goToNextMonth, goToPreviousMonth } from '@/js/dateUtils'
 import { useRouter } from 'vue-router'
 import { orderSpansMultipleMonths, calculateMonthlyProgress } from '@/js/statsUtils'
+import { formatStatNumber, formatCurrencyEUR } from '@/js/formatNumbers'
 
 // Helper function to check if an order is a test case
 function isTestCase(order) {
@@ -403,8 +404,7 @@ const groupedByCaseType = computed(() => {
 })
 
 function formatCurrency(n) {
-  const v = Number(n || 0)
-  return v.toFixed(2)
+  return formatCurrencyEUR(n)
 }
 
 function formatDate(dateStr) {

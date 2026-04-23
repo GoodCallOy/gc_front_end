@@ -55,7 +55,7 @@
                     <strong>{{ t('orderDetails.agentGoals') }}:</strong>
                     <ul>
                         <li v-for="item in agentGoalsWithAchieved" :key="item.agentId">
-                        {{ item.name }}: {{ item.achieved }} / {{ item.target }}
+                        {{ item.name }}: {{ formatSlashPair(item.achieved, item.target) }}
                         </li>
                     </ul>
                 </div>
@@ -212,6 +212,7 @@
   import { useStore } from 'vuex'
   import { goToNextMonth, goToPreviousMonth, formattedDateRange, isCurrentMonth, getCustomWeekRange, getMonthWeeks } from '@/js/dateUtils';
   import urls from '@/js/config.js'
+  import { formatSlashPair } from '@/js/formatNumbers'
   import DateHeader from '@/components/DateHeader.vue'
 
 

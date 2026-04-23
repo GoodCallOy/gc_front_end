@@ -159,23 +159,23 @@
                         <tr v-for="month in item.monthlyBreakdown" :key="month.monthKey">
                           <td>{{ getMonthName(month.month) }} {{ month.year }}</td>
                           <td>{{ formatDateDetailed(month.startDateStr) }} - {{ formatDateDetailed(month.endDateStr) }}</td>
-                          <td>{{ month.quantityCompleted }} / {{ getDisplayGoal(item) }}</td>
+                          <td>{{ formatSlashPair(month.quantityCompleted, getDisplayGoal(item)) }}</td>
                           <td>{{ formatCurrency(month.revenue) }}</td>
                           <td>{{ formatCurrency(getMonthlyRevenueGoal(item, month)) }}</td>
                           <td>
                             <span :class="['percentage-badge', getMonthlyPercentageToGoalClass(item, month)]">
-                              {{ getMonthlyPercentageToGoal(item, month) }}%
+                              {{ formatStatNumber(getMonthlyPercentageToGoal(item, month)) }}%
                             </span>
                           </td>
-                          <td>{{ Math.max(0, getDisplayGoal(item) - getTotalCompletedUpToMonth(item.monthlyBreakdown, month.monthKey)) }}</td>
+                          <td>{{ formatStatNumber(Math.max(0, getDisplayGoal(item) - getTotalCompletedUpToMonth(item.monthlyBreakdown, month.monthKey))) }}</td>
                         </tr>
                         <tr class="font-weight-bold">
                           <td colspan="2">{{ t('ordersDashboard.monthlyBreakdown.total') }}</td>
-                          <td>{{ getTotalQuantity(item.monthlyBreakdown) }} / {{ getDisplayGoal(item) }}</td>
+                          <td>{{ formatSlashPair(getTotalQuantity(item.monthlyBreakdown), getDisplayGoal(item)) }}</td>
                           <td>{{ formatCurrency(getTotalRevenue(item.monthlyBreakdown)) }}</td>
                           <td></td>
                           <td></td>
-                          <td>{{ Math.max(0, getDisplayGoal(item) - getTotalQuantity(item.monthlyBreakdown)) }}</td>
+                          <td>{{ formatStatNumber(Math.max(0, getDisplayGoal(item) - getTotalQuantity(item.monthlyBreakdown))) }}</td>
                         </tr>
                       </tbody>
                     </v-table>
@@ -460,6 +460,8 @@ import DateHeader from '@/components/DateHeader.vue';
 import OrderForm from '@/components/orders/OrderForm.vue';
 import axios from 'axios'
 import urls from '@/js/config.js'
+import { getPercentageToGoalBadgeClass } from '@/js/percentageToGoalStyle'
+import { formatSlashPair, formatStatNumber, formatCurrencyEUR } from '@/js/formatNumbers'
 
 const store = useStore()
 const router = useRouter()
@@ -490,7 +492,7 @@ const pendingCopySourceId = ref(null);
 const bulkCopying = ref(false);
 
 // Monthly breakdown helpers (mirrors ordersDashboard)
-const formatCurrency = (n) => new Intl.NumberFormat(undefined, { style: 'currency', currency: 'EUR' }).format(n || 0)
+const formatCurrency = formatCurrencyEUR
 function getMonthName(monthNum) {
   const monthKeys = ['january', 'february', 'march', 'april', 'may', 'june',
     'july', 'august', 'september', 'october', 'november', 'december']
@@ -1285,11 +1287,7 @@ function getMonthlyPercentageToGoal(order, month) {
 }
 
 function getMonthlyPercentageToGoalClass(order, month) {
-  const pct = getMonthlyPercentageToGoal(order, month)
-  if (pct <= 25) return 'percentage-red'
-  if (pct > 25 && pct <= 50) return 'percentage-orange'
-  if (pct > 50 && pct <= 75) return 'percentage-yellow'
-  return 'percentage-green'
+  return getPercentageToGoalBadgeClass(getMonthlyPercentageToGoal(order, month))
 }
 
 function getDisplayGoal(order) {

@@ -17,14 +17,16 @@
     <v-row v-if="userOrders.length > 0" class="mx-auto my-2 stats-summary-row" dense align="stretch">
       <v-col cols="12">
         <AgentDashboardTeamStatsCard
-          :total-team-revenue="topBoxStats.totalTeamRevenue"
-          :revenue-to-goal-percent="topBoxStats.revenueToGoalPercent"
+          :team-revenue-goal="topBoxStats.totalRevenueGoal"
+          :team-results-now="topBoxStats.totalTeamRevenue"
+          :team-progress-percent="topBoxStats.revenueToGoalPercent"
         />
       </v-col>
       <v-col cols="12">
         <AgentDashboardPersonalStatsCard
-          :my-revenue="revenueGenerated.myRevenue"
-          :avg-case-goal-percent="myRevenueToGoalPercent"
+          :monthly-goal-euros="personalMonthlyGoalEuros"
+          :results-now-euros="revenueGenerated.myRevenue"
+          :my-progress-percent="myRevenueToGoalPercent"
           :my-paycheck="revenueGenerated.myPaycheck"
         />
       </v-col>
@@ -155,13 +157,13 @@
                   {{ getCallerNames(item?.raw ?? item) }}
                 </template>
                 <template #item.myGoal="{ item }">
-                  {{ (item?.raw ?? item)?.myGoal }}
+                  {{ formatStatNumber((item?.raw ?? item)?.myGoal) }}
                 </template>
                 <template #item.myUnits="{ item }">
-                  {{ (item?.raw ?? item)?.myAgentUnits }} / {{ (item?.raw ?? item)?.myGoal || 0 }}
+                  {{ formatSlashPair((item?.raw ?? item)?.myAgentUnits, (item?.raw ?? item)?.myGoal || 0) }}
                 </template>
                 <template #item.teamUnits="{ item }">
-                  {{ (item?.raw ?? item)?.teamUnits }} / {{ (item?.raw ?? item)?.teamGoal || 0 }}
+                  {{ formatSlashPair((item?.raw ?? item)?.teamUnits, (item?.raw ?? item)?.teamGoal || 0) }}
                 </template>
                 <template #item.myRevenueGoal="{ item }">
                   {{ formatCurrency((item?.raw ?? item)?.myRevenueGoal) }}
@@ -170,10 +172,10 @@
                   {{ formatCurrency((item?.raw ?? item)?.currentRevenue) }}
                 </template>
                 <template #item.myRate="{ item }">
-                  €{{ (item?.raw ?? item)?.myRate?.toFixed ? (item?.raw ?? item)?.myRate.toFixed(2) : (item?.raw ?? item)?.myRate || 0 }}
+                  {{ formatCurrency((item?.raw ?? item)?.myRate || 0) }}
                 </template>
                 <template #item.percentage="{ item }">
-                  {{ (item?.raw ?? item)?.percentage }}%
+                  {{ formatStatNumber((item?.raw ?? item)?.percentage) }}%
                 </template>
                 <template #item.deadline="{ item }">
                   {{ formatDateForTable((item?.raw ?? item)?.deadline) }}
@@ -496,6 +498,7 @@ import AgentDashboardPersonalStatsCard from './agentDashboardPersonalStatsCard.v
 import axios from 'axios'
 import urls from '@/js/config.js'
 import { resolveLinkedGcAgent } from '@/js/resolveLinkedGcAgent.js'
+import { formatStatNumber, formatSlashPair, formatCurrencyEUR } from '@/js/formatNumbers'
 const store = useStore()
 const router = useRouter()
 const route = useRoute()
@@ -535,14 +538,10 @@ const canManageWeeklyNotes = computed(() => {
 
 
 function formatNumber(n) {
-  return typeof n === 'number' ? n.toFixed(2) : n
+  return formatStatNumber(n)
 }
 function formatCurrency(n) {
-  try {
-    return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'EUR' }).format(n ?? 0)
-  } catch {
-    return n
-  }
+  return formatCurrencyEUR(n)
 }
 function formatDateToDDMMYYYY(dateString) {
   if (!dateString) return '';
@@ -1523,7 +1522,11 @@ const topBoxStats = computed(() => {
   const weeks = monthWeeks.value || [];
 
   if (!dateRange || dateRange.length < 2 || allOrders.length === 0) {
-    return { revenueToGoalPercent: 0, totalTeamRevenue: '0.00' };
+    return {
+      revenueToGoalPercent: 0,
+      totalTeamRevenue: '0.00',
+      totalRevenueGoal: '0.00',
+    };
   }
 
   // Use monthWeeks for date range when available (matches orders dashboard), else currentDateRange
@@ -1587,7 +1590,8 @@ const topBoxStats = computed(() => {
     : 0;
   return {
     revenueToGoalPercent,
-    totalTeamRevenue: currentRevenue.toFixed(2)
+    totalTeamRevenue: currentRevenue.toFixed(2),
+    totalRevenueGoal: totalRevenueGoal.toFixed(2),
   };
 });
 
@@ -1619,12 +1623,18 @@ const casesTableTotals = computed(() => {
   });
 });
 
+/** Sum of per-case my revenue goals (€) for the stats header */
+const personalMonthlyGoalEuros = computed(() => {
+  const v = casesTableTotals.value?.myRevenueGoal ?? 0;
+  return formatStatNumber(v);
+});
+
 const totalsRow = computed(() => {
   const totals = casesTableTotals.value;
 
   return {
-    myUnits: `${totals.myUnits} / ${totals.myGoal}`,
-    teamUnits: `${totals.teamUnits} / ${totals.teamGoal}`,
+    myUnits: formatSlashPair(totals.myUnits, totals.myGoal),
+    teamUnits: formatSlashPair(totals.teamUnits, totals.teamGoal),
     currentRevenue: formatCurrency(totals.currentRevenue),
     myRevenueGoal: formatCurrency(totals.myRevenueGoal),
   };

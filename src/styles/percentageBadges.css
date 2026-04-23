@@ -1,0 +1,22 @@
+/* % to goal pills — shared with orders dashboard */
+.percentage-badge {
+  display: inline-block;
+  color: #151313;
+  font-weight: 600;
+  font-size: 0.875rem;
+  padding: 2px 8px;
+  border-radius: 9999px;
+}
+
+.percentage-red {
+  background-color: #f35555;
+}
+.percentage-orange {
+  background-color: #e8b731;
+}
+.percentage-yellow {
+  background-color: #eaea08;
+}
+.percentage-green {
+  background-color: #10b981;
+}

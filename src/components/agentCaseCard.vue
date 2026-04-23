@@ -18,7 +18,7 @@
         <v-row align="center" class="mt-2">
             <v-col cols="12">
                 <v-card-subtitle class="text-caption">
-                    {{ t('agentCaseCard.myGoal') }}: {{ myAgentUnits }}/{{ displayMyGoal }}
+                    {{ t('agentCaseCard.myGoal') }}: {{ myAgentId ? formatSlashPair(myAgentUnits, myGoal) : 'N/A' }}
                 </v-card-subtitle>
             </v-col>
 
@@ -26,7 +26,7 @@
         <v-row align="center" class="mt-2">
             <v-col cols="12">
                 <v-card-subtitle class="text-caption">
-                    {{ t('agentCaseCard.myRevenueGoal') }}: €{{ myRevenue }}
+                    {{ t('agentCaseCard.myRevenueGoal') }}: {{ formatCurrencyEUR(myRevenue) }}
                 </v-card-subtitle>
             </v-col>
         </v-row>
@@ -34,15 +34,15 @@
       <div class="pt-5">
         {{ t('agentCaseCard.myCurrentRevenue') }}:
         <div class="value"> 
-         €{{ totalAgentUnitsValue || 0 }}
-         <span :class="['percentage', percentageClass]"> {{ percentage || 0 }}%</span>
+         {{ formatCurrencyEUR(totalAgentUnitsValue || 0) }}
+         <span :class="['percentage', percentageClass]"> {{ formatStatNumber(percentage || 0) }}%</span>
         </div>
         
       </div>
         <div>
           <strong>{{ translateCaseUnit(order.caseUnit) }}: </strong>
           <span v-if="order.assignedCallers.length">
-           {{ myAgentUnits }} / {{ totalProjectGoal }}
+           {{ formatSlashPair(myAgentUnits, totalProjectGoal) }}
           </span>
           <span v-else>{{ t('agentCaseCard.none') }}</span>
         </div>
@@ -67,6 +67,7 @@
   
   // Import utilities
   import { adjustColorOpacity } from '../utils/Utils'
+  import { formatSlashPair, formatCurrencyEUR, formatStatNumber } from '@/js/formatNumbers'
   
   export default {
     name: 'agentCaseCard',
@@ -239,6 +240,9 @@
       return {
         t,
         translateCaseUnit,
+        formatSlashPair,
+        formatCurrencyEUR,
+        formatStatNumber,
         percentage,
         percentageClass,
         myAgentId,

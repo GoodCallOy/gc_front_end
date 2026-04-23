@@ -25,7 +25,7 @@
           rounded
         >
           <template #default>
-            {{ item.totalCompleted }} / {{ totalQuantity }}
+            {{ formatSlashPair(item.totalCompleted, totalQuantity) }}
           </template>
         </v-progress-linear>
       </template>
@@ -37,6 +37,7 @@
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
 import urls from '@/js/config.js'
+import { formatSlashPair } from '@/js/formatNumbers'
 
 const props = defineProps({
   orderId: {
