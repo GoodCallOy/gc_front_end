@@ -1,3 +1,10 @@
+/** Round to 2 decimal places for numeric aggregates (fixes float drift before display). */
+export function roundTo2Decimals(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return 0;
+  return Math.round(n * 100) / 100;
+}
+
 /**
  * Stats / quantities: round to 2 decimal places, avoid float artifacts (e.g. 9.379999…).
  * Uses at most 2 fraction digits in display (trims trailing zeros).

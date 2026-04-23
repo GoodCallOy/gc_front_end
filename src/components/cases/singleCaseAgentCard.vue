@@ -24,7 +24,7 @@
           >Goal:  
           </v-col>
           <v-col class="text-h3" cols="5">
-            {{ getAgentGoal() }}
+            {{ formatStatNumber(getAgentGoal()) }}
           </v-col>
 
         </v-row>
@@ -32,12 +32,12 @@
 
       <div class="d-flex py-3 justify-space-between">
         <v-list-item>
-          <v-list-item-subtitle class="mt-1">Meetings: {{ agent.meetings }}</v-list-item-subtitle>
-          <v-list-item-subtitle class="mt-1">Call Time: {{ agent.call_time }} hours</v-list-item-subtitle>
-          <v-list-item-subtitle class="mt-1">Calls Completed: {{ agent.calls_made }}</v-list-item-subtitle>
-          <v-list-item-subtitle class="mt-1">Outgoing Calls: {{ agent.outgoing_calls }}</v-list-item-subtitle>
-          <v-list-item-subtitle class="mt-1">Answered Calls: {{ agent.answered_calls }}</v-list-item-subtitle>
-          <v-list-item-subtitle class="mt-1">Response Rate: {{ agent.response_rate }}%</v-list-item-subtitle>
+          <v-list-item-subtitle class="mt-1">Meetings: {{ formatStatNumber(agent.meetings) }}</v-list-item-subtitle>
+          <v-list-item-subtitle class="mt-1">Call Time: {{ formatStatNumber(agent.call_time) }} hours</v-list-item-subtitle>
+          <v-list-item-subtitle class="mt-1">Calls Completed: {{ formatStatNumber(agent.calls_made) }}</v-list-item-subtitle>
+          <v-list-item-subtitle class="mt-1">Outgoing Calls: {{ formatStatNumber(agent.outgoing_calls) }}</v-list-item-subtitle>
+          <v-list-item-subtitle class="mt-1">Answered Calls: {{ formatStatNumber(agent.answered_calls) }}</v-list-item-subtitle>
+          <v-list-item-subtitle class="mt-1">Response Rate: {{ formatStatNumber(agent.response_rate) }}%</v-list-item-subtitle>
           <v-list-item-subtitle class="mt-5">Date: {{ agent.monthKey }}</v-list-item-subtitle>
           <v-card-text>
             <v-btn color="primary" class="mb-5 mr-3" @click="viewAgent">
@@ -61,12 +61,12 @@
             </v-list-item>
            
             <v-list-item v-if="filteredStats">
-              <v-list-item-subtitle>Meetings: {{ filteredStats.meetings }}</v-list-item-subtitle>
-              <v-list-item-subtitle>Call Time: {{ filteredStats.call_time }} mins</v-list-item-subtitle>
-              <v-list-item-subtitle>Calls Completed: {{ filteredStats.calls_made }}</v-list-item-subtitle>
-              <v-list-item-subtitle>Outgoing Calls: {{ filteredStats.outgoing_calls }}</v-list-item-subtitle>
-              <v-list-item-subtitle>Answered Calls: {{ filteredStats.answered_calls }}</v-list-item-subtitle>
-              <v-list-item-subtitle>Response Rate: {{ filteredStats.response_rate }}%</v-list-item-subtitle>
+              <v-list-item-subtitle>Meetings: {{ formatStatNumber(filteredStats.meetings) }}</v-list-item-subtitle>
+              <v-list-item-subtitle>Call Time: {{ formatStatNumber(filteredStats.call_time) }} mins</v-list-item-subtitle>
+              <v-list-item-subtitle>Calls Completed: {{ formatStatNumber(filteredStats.calls_made) }}</v-list-item-subtitle>
+              <v-list-item-subtitle>Outgoing Calls: {{ formatStatNumber(filteredStats.outgoing_calls) }}</v-list-item-subtitle>
+              <v-list-item-subtitle>Answered Calls: {{ formatStatNumber(filteredStats.answered_calls) }}</v-list-item-subtitle>
+              <v-list-item-subtitle>Response Rate: {{ formatStatNumber(filteredStats.response_rate) }}%</v-list-item-subtitle>
             </v-list-item>
           </v-list>
         </div>
@@ -86,6 +86,7 @@
 <script>
 import { fetchAgentgoalsByAgentAndMonth } from '../../js/statsUtils';
 import { getMonthKey } from '../../js/dateUtils';
+import { formatStatNumber } from '@/js/formatNumbers';
 
   export default {
     props: {
@@ -119,6 +120,7 @@ import { getMonthKey } from '../../js/dateUtils';
       
     },
     methods: {
+      formatStatNumber,
       async fetchAgentgoals() {
         // console.log('this.agent.monthKey', this.agent.monthKey);
         // console.log('this.agent', this.agent);

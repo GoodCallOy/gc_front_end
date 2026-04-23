@@ -63,6 +63,7 @@ import singleCaseStatCard from './cases/singleCaseStatCard.vue';
 import { mapGetters, mapActions, mapState } from 'vuex';
 import { toRaw } from 'vue';
 import { goToNextMonth, goToPreviousMonth, formattedDateRange, isCurrentMonth } from '@/js/dateUtils';
+import { formatStatNumber } from '@/js/formatNumbers';
 
 export default {
   name: 'CaseStatsCard',
@@ -99,16 +100,16 @@ export default {
     ...mapGetters(['enrichedAgents', 'agents', 'cases', 'agentStats', 'currentDateRange']),
     stats() {
       return [
-        { icon: 'mdi-chart-pie', color: 'purple', title: 'Total Billing:', value: this.companyCase.billing || 0 },
-        { icon: 'mdi-account-group', color: 'green', title: 'Call Time:', value: this.aggregatedStats.call_time || 0 },
-        { icon: 'mdi-laptop', color: 'amber', title: 'Total Meetings: ', value: this.aggregatedStats.meetings  || 0 },
-        { icon: 'mdi-currency-usd', color: 'light-blue', title: 'Completed Calls:', value: this.aggregatedStats.calls_made  || 0 },
-        { icon: 'mdi-currency-usd', color: 'purple', title: 'Outgoing / Meeting:', value: this.dialsMeeting  || 0 },
-        { icon: 'mdi-currency-usd', color: 'green', title: 'Outgoing Calls :', value: this.aggregatedStats.outgoing_calls  || 0 },
-        { icon: 'mdi-currency-usd', color: 'amber', title: 'Hour / Meeting:', value: this.hourMeeting },
-        { icon: 'mdi-currency-usd', color: 'light-blue', title: 'Answered Calls:', value: this.aggregatedStats.answered_calls   || 0 },
-        { icon: 'mdi-currency-usd', color: 'purple', title: 'Answered / Meetings :', value: `${this.callsMeetings}`  || 0 },    
-        { icon: 'mdi-currency-usd', color: 'purple', title: 'Response Rate :', value: `${this.aggregatedStats.response_rate}%`  || 0 },    
+        { icon: 'mdi-chart-pie', color: 'purple', title: 'Total Billing:', value: formatStatNumber(this.companyCase.billing || 0) },
+        { icon: 'mdi-account-group', color: 'green', title: 'Call Time:', value: formatStatNumber(this.aggregatedStats.call_time || 0) },
+        { icon: 'mdi-laptop', color: 'amber', title: 'Total Meetings: ', value: formatStatNumber(this.aggregatedStats.meetings || 0) },
+        { icon: 'mdi-currency-usd', color: 'light-blue', title: 'Completed Calls:', value: formatStatNumber(this.aggregatedStats.calls_made || 0) },
+        { icon: 'mdi-currency-usd', color: 'purple', title: 'Outgoing / Meeting:', value: formatStatNumber(this.dialsMeeting || 0) },
+        { icon: 'mdi-currency-usd', color: 'green', title: 'Outgoing Calls :', value: formatStatNumber(this.aggregatedStats.outgoing_calls || 0) },
+        { icon: 'mdi-currency-usd', color: 'amber', title: 'Hour / Meeting:', value: formatStatNumber(this.hourMeeting) },
+        { icon: 'mdi-currency-usd', color: 'light-blue', title: 'Answered Calls:', value: formatStatNumber(this.aggregatedStats.answered_calls || 0) },
+        { icon: 'mdi-currency-usd', color: 'purple', title: 'Answered / Meetings :', value: formatStatNumber(this.callsMeetings) },
+        { icon: 'mdi-currency-usd', color: 'purple', title: 'Response Rate :', value: `${formatStatNumber(this.aggregatedStats.response_rate)}%` },
       ];
     },
       

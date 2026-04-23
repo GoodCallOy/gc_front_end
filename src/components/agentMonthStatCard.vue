@@ -21,12 +21,12 @@
   
       <div class="d-flex py-3 justify-space-between">
         <v-list-item>
-          <v-list-item-subtitle class="mt-1">Meetings: {{ meetings }}</v-list-item-subtitle>
-          <v-list-item-subtitle class="mt-1">Call Time: {{ call_time }} hours</v-list-item-subtitle>
-          <v-list-item-subtitle class="mt-1">Calls Made: {{ calls_made }}</v-list-item-subtitle>
-          <v-list-item-subtitle class="mt-1">Outgoing Calls: {{ outgoing_calls }}</v-list-item-subtitle>
-          <v-list-item-subtitle class="mt-1">Answered Calls: {{ answered_calls }}</v-list-item-subtitle>
-          <v-list-item-subtitle class="mt-1">Response Rate: {{ response_rate }}%</v-list-item-subtitle>
+          <v-list-item-subtitle class="mt-1">Meetings: {{ formatStatNumber(meetings) }}</v-list-item-subtitle>
+          <v-list-item-subtitle class="mt-1">Call Time: {{ formatStatNumber(call_time) }} hours</v-list-item-subtitle>
+          <v-list-item-subtitle class="mt-1">Calls Made: {{ formatStatNumber(calls_made) }}</v-list-item-subtitle>
+          <v-list-item-subtitle class="mt-1">Outgoing Calls: {{ formatStatNumber(outgoing_calls) }}</v-list-item-subtitle>
+          <v-list-item-subtitle class="mt-1">Answered Calls: {{ formatStatNumber(answered_calls) }}</v-list-item-subtitle>
+          <v-list-item-subtitle class="mt-1">Response Rate: {{ formatStatNumber(response_rate) }}%</v-list-item-subtitle>
           <v-list-item-subtitle class="mt-5">Calling Date: {{ calling_date }}</v-list-item-subtitle>
         </v-list-item>
   
@@ -35,6 +35,8 @@
   </template>
 
 <script>
+  import { formatStatNumber } from '@/js/formatNumbers';
+
   export default {
     props: {
         caseId: {
@@ -95,6 +97,7 @@
       this.printDebug();
     },
     methods: {
+      formatStatNumber,
       viewAgent() {
       this.$router.push({
         name: 'agentInCase',

@@ -81,11 +81,11 @@
             color="primary"
             class="ml-2"
           ></v-progress-circular>
-          <span v-else>€{{ revenueGenerated.revenue }}</span>
+          <span v-else>{{ formatCurrencyEUR(revenueGenerated.revenue) }}</span>
         </h2>
       </v-col>
       <v-col cols="4">
-        <h2 class="text-h6">{{ t('orderDetails.totalUnits') }}: {{ revenueGenerated.totalUnits }}</h2>
+        <h2 class="text-h6">{{ t('orderDetails.totalUnits') }}: {{ formatStatNumber(revenueGenerated.totalUnits) }}</h2>
       </v-col>
     </v-row>
     
@@ -212,7 +212,7 @@
   import { useStore } from 'vuex'
   import { goToNextMonth, goToPreviousMonth, formattedDateRange, isCurrentMonth, getCustomWeekRange, getMonthWeeks } from '@/js/dateUtils';
   import urls from '@/js/config.js'
-  import { formatSlashPair } from '@/js/formatNumbers'
+  import { formatSlashPair, formatStatNumber, formatCurrencyEUR } from '@/js/formatNumbers'
   import DateHeader from '@/components/DateHeader.vue'
 
 
@@ -395,9 +395,8 @@ const individualHeaders = computed(() => [
   { title: t('orderDetails.delete'), key: 'delete', sortable: false, width: '60px' },
 ])
 
-// Format number helper function
 function formatNumber(n) {
-  return typeof n === 'number' ? n.toFixed(2) : n
+  return formatStatNumber(n)
 }
 
 // Format date helper function

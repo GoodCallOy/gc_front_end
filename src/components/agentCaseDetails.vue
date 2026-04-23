@@ -67,10 +67,10 @@
         <h2 class="text-h5">Case Statistics - {{ getFormattedDateRange() }}</h2>
       </v-col>
       <v-col cols="12" md="3">
-        <h2 class="text-h6">Revenue Generate: €{{ revenueGenerated.revenue }}</h2>
+        <h2 class="text-h6">Revenue Generate: {{ formatCurrencyEUR(revenueGenerated.revenue) }}</h2>
       </v-col>
       <v-col cols="12" md="3">
-        <h2 class="text-h6">Total Units: {{ revenueGenerated.totalUnits }}</h2>
+        <h2 class="text-h6">Total Units: {{ formatStatNumber(revenueGenerated.totalUnits) }}</h2>
       </v-col>
       <v-col cols="12" md="3">
         <h2 class="text-h6">{{ t('agentWeeklyGoal.goal') }}: {{ caseGoal }}</h2>
@@ -151,6 +151,7 @@
   import { useStore } from 'vuex'
   import { goToNextMonth, goToPreviousMonth, formattedDateRange, isCurrentMonth, getMonthWeeks } from '@/js/dateUtils';
   import urls from '@/js/config.js'
+  import { formatStatNumber, formatCurrencyEUR } from '@/js/formatNumbers'
 
 
   const route = useRoute()
@@ -321,9 +322,8 @@ const individualHeaders = computed(() => [
   { title: t('agentTables.edit'), key: 'actions', sortable: false, width: '100px' },
 ])
 
-// Format number helper function
 function formatNumber(n) {
-  return typeof n === 'number' ? n.toFixed(2) : n
+  return formatStatNumber(n)
 }
 
 // Format date helper function

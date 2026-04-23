@@ -37,20 +37,20 @@
       <v-row align="center" dense>
         <v-col cols="6" sm="3" class="py-0">
           <div class="d-flex flex-wrap align-center" style="gap: 6px 10px;">
-            <span class="text-caption">{{ t('dailyLogForm.aLeads') }}: {{ revenueGenerated.unitsByType.aLeads }}</span>
-            <span class="text-caption">{{ t('agentDashboard.billedHours') }}: {{ revenueGenerated.billedHours }}</span>
+            <span class="text-caption">{{ t('dailyLogForm.aLeads') }}: {{ formatStatNumber(revenueGenerated.unitsByType.aLeads) }}</span>
+            <span class="text-caption">{{ t('agentDashboard.billedHours') }}: {{ formatStatNumber(revenueGenerated.billedHours) }}</span>
           </div>
         </v-col>
         <v-col cols="6" sm="3" class="py-0">
           <div class="d-flex flex-wrap align-center" style="gap: 6px 10px;">
-            <span class="text-caption">{{ t('agentCaseCard.meetings') }}: {{ revenueGenerated.unitsByType.meetings }}</span>
-            <span class="text-caption">{{ t('agentDashboard.callingHours') }}: {{ revenueGenerated.callTimeByType.meetings }}</span>
+            <span class="text-caption">{{ t('agentCaseCard.meetings') }}: {{ formatStatNumber(revenueGenerated.unitsByType.meetings) }}</span>
+            <span class="text-caption">{{ t('agentDashboard.callingHours') }}: {{ formatStatNumber(revenueGenerated.callTimeByType.meetings) }}</span>
           </div>
         </v-col>
         <v-col cols="6" sm="3" class="py-0">
           <div class="d-flex flex-wrap align-center" style="gap: 6px 10px;">
-            <span class="text-caption">{{ t('agentCaseCard.interviews') }}: {{ revenueGenerated.unitsByType.interviews }}</span>
-            <span class="text-caption">{{ t('agentDashboard.callingHours') }}: {{ revenueGenerated.callTimeByType.interviews }}</span>
+            <span class="text-caption">{{ t('agentCaseCard.interviews') }}: {{ formatStatNumber(revenueGenerated.unitsByType.interviews) }}</span>
+            <span class="text-caption">{{ t('agentDashboard.callingHours') }}: {{ formatStatNumber(revenueGenerated.callTimeByType.interviews) }}</span>
           </div>
         </v-col>
         <v-col cols="6" sm="3" class="py-0">
@@ -498,7 +498,7 @@ import AgentDashboardPersonalStatsCard from './agentDashboardPersonalStatsCard.v
 import axios from 'axios'
 import urls from '@/js/config.js'
 import { resolveLinkedGcAgent } from '@/js/resolveLinkedGcAgent.js'
-import { formatStatNumber, formatSlashPair, formatCurrencyEUR } from '@/js/formatNumbers'
+import { formatStatNumber, formatSlashPair, formatCurrencyEUR, roundTo2Decimals } from '@/js/formatNumbers'
 const store = useStore()
 const router = useRouter()
 const route = useRoute()
@@ -859,24 +859,24 @@ const revenueGenerated = computed(() => {
   const myPaycheck = totalMyRateRevenue.toFixed(2);
 
   return {
-    totalUnits,
+    totalUnits: roundTo2Decimals(totalUnits),
     revenue,
     myRevenue,
     myRateRevenue,
     myPaycheck,
     myRate,
     unitsByType: {
-      interviews: unitsByType.interviews,
-      hours: unitsByType.hours,
-      meetings: unitsByType.meetings,
-      aLeads: unitsByType.aLeads
+      interviews: roundTo2Decimals(unitsByType.interviews),
+      hours: roundTo2Decimals(unitsByType.hours),
+      meetings: roundTo2Decimals(unitsByType.meetings),
+      aLeads: roundTo2Decimals(unitsByType.aLeads),
     },
-    billedHours: unitsByType.hours,
+    billedHours: roundTo2Decimals(unitsByType.hours),
     callTimeByType: {
-      aLeads: callTimeByType.aLeads,
-      meetings: callTimeByType.meetings,
-      interviews: callTimeByType.interviews
-    }
+      aLeads: roundTo2Decimals(callTimeByType.aLeads),
+      meetings: roundTo2Decimals(callTimeByType.meetings),
+      interviews: roundTo2Decimals(callTimeByType.interviews),
+    },
   };
 });
 
@@ -1044,11 +1044,11 @@ const weeklyTotals = computed(() => {
       responseRate: formatNumber(avgResponseRate),
       completedCalls: group.totals.completedCalls,
       // Personal results: this agent's completed quantity
-      personalResults: group.totals.quantityCompleted,
+      personalResults: formatStatNumber(roundTo2Decimals(group.totals.quantityCompleted)),
       // Team results: currently same as personal (only this agent's logs are included here)
       // You can extend this later to include all agents if desired.
-      teamResults: group.totals.quantityCompleted,
-      amountMade: `€${group.totals.amountMade.toFixed(2)}`,
+      teamResults: formatStatNumber(roundTo2Decimals(group.totals.quantityCompleted)),
+      amountMade: formatCurrencyEUR(group.totals.amountMade),
       originalDate: group.weekInfo.start,
     });
   });
@@ -1117,8 +1117,6 @@ const individualLogs = computed(() => {
       const logCase = findOrderForLog(log, agentCases);
       const caseUnit = logCase?.caseUnit || 'N/A';
       const pricePerUnit = logCase?.pricePerUnit || 0;
-      const amountMade = (quantityCompleted * pricePerUnit).toFixed(2);
-
       return {
         date: formatDateToDDMMYYYY(log.date),
         caseName: log.caseName || 'Unknown Case',
@@ -1129,12 +1127,12 @@ const individualLogs = computed(() => {
         responseRate: formatNumber(responseRate),
         completedCalls: log.completed_calls || 0,
         // Personal result for this log row
-        personalResults: quantityCompleted,
+        personalResults: formatStatNumber(quantityCompleted),
         // Team result placeholder: currently same as personal
         // (this table is scoped to the current agent's logs only)
-        teamResults: quantityCompleted,
+        teamResults: formatStatNumber(quantityCompleted),
         comments: log.comments || '',
-        amountMade: `€${amountMade}`,
+        amountMade: formatCurrencyEUR(quantityCompleted * pricePerUnit),
         originalLog: log,
       };
     });
