@@ -20,3 +20,20 @@
 .percentage-green {
   background-color: #10b981;
 }
+
+/* Agent card per-case row (agents page) — color the determinate track to match % tiers */
+.case-progress-bar.percentage-red .v-progress-linear__determinate {
+  background-color: #f35555 !important;
+}
+.case-progress-bar.percentage-orange .v-progress-linear__determinate {
+  background-color: #e8b731 !important;
+}
+.case-progress-bar.percentage-yellow .v-progress-linear__determinate {
+  background-color: #c4c40a !important;
+}
+.case-progress-bar.percentage-green .v-progress-linear__determinate {
+  background-color: #10b981 !important;
+}
+.case-progress-bar .v-progress-linear__background {
+  opacity: 0.22;
+}

@@ -1,7 +1,7 @@
 <template>
     <div class="d-flex flex-column align-center" style="height: 100vh;">
       <!-- Date Navigation Header -->
-      <v-card elevation="1" class="mb-4" style="width: 80%;">
+      <v-card elevation="1" class="mb-4" style="width: 90%;">
         <div class="d-flex align-center justify-center pa-4">
           <v-btn icon flat class="pa-0 ma-0" @click="getPreviousMonth">
             <v-icon>mdi-chevron-left</v-icon>
@@ -26,7 +26,7 @@
       </div>
 
       <!-- List of Agent Cards styled like listGcAgents.vue -->
-      <v-container class="py-2 agents-page-container" style="width: 80%; max-width: 100%;">
+      <v-container class="py-2 agents-page-container" style="width: 90%; max-width: 100%;">
         <v-row dense align="stretch">
           <v-col
             v-for="(agent, index) in agentsWithStats"
@@ -49,12 +49,21 @@
                   <div class="font-weight-medium mb-1">Assigned cases</div>
                   <ul class="mb-2 text-caption agent-case-list">
                     <li
-                      v-for="c in getAgentCases(agent)"
-                      :key="c.caseName"
-                      class="text-truncate"
+                      v-for="(c, cIdx) in getAgentCases(agent)"
+                      :key="`${c.caseName}-${cIdx}`"
+                      class="mb-2"
                       :title="`${c.caseName} — ${c.completed}/${c.goal}`"
                     >
-                      {{ c.caseName }} — {{ formatStatNumber(c.completed) }}/{{ formatStatNumber(c.goal) }}
+                      <div class="text-truncate">
+                        {{ c.caseName }} — {{ formatStatNumber(c.completed) }}/{{ formatStatNumber(c.goal) }}
+                      </div>
+                      <v-progress-linear
+                        :model-value="caseProgressPercent(c)"
+                        height="6"
+                        rounded
+                        class="mt-1 case-progress-bar"
+                        :class="caseProgressBarClass(c)"
+                      />
                     </li>
                   </ul>
                   <div class="font-weight-medium">
@@ -109,6 +118,14 @@
       </v-container>
     </div>
 </template>
+
+<style scoped>
+.agent-case-list {
+  list-style: none;
+  padding-left: 0;
+  margin: 0;
+}
+</style>
   
 <script>
 import { mapGetters, mapMutations, mapActions } from 'vuex';
@@ -390,6 +407,17 @@ import { getPercentageToGoalBadgeClass } from '@/js/percentageToGoalStyle';
         } catch {
           return n ?? 0;
         }
+      },
+
+      caseProgressPercent(c) {
+        const goal = Number(c?.goal) || 0;
+        const done = Number(c?.completed) || 0;
+        if (goal <= 0) return 0;
+        return Math.min(100, (done / goal) * 100);
+      },
+
+      caseProgressBarClass(c) {
+        return getPercentageToGoalBadgeClass(this.caseProgressPercent(c));
       },
 
       updatePage(newPage) {
