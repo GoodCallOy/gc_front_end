@@ -12,3 +12,16 @@ export function getPercentageToGoalBadgeClass(percent) {
   if (pct <= 75) return 'percentage-yellow';
   return 'percentage-green';
 }
+
+/**
+ * Vuetify `color` for progress bars: same thresholds as getPercentageToGoalBadgeClass.
+ * Use from template / methods: getPercentageToGoalVuetifyColor(caseProgressPercent(c))
+ */
+export function getPercentageToGoalVuetifyColor(percent) {
+  const cls = getPercentageToGoalBadgeClass(percent);
+  if (cls === 'percentage-red') return 'error';
+  if (cls === 'percentage-orange') return 'orange';
+  if (cls === 'percentage-yellow') return 'amber';
+  if (cls === 'percentage-green') return 'success';
+  return 'error';
+}

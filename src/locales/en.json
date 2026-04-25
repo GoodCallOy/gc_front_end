@@ -230,6 +230,8 @@
         "role": "Role",
         "active": "Active",
         "caseName": "Case Name",
+        "nickname": "Nickname (optional)",
+        "nicknameHint": "Short label on agent cards. Empty uses the full case name.",
         "contactName": "Contact Name",
         "contactTitle": "Contact Title"
       },

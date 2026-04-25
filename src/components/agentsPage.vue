@@ -50,20 +50,41 @@
                   <ul class="mb-2 text-caption agent-case-list">
                     <li
                       v-for="(c, cIdx) in getAgentCases(agent)"
-                      :key="`${c.caseName}-${cIdx}`"
+                      :key="`${c.orderKey || cIdx}-${cIdx}`"
                       class="mb-2"
-                      :title="`${c.caseName} — ${c.completed}/${c.goal}`"
+                      :title="tooltipForAgentCaseRow(c)"
                     >
-                      <div class="text-truncate">
-                        {{ c.caseName }} — {{ formatStatNumber(c.completed) }}/{{ formatStatNumber(c.goal) }}
+                      <v-tooltip v-if="c.hasNickname" location="top">
+                        <template #activator="{ props: tip }">
+                          <div v-bind="tip" class="text-truncate text-left" style="cursor: default">
+                            <span class="text-decoration-dotted text-high-emphasis">{{ c.displayName }}</span>
+                            — {{ formatStatNumber(c.completed) }}/{{ formatStatNumber(c.goal) }}
+                          </div>
+                        </template>
+                        <span>{{ c.fullCaseName }}</span>
+                      </v-tooltip>
+                      <div v-else class="text-truncate text-left">
+                        {{ c.displayName }} — {{ formatStatNumber(c.completed) }}/{{ formatStatNumber(c.goal) }}
                       </div>
-                      <v-progress-linear
-                        :model-value="caseProgressPercent(c)"
-                        height="6"
-                        rounded
-                        class="mt-1 case-progress-bar"
-                        :class="caseProgressBarClass(c)"
-                      />
+                      <!-- Label overlaid (no default slot) to avoid Vuetify/DOM patch issues. Stripes: not animated (CSS below). -->
+                      <div
+                        class="case-progress-linear-wrap mt-1"
+                        :key="`pg-${c.orderKey || cIdx}-${cIdx}`"
+                      >
+                        <v-progress-linear
+                          :model-value="caseProgressPercent(c)"
+                          :color="getPercentageToGoalVuetifyColor(caseProgressPercent(c))"
+                          height="10"
+                          rounded="sm"
+                          striped
+                        />
+                        <div class="case-progress-linear-wrap__label d-flex align-center justify-center">
+                          <small
+                            :class="caseProgressLabelTextClass(c)"
+                            class="font-weight-bold"
+                          >{{ caseProgressPercentRounded(c) }}%</small>
+                        </div>
+                      </div>
                     </li>
                   </ul>
                   <div class="font-weight-medium">
@@ -132,7 +153,7 @@ import { mapGetters, mapMutations, mapActions } from 'vuex';
 import { goToNextMonth, goToPreviousMonth, formattedDateRange, isCurrentMonth } from '@/js/dateUtils';
 import { formatStatNumber } from '@/js/formatNumbers';
 import { computeAgentMyProgressPercent } from '@/js/agentMyProgress';
-import { getPercentageToGoalBadgeClass } from '@/js/percentageToGoalStyle';
+import { getPercentageToGoalBadgeClass, getPercentageToGoalVuetifyColor } from '@/js/percentageToGoalStyle';
   
   export default {
     name: 'agentsPage',
@@ -144,7 +165,7 @@ import { getPercentageToGoalBadgeClass } from '@/js/percentageToGoalStyle';
     },
     
     computed: {
-      ...mapGetters(['gcAgents', 'dailyLogs', 'currentPage', 'currentDateRange', 'orders', 'users']),
+      ...mapGetters(['gcAgents', 'dailyLogs', 'currentPage', 'currentDateRange', 'orders', 'users', 'gcCases']),
       
       // Calculate combined stats from daily logs for each agent (current month only)
       agentsWithStats() {
@@ -237,7 +258,8 @@ import { getPercentageToGoalBadgeClass } from '@/js/percentageToGoalStyle';
           this.fetchUsers(),
           this.fetchgcAgents(),
           this.fetchDailyLogs(),
-          this.fetchOrders()
+          this.fetchOrders(),
+          this.fetchGcCases()
         ]);
         
         // Always use current month for this page (stats are for current month only)
@@ -268,8 +290,9 @@ import { getPercentageToGoalBadgeClass } from '@/js/percentageToGoalStyle';
 
     methods: {
       formatStatNumber,
+      getPercentageToGoalVuetifyColor,
       ...mapMutations(['setCurrentPage', 'setDateRange']),
-      ...mapActions(['fetchUsers', 'fetchgcAgents', 'fetchDailyLogs', 'fetchOrders']),
+      ...mapActions(['fetchUsers', 'fetchgcAgents', 'fetchDailyLogs', 'fetchOrders', 'fetchGcCases']),
 
       // True if order's startDate–deadline overlaps the current calendar month
       orderOverlapsCurrentMonth(order) {
@@ -381,12 +404,31 @@ import { getPercentageToGoalBadgeClass } from '@/js/percentageToGoalStyle';
               console.warn('Failed to compute case progress on agentsPage:', e);
             }
 
+            const fullCaseName = order.caseName || order.caseId || '—';
+            const caseId = order?.caseId;
+            const gc = (this.gcCases || []).find(
+              (x) => caseId && String(x._id ?? x.id) === String(caseId)
+            );
+            const nick = gc?.nickname != null ? String(gc.nickname).trim() : '';
+            const hasNickname = nick.length > 0;
+            const displayName = hasNickname ? nick : fullCaseName;
+
             return {
-              caseName: order.caseName || order.caseId || '—',
+              caseName: fullCaseName,
+              fullCaseName,
+              displayName,
+              hasNickname,
+              orderKey: String(order?._id ?? order?.id ?? ''),
               completed,
               goal,
             };
           });
+      },
+
+      /** Native title for row when v-tooltip is not used (or extra hint on li) */
+      tooltipForAgentCaseRow(c) {
+        const name = c.fullCaseName || c.displayName;
+        return `${name} — ${c.completed}/${c.goal}`;
       },
 
       // Total revenue from assigned cases in current month: sum of (agent goal × pricePerUnit) per order
@@ -416,8 +458,14 @@ import { getPercentageToGoalBadgeClass } from '@/js/percentageToGoalStyle';
         return Math.min(100, (done / goal) * 100);
       },
 
-      caseProgressBarClass(c) {
-        return getPercentageToGoalBadgeClass(this.caseProgressPercent(c));
+      caseProgressPercentRounded(c) {
+        return Math.round(this.caseProgressPercent(c));
+      },
+
+      /** Contrast: white on filled area; darker when the bar is nearly empty */
+      caseProgressLabelTextClass(c) {
+        const p = this.caseProgressPercent(c);
+        return p > 2 ? 'text-white' : 'text-high-emphasis';
       },
 
       updatePage(newPage) {
@@ -535,5 +583,31 @@ import { getPercentageToGoalBadgeClass } from '@/js/percentageToGoalStyle';
   .agents-page-container .v-col {
     min-width: 0;
   }
+
+  .case-progress-linear-wrap {
+    position: relative;
+    min-height: 10px;
+  }
+  .case-progress-linear-wrap__label {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+  .case-progress-linear-wrap__label .font-weight-bold {
+    font-size: 0.6rem;
+    line-height: 1;
+  }
+  /* Static stripes: Vuetify animates the stripe pattern by default; disable it */
+  .case-progress-linear-wrap :deep(.v-progress-linear--striped .v-progress-linear__determinate) {
+    animation: none !important;
+  }
+  .case-progress-linear-wrap :deep(.v-progress-linear) {
+    transition: none !important;
+  }
+  .case-progress-linear-wrap :deep(.v-progress-linear__determinate),
+  .case-progress-linear-wrap :deep(.v-progress-linear__background) {
+    transition: width 0s linear, left 0s linear, right 0s linear, opacity 0s linear !important;
+  }
+
   </style>
   

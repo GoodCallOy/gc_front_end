@@ -419,6 +419,14 @@
                 />
 
                 <v-text-field
+                    v-model="gcCase.nickname"
+                    :label="t('assignGoals.formLabels.nickname')"
+                    :hint="t('assignGoals.formLabels.nicknameHint')"
+                    persistent-hint
+                    clearable
+                />
+
+                <v-text-field
                     v-model="gcCase.contactInfo.contactName"
                     :label="t('assignGoals.formLabels.contactName')"
                 />
@@ -818,6 +826,7 @@ const agent = ref({
 
 const gcCase = ref({
   name: '',
+  nickname: '',
   contactInfo: {
     contactName: '',
     contactTitle: '',
@@ -1616,6 +1625,7 @@ function resetAgentForm() {
 function resetCaseForm() {
   gcCase.value = {
     name: '',
+    nickname: '',
     contactInfo: {
       contactName: '',
       contactTitle: '',
@@ -1645,9 +1655,11 @@ const submitCaseForm = async () => {
   try {
      const response = await axios.post(`${urls.backEndURL}/gcCases/`, {
       name: gcCase.value.name,
+      nickname: gcCase.value.nickname || '',
       contactInfo: gcCase.value.contactInfo
     })
     console.log('Case added:', response.data)
+    await store.dispatch('fetchGcCases', true)
     // reset form
     resetCaseForm()
     closeAddCaseModal();

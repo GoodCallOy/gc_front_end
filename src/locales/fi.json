@@ -213,6 +213,8 @@
         "role": "Rooli",
         "active": "Aktiivinen",
         "caseName": "Tapauksen nimi",
+        "nickname": "Lempinimi (valinnainen)",
+        "nicknameHint": "Lyhyt nimi agenttikorteilla. Tyhjä = koko tapauksen nimi.",
         "contactName": "Yhteyshenkilön nimi",
         "contactTitle": "Yhteyshenkilön titteli"
       },

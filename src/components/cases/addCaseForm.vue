@@ -11,6 +11,14 @@
       />
 
       <v-text-field
+        v-model="gcCase.nickname"
+        label="Nickname (optional)"
+        hint="Short label for agent cards. Leave empty to use the case name."
+        persistent-hint
+        clearable
+      />
+
+      <v-text-field
         v-model="gcCase.contactInfo.contactName"
         label="Contact Name"
       />
@@ -39,11 +47,14 @@ import { ref, computed, onMounted } from 'vue'
 import axios from "axios";
 import urls from '../../js/config.js';
 import { useRoute } from 'vue-router';
+import { useStore } from 'vuex';
 
 const route = useRoute();
+const store = useStore();
 
 const gcCase = ref({
   name: '',
+  nickname: '',
   contactInfo: {
     contactName: '',
     contactTitle: '',
@@ -63,6 +74,7 @@ const loadCase = async () => {
     const data = response.data || {};
     gcCase.value = {
       name: data.name || '',
+      nickname: data.nickname || '',
       contactInfo: {
         contactName: data.contactInfo?.contactName || '',
         contactTitle: data.contactInfo?.contactTitle || '',
@@ -80,19 +92,23 @@ const submitForm = async () => {
       // Update existing case
       const response = await axios.put(`${urls.backEndURL}/gcCases/${currentCaseId.value}`, {
         name: gcCase.value.name,
+        nickname: gcCase.value.nickname || '',
         contactInfo: gcCase.value.contactInfo
       });
       console.log('Case updated:', response.data);
       saveMessage.value = 'Case updated successfully.';
+      await store.dispatch('fetchGcCases', true);
     } else {
       // Create new case
       const response = await axios.post(`${urls.backEndURL}/gcCases/`, {
         name: gcCase.value.name,
+        nickname: gcCase.value.nickname || '',
         contactInfo: gcCase.value.contactInfo
       });
       console.log('Case added:', response.data);
       gcCase.value = {
         name: '',
+        nickname: '',
         contactInfo: {
           contactName: '',
           contactTitle: '',
@@ -100,6 +116,7 @@ const submitForm = async () => {
         }
       };
       saveMessage.value = 'Case added successfully.';
+      await store.dispatch('fetchGcCases', true);
     }
     // Clear message after a short delay
     setTimeout(() => {
