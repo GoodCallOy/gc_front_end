@@ -251,7 +251,7 @@ export default {
     return outgoing > 0 ? ((answered / outgoing) * 100) : 0;
   },
   formattedResponseRate() {
-    return this.responseRateValue.toFixed(1) + ' %';
+    return this.responseRateValue.toFixed(2) + ' %';
   }
 },
   watch: {

@@ -6,18 +6,18 @@
     <v-row align="center" dense>
       <v-col cols="12" sm="4" class="py-0">
         <div class="text-h6">
-          {{ t('agentDashboard.teamRevenueGoal') }}: €{{ teamRevenueGoal }}
+          {{ t('agentDashboard.teamRevenueGoal') }}: {{ formatCurrencyEUR(teamRevenueGoal) }}
         </div>
       </v-col>
       <v-col cols="12" sm="4" class="py-0 d-flex justify-center">
         <div class="text-h6">
-          {{ t('agentDashboard.teamResultsNow') }}: €{{ teamResultsNow }}
+          {{ t('agentDashboard.teamResultsNow') }}: {{ formatCurrencyEUR(teamResultsNow) }}
         </div>
       </v-col>
       <v-col cols="12" sm="4" class="py-0 d-flex justify-sm-end justify-start">
         <div class="text-h6 d-flex align-center flex-wrap" style="gap: 6px;">
           <span>{{ t('agentDashboard.teamProgress') }}:</span>
-          <span :class="['percentage-badge', teamProgressBadgeClass]">{{ teamProgressPercent }}%</span>
+          <span :class="['percentage-badge', teamProgressBadgeClass]">{{ formatStatNumber(teamProgressPercent) }}%</span>
         </div>
       </v-col>
     </v-row>
@@ -28,6 +28,7 @@
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { getPercentageToGoalBadgeClass } from '@/js/percentageToGoalStyle';
+import { formatStatNumber, formatCurrencyEUR } from '@/js/formatNumbers';
 
 const props = defineProps({
   teamRevenueGoal: {

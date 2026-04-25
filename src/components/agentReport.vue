@@ -54,6 +54,7 @@
           <h3 class="text-h6 mb-4">Goals vs Team Goals by Week</h3>
           <div style="height: 300px;">
             <Bar
+              :key="`b1-${selectedCaseId || 'x'}`"
               :data="chart1Data"
               :options="barChartOptions"
             />
@@ -67,6 +68,7 @@
           <h3 class="text-h6 mb-4">Current Results vs Weekly Personal Goal</h3>
           <div style="height: 300px;">
             <Bar
+              :key="`b2-${selectedCaseId || 'x'}`"
               :data="chart2Data"
               :options="barChartOptions"
             />
@@ -80,6 +82,7 @@
           <h3 class="text-h6 mb-4">Goals by Case</h3>
           <div style="height: 300px;">
             <Doughnut
+              :key="`d-${selectedCaseId || 'x'}`"
               :data="donutChartDataSafe"
               :options="donutChartOptions"
             />
@@ -111,6 +114,7 @@ import ChartDataLabels from 'chartjs-plugin-datalabels'
 import { goToNextMonth, goToPreviousMonth, formattedDateRange, getMonthWeeks } from '@/js/dateUtils'
 import { fetchAgentgoalsByAgentAndMonth } from '@/js/statsUtils'
 import { resolveLinkedGcAgent } from '@/js/resolveLinkedGcAgent.js'
+import { formatStatNumber } from '@/js/formatNumbers'
 
 ChartJS.register(
   ArcElement,
@@ -259,7 +263,7 @@ const donutChartOptions = {
           if (!dataset) return []
           const data = dataset.data || []
           return (chart.data.labels || []).map((label, i) => ({
-            text: `${label}: ${data[i] ?? 0}`,
+            text: `${label}: ${formatStatNumber(data[i] ?? 0)}`,
             fillStyle: dataset.backgroundColor?.[i] ?? '#999',
             strokeStyle: dataset.borderColor ?? '#fff',
             lineWidth: dataset.borderWidth ?? 1,
@@ -273,7 +277,7 @@ const donutChartOptions = {
     datalabels: {
       color: '#fff',
       font: { size: 14, weight: 'bold' },
-      formatter: (value) => value,
+      formatter: (value) => formatStatNumber(value),
     },
   },
   cutout: '60%',
@@ -295,7 +299,7 @@ const barChartOptions = {
       anchor: 'end',
       align: 'top',
       font: { size: 12, weight: 'bold' },
-      formatter: (value) => (value > 0 ? value : ''),
+      formatter: (value) => (value > 0 ? formatStatNumber(value) : ''),
     },
   },
   scales: {

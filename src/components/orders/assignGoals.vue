@@ -242,7 +242,7 @@
     density="compact"
     class="mb-3"
   >
-    {{ t('assignGoals.goalsRemainingToAssign') }}: <strong>{{ selectedOrderRemainingGoals }}</strong>
+    {{ t('assignGoals.goalsRemainingToAssign') }}: <strong>{{ formatStatNumber(selectedOrderRemainingGoals) }}</strong>
   </v-alert>
 
   <div v-if="rightPanelLoading" class="d-flex align-center justify-center pa-8">
@@ -289,7 +289,7 @@
                 <span v-if="currentMonthLabel">({{ currentMonthLabel }})</span>
               </div>
               <div class="mb-2">
-                {{ agent.completedUnitsForThisOrder ?? 0 }}/{{ agent.goalForThisOrder }} {{ t('assignGoals.totalGoals') }}
+                {{ formatStatNumber(agent.completedUnitsForThisOrder ?? 0) }}/{{ formatStatNumber(agent.goalForThisOrder) }} {{ t('assignGoals.totalGoals') }}
               </div>
 
               <div class="text-caption mb-1 text-grey">{{ t('assignGoals.otherOrders') }}</div>
@@ -298,9 +298,9 @@
                   v-for="o in agent.AgentOrders"
                   :key="o.orderId || o._oid || o.name"
                 >
-                  {{ o.caseName || o.name }} – {{ o.goal }}
+                  {{ o.caseName || o.name }} – {{ formatStatNumber(o.goal) }}
                   <span v-if="o.pricePerUnit">
-                    ({{ (o.goal * o.pricePerUnit).toLocaleString(undefined, { style: 'currency', currency: 'EUR' }) }})
+                    ({{ formatCurrency((Number(o.goal) || 0) * (Number(o.pricePerUnit) || 0)) }})
                   </span>
                 </li>
               </ul>

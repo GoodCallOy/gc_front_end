@@ -110,7 +110,7 @@
   
   import AgentCard from '../agentCard.vue';
   import CaseCard from './caseCard.vue';
-  import { mapState, mapMutations } from 'vuex';
+  import { mapState, mapMutations, mapActions } from 'vuex';
 
   
   export default {
@@ -165,11 +165,18 @@
       },
     },
   
-    mounted() {
+    async mounted() {
       this.updatePage('casePage'); // Set the current page in the store
+      const s = this.$store.state;
+      const tasks = [];
+      if (!s.orders?.length) tasks.push(this.fetchOrders().catch(() => {}));
+      if (!s.dailyLogs?.length) tasks.push(this.fetchDailyLogs().catch(() => {}));
+      if (!(this.$store.getters.gcAgents || []).length) tasks.push(this.fetchgcAgents().catch(() => {}));
+      if (tasks.length) await Promise.all(tasks);
     },
    
     methods: {
+      ...mapActions(['fetchOrders', 'fetchDailyLogs', 'fetchgcAgents']),
       ...mapMutations(["setCurrentPage"]), // Maps mutation to update `currentPage`
       
       updatePage(newPage) {

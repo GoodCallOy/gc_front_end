@@ -89,7 +89,7 @@
         // Use current agent's progress, not total case progress
         const ret_percentage = (myAgentUnits.value / myGoal.value) * 100;
 
-        return Number(ret_percentage.toFixed(1))
+        return Number(ret_percentage.toFixed(2))
       });
 
       const percentageClass = computed(() => {

@@ -25,7 +25,7 @@
                 <strong>Case Unit:</strong> {{ order.caseUnit }}
             </v-col>
             <v-col cols="3">
-                <strong>Price per Unit:</strong> {{ order.pricePerUnit }}
+                <strong>Price per Unit:</strong> {{ formatStatNumber(order.pricePerUnit) }}
             </v-col>
             <v-col cols="3">
                 <strong>Status:</strong> {{ order.orderStatus }}
@@ -36,10 +36,10 @@
                <strong>Deadline:</strong> {{ formatDate(order.deadline) }}
             </v-col>
             <v-col cols="3">
-               <strong>Quantity:</strong> {{ order.monthlyGoal ?? order.totalQuantity }}
+               <strong>Quantity:</strong> {{ formatStatNumber(order.monthlyGoal ?? order.totalQuantity) }}
             </v-col>
             <v-col cols="3">
-                <strong>Estimated Revenue:</strong> €{{ order.estimatedRevenue }}
+                <strong>Estimated Revenue:</strong> {{ formatCurrencyEUR(order.estimatedRevenue) }}
             </v-col>
             <v-col cols="3">
                 <strong>Callers:</strong> {{ getCallerNames(order, agents) }}
@@ -51,7 +51,7 @@
                     <strong>Agent Goals:</strong>
                     <ul>
                         <li v-for="id in order.assignedCallers" :key="id">
-                        {{ agentName(id) }}: {{ order.agentGoals[id] || 0 }}
+                        {{ agentName(id) }}: {{ formatStatNumber(order.agentGoals[id] || 0) }}
                         </li>
                     </ul>
                 </div>
@@ -73,7 +73,7 @@
         <h2 class="text-h6">Total Units: {{ formatStatNumber(revenueGenerated.totalUnits) }}</h2>
       </v-col>
       <v-col cols="12" md="3">
-        <h2 class="text-h6">{{ t('agentWeeklyGoal.goal') }}: {{ caseGoal }}</h2>
+        <h2 class="text-h6">{{ t('agentWeeklyGoal.goal') }}: {{ formatStatNumber(caseGoal) }}</h2>
       </v-col>
     </v-row>
     
@@ -96,7 +96,7 @@
         >
           <!-- Response Rate formatting -->
           <template #item.responseRate="{ value }">
-            {{ value }}%
+            {{ formatStatNumber(value) }}%
           </template>
         </v-data-table>
       </div>
@@ -116,7 +116,7 @@
           >
             <!-- Response Rate formatting -->
             <template #item.responseRate="{ value }">
-              {{ value }}%
+              {{ formatStatNumber(value) }}%
             </template>
             
             <!-- Actions column for individual logs -->
@@ -534,7 +534,7 @@ const weeklyTotals = computed(() => {
     const agentIdForGoal = String(selectedAgentId.value || '');
     const myGoal = Number(order.value?.agentGoals?.[agentIdForGoal] ?? 0);
     const goalReached = myGoal > 0
-      ? Number(((totals.quantityCompleted / myGoal) * 100).toFixed(1))
+      ? Number(((totals.quantityCompleted / myGoal) * 100).toFixed(2))
       : 0;
 
     result.push({

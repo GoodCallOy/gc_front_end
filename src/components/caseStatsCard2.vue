@@ -242,7 +242,7 @@ export default {
           totals.totalOutgoingCalls += agent.outgoing_calls || 0;
           totals.totalAnsweredCalls += agent.answered_calls || 0;
           totals.totalResponseRate = totals.totalOutgoingCalls
-            ? ((totals.totalAnsweredCalls / totals.totalOutgoingCalls) * 100).toFixed(1)
+            ? ((totals.totalAnsweredCalls / totals.totalOutgoingCalls) * 100).toFixed(2)
             : 0;
           return totals;
         },

@@ -228,7 +228,7 @@
     >
       <!-- Response Rate formatting -->
       <template #item.responseRate="{ value }">
-        {{ value }}%
+        {{ formatStatNumber(value) }}%
       </template>
     </v-data-table>
   </v-card>
@@ -248,7 +248,7 @@
       >
         <!-- Response Rate formatting -->
         <template #item.responseRate="{ value }">
-          {{ value }}%
+          {{ formatStatNumber(value) }}%
         </template>
         <!-- Comments preview -->
         <template #item.comments="{ item }">
@@ -428,7 +428,7 @@
         style="width: 100%"
       >
         <template #item.goalReached="{ item }">
-          {{ item.goalReached }}%
+          {{ formatStatNumber(item.goalReached) }}%
         </template>
         <template #item.edit="{ item }">
           <v-btn
@@ -1314,7 +1314,7 @@ const weeklyGoalsTableRows = computed(() => {
     const goalValue = Number(g?.goal ?? 0)
     const progress = `${completed} / ${goalValue}`
     const goalReached = goalValue > 0
-      ? Number(((completed / goalValue) * 100).toFixed(1))
+      ? Number(((completed / goalValue) * 100).toFixed(2))
       : 0
 
     const weekStartFormatted = start
@@ -1493,7 +1493,7 @@ const casesTableRows = computed(() => {
     );
     const myRevenueGoal = myGoal * pricePerUnit;
     const currentRevenue = myAgentUnits * agentRate;
-    const percentage = myGoal > 0 ? Number(((myAgentUnits / myGoal) * 100).toFixed(1)) : 0;
+    const percentage = myGoal > 0 ? Number(((myAgentUnits / myGoal) * 100).toFixed(2)) : 0;
 
     return {
       ...order,
@@ -1598,7 +1598,7 @@ const myRevenueToGoalPercent = computed(() => {
   const rows = casesTableRows.value || [];
   if (rows.length === 0) return 0;
   const sum = rows.reduce((acc, row) => acc + (Number(row?.percentage) || 0), 0);
-  return Math.round((sum / rows.length) * 10) / 10; // 1 decimal place
+  return roundTo2Decimals(sum / rows.length);
 });
 
 const casesTableTotals = computed(() => {
@@ -1622,10 +1622,7 @@ const casesTableTotals = computed(() => {
 });
 
 /** Sum of per-case my revenue goals (€) for the stats header */
-const personalMonthlyGoalEuros = computed(() => {
-  const v = casesTableTotals.value?.myRevenueGoal ?? 0;
-  return formatStatNumber(v);
-});
+const personalMonthlyGoalEuros = computed(() => casesTableTotals.value?.myRevenueGoal ?? 0);
 
 const totalsRow = computed(() => {
   const totals = casesTableTotals.value;

@@ -54,7 +54,7 @@
                       class="text-truncate"
                       :title="`${c.caseName} — ${c.completed}/${c.goal}`"
                     >
-                      {{ c.caseName }} — {{ c.completed }}/{{ c.goal }}
+                      {{ c.caseName }} — {{ formatStatNumber(c.completed) }}/{{ formatStatNumber(c.goal) }}
                     </li>
                   </ul>
                   <div class="font-weight-medium">
@@ -64,6 +64,18 @@
                 <div v-else class="text-caption text-grey">
                   No cases assigned
                 </div>
+                <template
+                  v-for="mp in [myProgressByAgent[String(agent._id || agent.id || agent.name)] || { kind: 'empty' }]"
+                  :key="(agent._id || agent.id || agent.name) + '-mp'"
+                >
+                  <div v-if="mp.kind === 'ok'" class="mt-2 font-weight-medium text-body-2">
+                    {{ $t('agentDashboard.personalMyProgress') }}:
+                    <span :class="['ml-1', mp.cls]">{{ formatStatNumber(mp.p) }}%</span>
+                  </div>
+                  <div v-else class="mt-2 font-weight-medium text-body-2">
+                    {{ $t('agentDashboard.personalMyProgress') }}: <span class="text-medium-emphasis">—</span>
+                  </div>
+                </template>
               </v-card-text>
 
               <v-spacer />
@@ -101,12 +113,12 @@
 <script>
 import { mapGetters, mapMutations, mapActions } from 'vuex';
 import { goToNextMonth, goToPreviousMonth, formattedDateRange, isCurrentMonth } from '@/js/dateUtils';
-import AgentCard from './agentCard.vue';
+import { formatStatNumber } from '@/js/formatNumbers';
+import { computeAgentMyProgressPercent } from '@/js/agentMyProgress';
+import { getPercentageToGoalBadgeClass } from '@/js/percentageToGoalStyle';
   
   export default {
     name: 'agentsPage',
-
-    components: { AgentCard }, // Register the component
 
     data() {
       return {
@@ -170,12 +182,34 @@ import AgentCard from './agentCard.vue';
             answered_calls: totalAnsweredCalls,
             completed_calls: totalCompletedCalls,
             quantityCompleted: totalQuantityCompleted,
-            response_rate: responseRate.toFixed(1),
+            response_rate: responseRate.toFixed(2),
             meetings: agentLogs.length
           };
-        });
-      }
-  },
+          });
+      },
+
+      /**
+       * Per-agent “My progress” (same as agent dashboard) — use in template as myProgressByAgent[agentKey(agent)]
+       * so we don’t rely on a methods-callback (avoids runtime “not a function” with some loaders).
+       */
+      myProgressByAgent() {
+        const list = this.agentsWithStats || [];
+        const orders = this.orders || [];
+        const logs = this.dailyLogs || [];
+        const range = this.currentDateRange;
+        const gca = this.gcAgents || [];
+        const out = Object.create(null);
+        for (const agent of list) {
+          const key = String(agent?._id ?? agent?.id ?? agent?.name ?? '');
+          if (!key) continue;
+          const p = computeAgentMyProgressPercent(agent, orders, logs, range, gca);
+          if (p == null) out[key] = { kind: 'empty' };
+          else
+            out[key] = { kind: 'ok', p, cls: getPercentageToGoalBadgeClass(p) };
+        }
+        return out;
+      },
+    },
 
     async mounted() {
       this.updatePage('agentPage');
@@ -216,6 +250,7 @@ import AgentCard from './agentCard.vue';
     },
 
     methods: {
+      formatStatNumber,
       ...mapMutations(['setCurrentPage', 'setDateRange']),
       ...mapActions(['fetchUsers', 'fetchgcAgents', 'fetchDailyLogs', 'fetchOrders']),
 

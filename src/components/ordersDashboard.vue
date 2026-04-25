@@ -66,7 +66,7 @@
                   <td>{{ row.caseType }}</td>
                   <td>{{ row.caseName }}</td>
                   <td>{{ row.status }}</td>
-                  <td class="text-right">{{ row.monthlyGoal }}</td>
+                  <td class="text-right">{{ formatStatNumber(row.monthlyGoal) }}</td>
                   <td class="text-right">{{ row.pricePerUnit.toFixed(2) }}</td>
                   <td class="text-right">€{{ row.revenue.toFixed(2) }}</td>
                   <td>

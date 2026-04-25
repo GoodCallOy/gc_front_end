@@ -12,12 +12,12 @@
       <div class="d-flex stats-container">
         <div class="stats-card">
           <v-card-text class="text-center">
-            <p><strong>Total Billing:</strong> {{ companyCase.billing }}</p>
-            <p><strong>Total Meetings:</strong> {{ aggregatedStats.meetings }}</p>
-            <p><strong>Dials / Meeting:</strong> {{ dialsMeeting }}</p>
-            <p><strong>Hour/Meeting:</strong> {{ hourMeeting }}</p>
-            <p><strong>Answered/Meeting:</strong> {{ callsMeetings }}</p>
-            <p><strong>Revenue:</strong> {{ revenue }}</p>
+            <p><strong>Total Billing:</strong> {{ formatStatNumber(companyCase.billing) }}</p>
+            <p><strong>Total Meetings:</strong> {{ formatStatNumber(aggregatedStats.meetings) }}</p>
+            <p><strong>Dials / Meeting:</strong> {{ formatStatNumber(dialsMeeting) }}</p>
+            <p><strong>Hour/Meeting:</strong> {{ formatStatNumber(hourMeeting) }}</p>
+            <p><strong>Answered/Meeting:</strong> {{ formatStatNumber(callsMeetings) }}</p>
+            <p><strong>Revenue:</strong> {{ formatStatNumber(revenue) }}</p>
           </v-card-text>
         </div>
       </div>
@@ -43,6 +43,7 @@
         v-for="(agent, index) in filteredAgents"
         :key="index"
         :agent="agent"
+        :progress-date-range="dateRange"
         class="m-2"
       />
     </div>
@@ -52,8 +53,9 @@
 <script>
 import AgentCard from '../agentCard.vue';
 import { getAgentsInCase, groupAgentsStatsByMonth, getAggregatedStats } from '../../js/statsUtils';
+import { formatStatNumber } from '@/js/formatNumbers';
 
-import { mapState } from 'vuex';
+import { mapState, mapActions } from 'vuex';
 
 export default {
   name: 'CaseCard',
@@ -167,7 +169,18 @@ export default {
     
   },
 
+  async mounted() {
+    const s = this.$store.state;
+    const tasks = [];
+    if (!s.orders?.length) tasks.push(this.fetchOrders().catch(() => {}));
+    if (!s.dailyLogs?.length) tasks.push(this.fetchDailyLogs().catch(() => {}));
+    if (!(this.$store.getters.gcAgents || []).length) tasks.push(this.fetchgcAgents().catch(() => {}));
+    if (tasks.length) await Promise.all(tasks);
+  },
+
   methods: {
+    formatStatNumber,
+    ...mapActions(['fetchOrders', 'fetchDailyLogs', 'fetchgcAgents']),
     showCase() {
       this.$router.push({
         name: 'singleCase',

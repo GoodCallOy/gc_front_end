@@ -12,7 +12,7 @@
         <template v-slot:[`item.logs`]="{ item }"> 
         <div>
           <div v-for="log in item.logs" :key="log.date">
-            <strong>{{ log.date }}:</strong> {{ log.quantity }}
+            <strong>{{ log.date }}:</strong> {{ formatStatNumber(log.quantity) }}
           </div>
         </div>
       </template>
@@ -37,7 +37,7 @@
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
 import urls from '@/js/config.js'
-import { formatSlashPair } from '@/js/formatNumbers'
+import { formatSlashPair, formatStatNumber } from '@/js/formatNumbers'
 
 const props = defineProps({
   orderId: {

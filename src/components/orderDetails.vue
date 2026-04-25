@@ -26,7 +26,7 @@
                 <strong>{{ t('orderDetails.unit') }}:</strong> {{ order.caseUnit }}
             </v-col>
             <v-col cols="3">
-                <strong>{{ t('orderDetails.pricePerUnit') }}:</strong> {{ order.pricePerUnit }}
+                <strong>{{ t('orderDetails.pricePerUnit') }}:</strong> {{ formatStatNumber(order.pricePerUnit) }}
             </v-col>
             <v-col cols="3">
                 <strong>{{ t('orderDetails.status') }}:</strong> {{ order.orderStatus }}
@@ -40,10 +40,10 @@
                <strong>{{ t('orderDetails.deadline') }}:</strong> {{ formatDate(order.deadline) }}
             </v-col>
             <v-col cols="3">
-               <strong>{{ t('orderDetails.campaignGoal') }}:</strong> {{ displayCampaignGoal }}
+               <strong>{{ t('orderDetails.campaignGoal') }}:</strong> {{ formatStatNumber(displayCampaignGoal) }}
             </v-col>
             <v-col cols="3">
-                <strong>{{ t('orderDetails.estimatedRevenue') }}:</strong> €{{ order.estimatedRevenue }}
+                <strong>{{ t('orderDetails.estimatedRevenue') }}:</strong> {{ formatCurrencyEUR(order.estimatedRevenue) }}
             </v-col>
             <v-col cols="3">
                 <strong>{{ t('orderDetails.callers') }}:</strong> {{ getCallerNames(order, agents) }}
@@ -104,7 +104,7 @@
         >
           <!-- Response Rate formatting -->
           <template #item.responseRate="{ value }">
-            {{ value }}%
+            {{ formatStatNumber(value) }}%
           </template>
         </v-data-table>
       </div>
@@ -147,7 +147,7 @@
             >
             <!-- Response Rate formatting -->
             <template #item.responseRate="{ value }">
-              {{ value }}%
+              {{ formatStatNumber(value) }}%
             </template>
             <!-- Comments preview -->
             <template #item.comments="{ item }">

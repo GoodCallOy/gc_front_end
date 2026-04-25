@@ -142,7 +142,7 @@
         if (totalAgentUnitsValue.value === 0) return 0;
         const ret_percentage = (totalAgentUnitsValue.value / goal) * 100;
         console.log('Percentage:', ret_percentage);
-        return Number(ret_percentage.toFixed(1))
+        return Number(ret_percentage.toFixed(2))
       });
 
       const percentageClass = computed(() => {

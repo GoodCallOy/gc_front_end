@@ -5,13 +5,13 @@
     </div>
     <v-row dense>
       <v-col cols="6"><strong>Unit:</strong> {{ caseUnit }}</v-col>
-      <v-col cols="6"><strong>Date:</strong> {{ formattedDate }}</v-col>      <v-col cols="6"><strong>Call Time:</strong> {{ callTime }}</v-col>
-      <v-col cols="6"><strong>Completed:</strong> {{ completedCalls }}</v-col>
-      <v-col cols="6"><strong>Outgoing:</strong> {{ outgoingCalls }}</v-col>
-      <v-col cols="6"><strong>Answered:</strong> {{ answeredCalls }}</v-col>
-      <v-col cols="5"><strong>Resp. Rate:</strong> {{ responseRate }}%</v-col>
-      <v-col cols="7"><strong>Qty Completed:</strong> {{ quantityCompleted }}</v-col>
-      <v-col cols="12"><strong>Amount Made:</strong> €{{ totalAgentUnitsValue }}</v-col>
+      <v-col cols="6"><strong>Date:</strong> {{ formattedDate }}</v-col>      <v-col cols="6"><strong>Call Time:</strong> {{ formatStatNumber(callTime) }}</v-col>
+      <v-col cols="6"><strong>Completed:</strong> {{ formatStatNumber(completedCalls) }}</v-col>
+      <v-col cols="6"><strong>Outgoing:</strong> {{ formatStatNumber(outgoingCalls) }}</v-col>
+      <v-col cols="6"><strong>Answered:</strong> {{ formatStatNumber(answeredCalls) }}</v-col>
+      <v-col cols="5"><strong>Resp. Rate:</strong> {{ formatStatNumber(responseRate) }}%</v-col>
+      <v-col cols="7"><strong>Qty Completed:</strong> {{ formatStatNumber(quantityCompleted) }}</v-col>
+      <v-col cols="12"><strong>Amount Made:</strong> {{ amountMadeFormatted }}</v-col>
     </v-row>
     
     <!-- Edit Button -->
@@ -46,6 +46,7 @@ const props = defineProps({
 });
 
 import { computed } from 'vue';
+import { formatStatNumber, formatCurrencyEUR } from '@/js/formatNumbers';
 
 const emit = defineEmits(['edit-log']);
 
@@ -60,9 +61,11 @@ const formattedDate = computed(() => {
   }).replace(/\//g, '.');
 });
 
-const totalAgentUnitsValue = computed(() => {
-  return (props.pricePerUnit * props.quantityCompleted).toFixed(2);
-});
+const amountMadeFormatted = computed(() =>
+  formatCurrencyEUR(
+    (Number(props.pricePerUnit) || 0) * (Number(props.quantityCompleted) || 0)
+  )
+);
 
 const editLog = () => {
   if (props.logData) {
