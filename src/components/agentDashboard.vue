@@ -300,7 +300,10 @@
   >
     <v-card>
       <v-card-title class="d-flex align-center justify-space-between">
-        <span>{{ t('agentDashboard.weeklyNotes') }}</span>
+        <span>
+          {{ t('agentDashboard.weeklyNotes') }}
+          <template v-if="selectedGcAgent?.name"> - {{ selectedGcAgent.name }}</template>
+        </span>
         <v-btn icon size="small" variant="text" @click="showWeeklyNotesDialog = false">
           <v-icon>mdi-close</v-icon>
         </v-btn>
@@ -331,13 +334,12 @@
               <v-col cols="12" sm="7">
                 <v-textarea
                   v-if="monthWeeks[selectedWeekIndexForNotes]"
-                  v-model="weeklyNotes[getWeeklyNoteWeekKey(monthWeeks[selectedWeekIndexForNotes])]"
+                  v-model="weeklyNoteDrafts[getWeeklyNoteWeekKey(monthWeeks[selectedWeekIndexForNotes])]"
                   :label="t('agentDashboard.weeklyNotePlaceholder')"
                   auto-grow
                   rows="2"
                   max-rows="6"
                   density="comfortable"
-                  :readonly="!canManageWeeklyNotes"
                 />
               </v-col>
             </v-row>
@@ -346,7 +348,7 @@
                 size="small"
                 color="primary"
                 :loading="weeklyNoteSaving[getWeeklyNoteWeekKey(monthWeeks[selectedWeekIndexForNotes])] === true"
-                :disabled="!monthWeeks[selectedWeekIndexForNotes] || !canManageWeeklyNotes"
+                :disabled="!monthWeeks[selectedWeekIndexForNotes]"
                 @click="monthWeeks[selectedWeekIndexForNotes] && saveWeeklyNote(monthWeeks[selectedWeekIndexForNotes])"
               >
                 {{ t('agentDashboard.saveWeeklyNote') }}
@@ -368,7 +370,7 @@
             </div>
             <v-list density="compact">
               <v-list-item
-                v-for="(week, idx) in monthWeeks"
+                v-for="week in monthWeeks"
                 :key="getWeeklyNoteWeekKey(week)"
                 class="py-2"
               >
@@ -376,29 +378,8 @@
                   {{ getWeeklyNoteWeekLabel(week) }}
                 </v-list-item-title>
                 <v-list-item-subtitle class="text-body-2">
-                  {{ weeklyNotes[getWeeklyNoteWeekKey(week)] || '—' }}
+                  {{ weeklyNotesDisplay[getWeeklyNoteWeekKey(week)] || '—' }}
                 </v-list-item-subtitle>
-                <template v-if="canManageWeeklyNotes" #append>
-                  <div class="d-flex align-center" style="gap: 6px;">
-                    <v-btn
-                      size="x-small"
-                      variant="text"
-                      color="primary"
-                      @click="editWeeklyNoteFromList(idx)"
-                    >
-                      {{ t('agentDashboard.editWeeklyNoteNote') }}
-                    </v-btn>
-                    <v-btn
-                      size="x-small"
-                      variant="text"
-                      color="error"
-                      :loading="weeklyNoteSaving[getWeeklyNoteWeekKey(week)] === true"
-                      @click="deleteWeeklyNote(week)"
-                    >
-                      {{ t('agentDashboard.deleteWeeklyNoteNote') }}
-                    </v-btn>
-                  </div>
-                </template>
               </v-list-item>
             </v-list>
           </div>
@@ -510,6 +491,8 @@ const isInitialLoading = ref(true)
 const monthWeeks = ref([])
 const agentWeeklyGoals = ref([])
 const weeklyNotes = ref({})
+const weeklyNotesDisplay = ref({})
+const weeklyNoteDrafts = ref({})
 const weeklyNotesLoading = ref(false)
 const weeklyNoteSaving = ref({})
 const weeklyNoteStatus = ref({})
@@ -533,7 +516,7 @@ const currentDate = computed(() => store.getters['currentDate'])
 const currentDateRange = computed(() => store.getters['currentDateRange'])
 const canManageWeeklyNotes = computed(() => {
   const role = currentUser.value?.role
-  return role === 'admin' || role === 'manager'
+  return role === 'admin' || role === 'manager' || role === 'agent'
 })
 
 
@@ -1867,44 +1850,127 @@ async function fetchAgentWeeklyGoals() {
 }
 
 async function fetchAgentWeeklyNotes() {
-  if (!canManageWeeklyNotes.value) return
   const agent = selectedGcAgent.value
   const monthKey = getCurrentMonthKey()
   if (!agent || !monthKey) {
     weeklyNotes.value = {}
+    weeklyNotesDisplay.value = {}
+    weeklyNoteDrafts.value = {}
     return
   }
 
   weeklyNotesLoading.value = true
   try {
     const agentId = String(agent._id ?? agent.id ?? '')
-    let data = []
+    const agentName = String(agent?.name ?? '').trim()
+    const datasets = []
+    const baseParams = { monthKey, includeAllNotes: true, includeAllAdmins: true }
 
-    try {
-      const res = await axios.get(`${urls.backEndURL}/agentWeeklyNotes`, {
-        params: { agentId, monthKey },
-      })
-      data = Array.isArray(res.data) ? res.data : (res.data?.data || [])
-    } catch (_) {
-      const res = await axios.get(`${urls.backEndURL}/agent-weekly-notes`, {
-        params: { agentId, monthKey },
-      })
-      data = Array.isArray(res.data) ? res.data : (res.data?.data || [])
+    const requestConfigs = [
+      { url: `${urls.backEndURL}/agentWeeklyNotes`, params: { ...baseParams, agentId } },
+      { url: `${urls.backEndURL}/agent-weekly-notes`, params: { ...baseParams, agentId } },
+      { url: `${urls.backEndURL}/agentWeeklyNotes`, params: { ...baseParams, agent: agentName } },
+      { url: `${urls.backEndURL}/agent-weekly-notes`, params: { ...baseParams, agent: agentName } },
+      // Some backend variants ignore agentId for non-admins but allow month query.
+      { url: `${urls.backEndURL}/agentWeeklyNotes`, params: { ...baseParams } },
+      { url: `${urls.backEndURL}/agent-weekly-notes`, params: { ...baseParams } },
+    ]
+
+    // Fetch multiple endpoint/param combinations to survive backend route/version differences.
+    for (const requestConfig of requestConfigs) {
+      try {
+        const res = await axios.get(requestConfig.url, { params: requestConfig.params })
+        const rows = Array.isArray(res.data) ? res.data : (res.data?.data || [])
+        if (Array.isArray(rows) && rows.length) datasets.push(rows)
+      } catch (_) {
+        // Try next route/param combination.
+      }
+    }
+
+    const data = datasets.flat()
+    const belongsToSelectedAgent = (row) => {
+      const rowAgentId = String(
+        row?.agentId ??
+        row?.agent_id ??
+        row?.agent?._id ??
+        row?.agent?.id ??
+        row?.gcAgentId ??
+        ''
+      )
+      const rowAgentName = String(
+        row?.agentName ??
+        row?.agent?.name ??
+        row?.name ??
+        ''
+      ).trim().toLowerCase()
+
+      const hasAgentIdentity = !!rowAgentId || !!rowAgentName
+      if (!hasAgentIdentity) return true
+      if (rowAgentId && agentId && rowAgentId === agentId) return true
+      if (rowAgentName && agentName && rowAgentName === agentName.toLowerCase()) return true
+      return false
     }
 
     const next = {}
+    const display = {}
+    const drafts = {}
+    const groupedNotes = {}
     ;(monthWeeks.value || []).forEach((week) => {
       const key = getWeeklyNoteWeekKey(week)
       next[key] = ''
+      display[key] = ''
+      drafts[key] = ''
+      groupedNotes[key] = []
     })
     data.forEach((row) => {
-      const key = row?.weekKey || row?.week_key || ''
-      if (key) next[key] = row?.note ?? ''
+      if (!belongsToSelectedAgent(row)) return
+      const key = String(
+        row?.weekKey ??
+        row?.week_key ??
+        row?.week ??
+        ''
+      )
+      if (!key) return
+
+      const note = String(
+        row?.note ??
+        row?.notes ??
+        row?.text ??
+        row?.content ??
+        ''
+      ).trim()
+      if (!note) return
+
+      if (!Array.isArray(groupedNotes[key])) groupedNotes[key] = []
+
+      const authorName =
+        row?.authorName ??
+        row?.author?.name ??
+        row?.createdByName ??
+        row?.createdBy?.name ??
+        row?.updatedByName ??
+        ''
+
+      const noteWithAuthor = authorName ? `${authorName}: ${note}` : note
+      if (!groupedNotes[key].includes(noteWithAuthor)) {
+        groupedNotes[key].push(noteWithAuthor)
+      }
+      next[key] = note
     })
+
+    Object.keys(groupedNotes).forEach((key) => {
+      const notes = groupedNotes[key]
+      display[key] = Array.isArray(notes) && notes.length ? notes.join(' | ') : ''
+    })
+
     weeklyNotes.value = next
+    weeklyNotesDisplay.value = display
+    weeklyNoteDrafts.value = drafts
   } catch (err) {
     console.warn('AgentDashboard: Error fetching weekly notes:', err)
     weeklyNotes.value = {}
+    weeklyNotesDisplay.value = {}
+    weeklyNoteDrafts.value = {}
   } finally {
     weeklyNotesLoading.value = false
   }
@@ -1917,7 +1983,8 @@ async function saveWeeklyNote(week) {
   if (!agent || !monthKey || !week) return
 
   const weekKey = getWeeklyNoteWeekKey(week)
-  const note = String(weeklyNotes.value?.[weekKey] ?? '')
+  const note = String(weeklyNoteDrafts.value?.[weekKey] ?? '').trim()
+  if (!note) return
   const agentId = String(agent._id ?? agent.id ?? '')
 
   weeklyNoteSaving.value = { ...weeklyNoteSaving.value, [weekKey]: true }
@@ -1938,6 +2005,8 @@ async function saveWeeklyNote(week) {
     } catch (_) {
       await axios.post(`${urls.backEndURL}/agent-weekly-notes`, payload)
     }
+    weeklyNoteDrafts.value = { ...weeklyNoteDrafts.value, [weekKey]: '' }
+    await fetchAgentWeeklyNotes()
     weeklyNoteStatus.value = { ...weeklyNoteStatus.value, [weekKey]: t('agentDashboard.weeklyNoteSaved') }
   } catch (err) {
     console.error('AgentDashboard: Error saving weekly note:', err)
@@ -1981,6 +2050,7 @@ async function deleteWeeklyNote(week) {
       await axios.post(`${urls.backEndURL}/agent-weekly-notes`, payload)
     }
     weeklyNotes.value = { ...weeklyNotes.value, [weekKey]: '' }
+    weeklyNotesDisplay.value = { ...weeklyNotesDisplay.value, [weekKey]: '' }
     weeklyNoteStatus.value = { ...weeklyNoteStatus.value, [weekKey]: t('agentDashboard.weeklyNoteDeleted') }
   } catch (err) {
     console.error('AgentDashboard: Error deleting weekly note:', err)
@@ -2073,6 +2143,8 @@ async function refreshDashboardForCurrentSelection(allOrders, agent, dateRange) 
     agentWeeklyGoals.value = [];
     canceledCalls.value = [];
     weeklyNotes.value = {};
+    weeklyNotesDisplay.value = {};
+    weeklyNoteDrafts.value = {};
     isLoadingDashboard.value = false;
     isInitialLoading.value = false;
     return;
