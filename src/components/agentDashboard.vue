@@ -151,8 +151,38 @@
                 class="elevation-0"
                 :items-per-page="25"
                 density="comfortable"
+                show-expand
+                :expanded="Array.from(expandedCaseRows)"
+                @update:expanded="(value) => { expandedCaseRows = new Set(value) }"
                 @click:row="(event, row) => goToCaseDetails(row?.item ?? row)"
               >
+                <template #item.data-table-expand="{ item }">
+                  <v-btn
+                    v-if="(item?.raw ?? item)?.isMultiMonth"
+                    icon
+                    size="small"
+                    variant="text"
+                    @click.stop="toggleCaseExpand(String((item?.raw ?? item)?._id ?? ''))"
+                  >
+                    <v-icon>{{ expandedCaseRows.has(String((item?.raw ?? item)?._id ?? '')) ? 'mdi-chevron-up' : 'mdi-chevron-down' }}</v-icon>
+                  </v-btn>
+                  <v-icon v-else size="small" color="transparent">mdi-circle-outline</v-icon>
+                </template>
+                <template #item.caseName="{ item }">
+                  <div class="d-flex align-center">
+                    <span class="mr-2">{{ (item?.raw ?? item)?.caseName }}</span>
+                    <v-chip
+                      v-if="(item?.raw ?? item)?.isMultiMonth"
+                      size="x-small"
+                      color="primary"
+                      class="ml-1"
+                      style="cursor: pointer;"
+                      @click.stop="toggleCaseExpand(String((item?.raw ?? item)?._id ?? ''))"
+                    >
+                      {{ t('ordersDashboard.multiMonth') }}
+                    </v-chip>
+                  </div>
+                </template>
                 <template #item.callers="{ item }">
                   {{ getCallerNames(item?.raw ?? item) }}
                 </template>
@@ -180,8 +210,52 @@
                 <template #item.deadline="{ item }">
                   {{ formatDateForTable((item?.raw ?? item)?.deadline) }}
                 </template>
+                <template #expanded-row="{ item }">
+                  <tr v-if="(item?.raw ?? item)?.isMultiMonth && (item?.raw ?? item)?.monthlyBreakdown">
+                    <td :colspan="casesTableHeaders.length">
+                      <div class="pa-4 bg-grey-lighten-4">
+                        <h3 class="text-h6 mb-3">{{ t('ordersDashboard.monthlyBreakdown.title') }}</h3>
+                        <div class="monthly-breakdown-scroll" style="overflow-x: auto; overflow-y: visible;">
+                          <v-table density="compact" style="min-width: 600px;">
+                            <thead>
+                              <tr>
+                                <th>{{ t('ordersDashboard.monthlyBreakdown.month') }}</th>
+                                <th>{{ t('ordersDashboard.monthlyBreakdown.dateRange') }}</th>
+                                <th>{{ t('ordersDashboard.monthlyBreakdown.quantityCompleted') }}</th>
+                                <th>{{ t('ordersDashboard.monthlyBreakdown.revenue') }}</th>
+                                <th>{{ t('ordersDashboard.monthlyBreakdown.goal') }}</th>
+                                <th>{{ t('ordersDashboard.monthlyBreakdown.percentageToGoal') }}</th>
+                                <th>{{ t('ordersDashboard.monthlyBreakdown.remaining') }}</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              <tr v-for="month in (item?.raw ?? item)?.monthlyBreakdown" :key="month.monthKey">
+                                <td>{{ getMonthName(month.month) }} {{ month.year }}</td>
+                                <td>{{ formatDateDetailed(month.startDateStr) }} - {{ formatDateDetailed(month.endDateStr) }}</td>
+                                <td>{{ formatSlashPair(month.quantityCompleted, getCaseDisplayGoal(item?.raw ?? item)) }}</td>
+                                <td>{{ formatCurrency(month.revenue) }}</td>
+                                <td>{{ formatCurrency(getCaseMonthlyRevenueGoal(item?.raw ?? item, month)) }}</td>
+                                <td>{{ formatStatNumber(getCaseMonthlyPercentageToGoal(item?.raw ?? item, month)) }}%</td>
+                                <td>{{ formatStatNumber(Math.max(0, getCaseDisplayGoal(item?.raw ?? item) - getTotalCompletedUpToMonth((item?.raw ?? item)?.monthlyBreakdown, month.monthKey))) }}</td>
+                              </tr>
+                              <tr class="font-weight-bold">
+                                <td colspan="2">{{ t('ordersDashboard.monthlyBreakdown.total') }}</td>
+                                <td>{{ formatSlashPair(getTotalQuantity((item?.raw ?? item)?.monthlyBreakdown), getCaseDisplayGoal(item?.raw ?? item)) }}</td>
+                                <td>{{ formatCurrency(getTotalRevenue((item?.raw ?? item)?.monthlyBreakdown)) }}</td>
+                                <td></td>
+                                <td></td>
+                                <td>{{ formatStatNumber(Math.max(0, getCaseDisplayGoal(item?.raw ?? item) - getTotalQuantity((item?.raw ?? item)?.monthlyBreakdown))) }}</td>
+                              </tr>
+                            </tbody>
+                          </v-table>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                </template>
                 <template #body.append>
                   <tr class="cases-table-total-row">
+                    <td class="cases-table-total-cell"></td>
                     <td class="cases-table-total-cell cases-table-total-label">Total</td>
                     <td class="cases-table-total-cell">{{ totalsRow.myUnits }}</td>
                     <td class="cases-table-total-cell"></td>
@@ -472,7 +546,7 @@ import { useStore } from 'vuex'
 import { useI18n } from 'vue-i18n';
 import { useRouter, useRoute } from 'vue-router';
 import { goToNextMonth, goToPreviousMonth, formattedDateRange, isCurrentMonth, getMonthWeeks } from '@/js/dateUtils';
-import { fetchAgentgoalsByAgentAndMonth } from '@/js/statsUtils';
+import { fetchAgentgoalsByAgentAndMonth, orderSpansMultipleMonths, calculateMonthlyProgress } from '@/js/statsUtils';
 import agentCaseCard from './agentCaseCard.vue'
 import AgentDashboardTeamStatsCard from './agentDashboardTeamStatsCard.vue'
 import AgentDashboardPersonalStatsCard from './agentDashboardPersonalStatsCard.vue'
@@ -499,6 +573,7 @@ const weeklyNoteStatus = ref({})
 const showWeeklyNotesDialog = ref(false)
 const selectedWeekIndexForNotes = ref(0)
 const casesViewTab = ref('table')
+const expandedCaseRows = ref(new Set())
 const editWeeklyGoalDialog = ref(false)
 const editWeeklyGoalValue = ref(0)
 const editWeeklyGoalSaving = ref(false)
@@ -557,6 +632,59 @@ function formatDateForTable(dateString) {
   return date.toLocaleDateString();
 }
 
+function formatDateDetailed(dateStr) {
+  if (!dateStr) return ''
+  const d = new Date(dateStr)
+  if (isNaN(d.getTime())) return String(dateStr)
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+function getMonthName(monthNum) {
+  const monthKeys = ['january', 'february', 'march', 'april', 'may', 'june',
+    'july', 'august', 'september', 'october', 'november', 'december']
+  const key = monthKeys[Number(monthNum) - 1]
+  return key ? t(`ordersDashboard.months.${key}`) : ''
+}
+
+function getTotalQuantity(monthlyBreakdown) {
+  if (!Array.isArray(monthlyBreakdown)) return 0
+  return monthlyBreakdown.reduce((sum, m) => sum + (Number(m?.quantityCompleted) || 0), 0)
+}
+
+function getTotalRevenue(monthlyBreakdown) {
+  if (!Array.isArray(monthlyBreakdown)) return 0
+  return monthlyBreakdown.reduce((sum, m) => sum + (Number(m?.revenue) || 0), 0)
+}
+
+function getTotalCompletedUpToMonth(monthlyBreakdown, upToMonthKey) {
+  if (!Array.isArray(monthlyBreakdown)) return 0
+  return monthlyBreakdown.reduce((sum, m) => {
+    if (String(m?.monthKey ?? '') <= String(upToMonthKey ?? '')) {
+      return sum + (Number(m?.quantityCompleted) || 0)
+    }
+    return sum
+  }, 0)
+}
+
+function getCaseDisplayGoal(item) {
+  return Number(item?.monthlyGoal ?? item?.totalQuantity ?? item?.teamGoal ?? 0) || 0
+}
+
+function getCaseMonthlyRevenueGoal(item, month) {
+  const monthlyGoals = item?.monthlyRevenueGoals || {}
+  const monthRevenueGoal = Number(monthlyGoals?.[month?.monthKey] ?? 0)
+  if (monthRevenueGoal > 0) return monthRevenueGoal
+  const pricePerUnit = Number(item?.pricePerUnit ?? 0)
+  return getCaseDisplayGoal(item) * pricePerUnit
+}
+
+function getCaseMonthlyPercentageToGoal(item, month) {
+  const goal = Number(getCaseMonthlyRevenueGoal(item, month) || 0)
+  if (goal <= 0) return 0
+  const revenue = Number(month?.revenue ?? 0)
+  return Number(((revenue / goal) * 100).toFixed(2))
+}
+
 function getCurrentMonthKey() {
   const range = currentDateRange.value
   if (!Array.isArray(range) || range.length < 1 || !range[0]) return ''
@@ -602,6 +730,18 @@ function goToCaseDetails(row) {
       agentId: agentId ? String(agentId) : undefined,
     },
   });
+}
+
+function toggleCaseExpand(orderId) {
+  const key = String(orderId || '')
+  if (!key) return
+  const next = new Set(expandedCaseRows.value)
+  if (next.has(key)) {
+    next.delete(key)
+  } else {
+    next.add(key)
+  }
+  expandedCaseRows.value = next
 }
 
 function goToAgentReports(agentName, caseId) {
@@ -1198,6 +1338,7 @@ const individualHeaders = computed(() => [
 
 // Headers for cases table view (agent dashboard)
 const casesTableHeaders = computed(() => [
+  { title: '', key: 'data-table-expand', sortable: false, width: '40px' },
   { title: t('ordersDashboard.tableHeaders.caseName'), key: 'caseName', sortable: true },
   { title: t('agentTables.personalResults'), key: 'myUnits', sortable: true },
   { title: t('ordersDashboard.tableHeaders.unit'), key: 'caseUnit', sortable: true },
@@ -1474,6 +1615,8 @@ const casesTableRows = computed(() => {
       (sum, l) => sum + (Number(l?.quantityCompleted) ?? 0),
       0
     );
+    const isMultiMonth = orderSpansMultipleMonths(order)
+    const monthlyBreakdown = isMultiMonth ? calculateMonthlyProgress(order, dailyLogs.value || []) : null
     const myRevenueGoal = myGoal * pricePerUnit;
     // Results = company revenue generated by this agent on the case
     const currentRevenue = myAgentUnits * pricePerUnit;
@@ -1487,6 +1630,8 @@ const casesTableRows = computed(() => {
       teamGoal,
       teamUnits,
       totalQuantity: Number(order?.monthlyGoal ?? order?.totalQuantity ?? 0),
+      isMultiMonth,
+      monthlyBreakdown,
       myRevenueGoal,
       myRate: agentRate,
       currentRevenue,
@@ -1667,6 +1812,14 @@ watch(selectedAgentName, (newName) => {
     name: 'agentDashboard',
     query: { ...route.query, agent: newName },
   })
+})
+
+watch(casesTableRows, (rows) => {
+  const validIds = new Set((rows || []).map((r) => String(r?._id ?? '')))
+  const next = new Set(
+    Array.from(expandedCaseRows.value).filter((id) => validIds.has(String(id)))
+  )
+  expandedCaseRows.value = next
 })
 
 // Helper: check if agent is assigned to order (handles both object and string ID formats)
@@ -2177,18 +2330,15 @@ function findOrdersForUser(allOrdersArray, agentId) {
   
   // Filter by agent first (most selective filter)
   const agentOrders = (allOrdersArray || []).filter(order =>
-    (order.assignedCallers || []).some(id => String(id?._id ?? id) === wanted)
+    (order.assignedCallers || []).some(caller => {
+      const callerId = caller?._id ?? caller?.id ?? caller
+      return String(callerId) === wanted
+    })
   );
 
-  // Exclude cases where this agent's goal is 0 or not set
-  const agentOrdersWithGoal = agentOrders.filter(order => {
-    const goal = Number(order?.agentGoals?.[wanted] ?? 0);
-    return goal > 0;
-  });
-  
   // Early return if no date range
   if (!currentDateRange.value || currentDateRange.value.length < 2) {
-    return agentOrdersWithGoal;
+    return agentOrders;
   }
   
   // Pre-calculate date boundaries once
@@ -2197,7 +2347,7 @@ function findOrdersForUser(allOrdersArray, agentId) {
   const monthEnd = new Date(endDate);
   
   // Optimized date filtering
-  return agentOrdersWithGoal.filter(order => {
+  return agentOrders.filter(order => {
     const orderStart = new Date(order.startDate);
     const orderEnd = new Date(order.deadline);
     
