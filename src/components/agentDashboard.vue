@@ -222,6 +222,7 @@
                                 <th>{{ t('ordersDashboard.monthlyBreakdown.month') }}</th>
                                 <th>{{ t('ordersDashboard.monthlyBreakdown.dateRange') }}</th>
                                 <th>{{ t('ordersDashboard.monthlyBreakdown.quantityCompleted') }}</th>
+                                <th>{{ t('ordersDashboard.tableHeaders.callers') }} / {{ t('dailyLogForm.aLeads') }}</th>
                                 <th>{{ t('ordersDashboard.monthlyBreakdown.revenue') }}</th>
                                 <th>{{ t('ordersDashboard.monthlyBreakdown.goal') }}</th>
                                 <th>{{ t('ordersDashboard.monthlyBreakdown.percentageToGoal') }}</th>
@@ -233,6 +234,16 @@
                                 <td>{{ getMonthName(month.month) }} {{ month.year }}</td>
                                 <td>{{ formatDateDetailed(month.startDateStr) }} - {{ formatDateDetailed(month.endDateStr) }}</td>
                                 <td>{{ formatSlashPair(month.quantityCompleted, getCaseDisplayGoal(item?.raw ?? item)) }}</td>
+                                <td>
+                                  <div
+                                    v-for="entry in getCaseMonthlyAgentALeads(item?.raw ?? item, month)"
+                                    :key="entry.agentId || entry.name"
+                                    class="text-caption"
+                                  >
+                                    {{ entry.name }}: {{ formatStatNumber(entry.aLeads) }}
+                                  </div>
+                                  <span v-if="getCaseMonthlyAgentALeads(item?.raw ?? item, month).length === 0">—</span>
+                                </td>
                                 <td>{{ formatCurrency(month.revenue) }}</td>
                                 <td>{{ formatCurrency(getCaseMonthlyRevenueGoal(item?.raw ?? item, month)) }}</td>
                                 <td>{{ formatStatNumber(getCaseMonthlyPercentageToGoal(item?.raw ?? item, month)) }}%</td>
@@ -241,6 +252,7 @@
                               <tr class="font-weight-bold">
                                 <td colspan="2">{{ t('ordersDashboard.monthlyBreakdown.total') }}</td>
                                 <td>{{ formatSlashPair(getTotalQuantity((item?.raw ?? item)?.monthlyBreakdown), getCaseDisplayGoal(item?.raw ?? item)) }}</td>
+                                <td></td>
                                 <td>{{ formatCurrency(getTotalRevenue((item?.raw ?? item)?.monthlyBreakdown)) }}</td>
                                 <td></td>
                                 <td></td>
@@ -683,6 +695,62 @@ function getCaseMonthlyPercentageToGoal(item, month) {
   if (goal <= 0) return 0
   const revenue = Number(month?.revenue ?? 0)
   return Number(((revenue / goal) * 100).toFixed(2))
+}
+
+function getCaseMonthlyAgentALeads(item, month) {
+  const orderId = String(item?._id ?? item?.id ?? '')
+  const caseName = String(item?.caseName ?? '')
+  const start = new Date(month?.startDateStr ?? month?.startDate ?? '')
+  const end = new Date(month?.endDateStr ?? month?.endDate ?? '')
+  if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime())) return []
+  end.setHours(23, 59, 59, 999)
+
+  const rawAssigned = Array.isArray(item?.assignedCallers) ? item.assignedCallers : []
+  const assignedById = new Map()
+  rawAssigned.forEach((caller) => {
+    const id = String(caller?._id ?? caller?.id ?? caller ?? '')
+    if (!id) return
+    const agent = (gcAgents.value || []).find((a) => String(a?._id ?? a?.id ?? '') === id)
+    const name = agent?.name || String(caller?.name ?? caller ?? '')
+    assignedById.set(id, { agentId: id, name, aLeads: 0 })
+  })
+
+  const isALeadsCase = /a[\s-]*leads?/i.test(String(item?.caseUnit ?? item?.caseName ?? ''))
+  const results = new Map(assignedById)
+
+  ;(dailyLogs.value || []).forEach((log) => {
+    const logDate = new Date(log?.date ?? '')
+    if (!Number.isFinite(logDate.getTime()) || logDate < start || logDate > end) return
+
+    const logOrderId = String(log?.order?._id ?? log?.order?.id ?? log?.orderId ?? '')
+    const logCaseName = String(log?.caseName ?? '')
+    const sameOrder =
+      (orderId && logOrderId && logOrderId === orderId) ||
+      (caseName && logCaseName && logCaseName === caseName)
+    if (!sameOrder) return
+
+    const logAgentId = String(log?.agent?._id ?? log?.agent?.id ?? log?.agentId ?? log?.agent ?? '')
+    if (!logAgentId) return
+
+    const aLeads = isALeadsCase
+      ? Number(log?.aLeads ?? log?.quantityCompleted ?? 0)
+      : Number(log?.aLeads ?? 0)
+    if (!Number.isFinite(aLeads) || Number.isNaN(aLeads)) return
+
+    if (!results.has(logAgentId)) {
+      const agent = (gcAgents.value || []).find((a) => String(a?._id ?? a?.id ?? '') === logAgentId)
+      results.set(logAgentId, {
+        agentId: logAgentId,
+        name: agent?.name || log?.agentName || 'Unknown Agent',
+        aLeads: 0,
+      })
+    }
+    results.get(logAgentId).aLeads += aLeads
+  })
+
+  return Array.from(results.values())
+    .filter((entry) => Number(entry?.aLeads || 0) > 0)
+    .sort((a, b) => String(a?.name ?? '').localeCompare(String(b?.name ?? '')))
 }
 
 function getCurrentMonthKey() {
