@@ -195,8 +195,8 @@
                 <template #item.teamUnits="{ item }">
                   {{ formatSlashPair((item?.raw ?? item)?.teamUnits, (item?.raw ?? item)?.teamGoal || 0) }}
                 </template>
-                <template #item.myRevenueGoal="{ item }">
-                  {{ formatCurrency((item?.raw ?? item)?.myRevenueGoal) }}
+                <template #item.revenueGoal="{ item }">
+                  {{ formatCurrency((item?.raw ?? item)?.revenueGoal) }}
                 </template>
                 <template #item.currentRevenue="{ item }">
                   {{ formatCurrency((item?.raw ?? item)?.currentRevenue) }}
@@ -273,7 +273,7 @@
                     <td class="cases-table-total-cell"></td>
                     <td class="cases-table-total-cell">{{ totalsRow.teamUnits }}</td>
                     <td class="cases-table-total-cell">{{ totalsRow.currentRevenue }}</td>
-                    <td class="cases-table-total-cell">{{ totalsRow.myRevenueGoal }}</td>
+                    <td class="cases-table-total-cell">{{ totalsRow.revenueGoal }}</td>
                     <td class="cases-table-total-cell"></td>
                     <td class="cases-table-total-cell"></td>
                     <td class="cases-table-total-cell"></td>
@@ -683,11 +683,9 @@ function getCaseDisplayGoal(item) {
 }
 
 function getCaseMonthlyRevenueGoal(item, month) {
-  const monthlyGoals = item?.monthlyRevenueGoals || {}
-  const monthRevenueGoal = Number(monthlyGoals?.[month?.monthKey] ?? 0)
-  if (monthRevenueGoal > 0) return monthRevenueGoal
-  const pricePerUnit = Number(item?.pricePerUnit ?? 0)
-  return getCaseDisplayGoal(item) * pricePerUnit
+  const goals = item?.monthlyRevenueGoals || {}
+  const raw = goals[month?.monthKey]
+  return Number(raw) || 0
 }
 
 function getCaseMonthlyPercentageToGoal(item, month) {
@@ -840,6 +838,13 @@ function isTestCase(order) {
   if (caseName.includes('test')) return true;
   if (order.isTest === true || order.test === true) return true;
   return false;
+}
+
+// Helper function to check if an order is the "case good call" case
+function isGoodCallCase(order) {
+  if (!order) return false;
+  const caseName = String(order.caseName || '').toLowerCase();
+  return caseName === 'case good call' || caseName === 'good call';
 }
 
 // Normalize case name for comparison (trim, collapse spaces)
@@ -1412,7 +1417,7 @@ const casesTableHeaders = computed(() => [
   { title: t('ordersDashboard.tableHeaders.unit'), key: 'caseUnit', sortable: true },
   { title: t('agentTables.teamResults'), key: 'teamUnits', sortable: true },
   { title: 'Results now', key: 'currentRevenue', sortable: true },
-  { title: t('agentCaseCard.myRevenueGoal'), key: 'myRevenueGoal', sortable: true },
+  { title: t('ordersDashboard.tableHeaders.revenueGoal'), key: 'revenueGoal', sortable: true },
   { title: '%', key: 'percentage', sortable: true },
   { title: t('agentDashboard.myRate'), key: 'myRate', sortable: true },
   { title: t('ordersDashboard.tableHeaders.callers'), key: 'callers', sortable: false },
@@ -1598,6 +1603,43 @@ const weeklyGoalsByWeek = computed(() => {
   })
 })
 
+// Team revenue goal using the same rules as orders dashboard "Estimated revenue":
+// all in-progress, non-test, non-"case good call" orders that overlap the current month.
+const teamEstimatedRevenueGoal = computed(() => {
+  const allOrders = orders.value || [];
+  const range = currentDateRange.value;
+
+  if (!Array.isArray(allOrders) || allOrders.length === 0) return 0;
+  if (!Array.isArray(range) || range.length < 2) return 0;
+
+  const [startDate, endDate] = range;
+  const monthStart = new Date(startDate);
+  const monthEnd = new Date(endDate);
+  monthEnd.setHours(23, 59, 59, 999);
+
+  const eligibleOrders = allOrders.filter((order) => {
+    if (isTestCase(order) || isGoodCallCase(order)) return false;
+
+    // Same date-overlap logic as orders dashboard filteredOrders
+    const orderStart = new Date(order.startDate);
+    const orderEnd = new Date(order.deadline);
+    const overlapsMonth = orderStart <= monthEnd && orderEnd >= monthStart;
+    if (!overlapsMonth) return false;
+
+    const status = String(order?.orderStatus ?? order?.status ?? '')
+      .toLowerCase()
+      .replace(/\s/g, '-');
+    return status === 'in-progress';
+  });
+
+  if (!eligibleOrders.length) return 0;
+
+  return eligibleOrders.reduce(
+    (sum, order) => sum + store.getters.estimatedRevenueEurosForOrder(order),
+    0
+  );
+});
+
 // Table rows for cases view: each order enriched with agent-specific stats
 const casesTableRows = computed(() => {
   const orders = userOrders.value || [];
@@ -1685,11 +1727,14 @@ const casesTableRows = computed(() => {
     );
     const isMultiMonth = orderSpansMultipleMonths(order)
     const monthlyBreakdown = isMultiMonth ? calculateMonthlyProgress(order, dailyLogs.value || []) : null
+    // Personal € target (agent unit goal × price); personal stats / % to goal use this.
     const myRevenueGoal = myGoal * pricePerUnit;
+    // Same € as orders dashboard; value is stored on the order in Vuex (`setOrders` → `estimatedRevenueEuros`)
+    const revenueGoal = store.getters.estimatedRevenueEurosForOrder(order);
     // Results = company revenue generated by this agent on the case
     const currentRevenue = myAgentUnits * pricePerUnit;
     const myPaycheck = myAgentUnits * agentRate;
-    const teamRevenueGoal = teamGoal * pricePerUnit;
+    const teamRevenueGoal = revenueGoal;
     const teamCurrentRevenue = teamUnits * pricePerUnit;
     const percentage = myGoal > 0 ? Number(((myAgentUnits / myGoal) * 100).toFixed(2)) : 0;
 
@@ -1704,6 +1749,7 @@ const casesTableRows = computed(() => {
       isMultiMonth,
       monthlyBreakdown,
       myRevenueGoal,
+      revenueGoal,
       myRate: agentRate,
       currentRevenue,
       myPaycheck,
@@ -1714,11 +1760,10 @@ const casesTableRows = computed(() => {
   });
 });
 
-// Top team card uses the same source as table totals to keep numbers consistent.
 const topBoxStats = computed(() => {
   const totals = casesTableTotals.value || {};
   const currentRevenue = Number(totals?.teamCurrentRevenue) || 0;
-  const totalRevenueGoal = Number(totals?.teamRevenueGoal) || 0;
+  const totalRevenueGoal = Number(teamEstimatedRevenueGoal.value) || 0;
   const revenueToGoalPercent = totalRevenueGoal > 0
     ? roundTo2Decimals((currentRevenue / totalRevenueGoal) * 100)
     : 0;
@@ -1775,7 +1820,7 @@ const totalsRow = computed(() => {
     myUnits: formatSlashPair(totals.myUnits, totals.myGoal),
     teamUnits: formatSlashPair(totals.teamUnits, totals.teamGoal),
     currentRevenue: formatCurrency(totals.currentRevenue),
-    myRevenueGoal: formatCurrency(totals.myRevenueGoal),
+    revenueGoal: formatCurrency(totals.teamRevenueGoal),
   };
 });
 

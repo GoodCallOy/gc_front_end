@@ -24,7 +24,7 @@
             <h2 class="text-h6">{{ order.caseName }}</h2>
         </header>
         <div>
-          <strong> Goal: {{ formatCurrencyEUR(order.estimatedRevenue) }}</strong>
+          <strong> Goal: {{ formatCurrencyEUR(revenueGoalEuros) }}</strong>
         </div>
       <div class="pt-3">
         <div class="value">
@@ -63,6 +63,7 @@
   // Import utilities
   import { adjustColorOpacity } from '../../utils/Utils'
   import { formatSlashPair, formatCurrencyEUR, formatStatNumber } from '@/js/formatNumbers'
+  import { ordersDashboardRevenueGoalEuros } from '@/js/statsUtils'
   
   export default {
     name: 'DashboardCard01',
@@ -89,6 +90,12 @@
         },
     },
     setup(props) {
+      const revenueGoalEuros = computed(() => {
+        const v = Number(props.order?.estimatedRevenueEuros)
+        if (Number.isFinite(v) && v >= 0) return v
+        return ordersDashboardRevenueGoalEuros(props.order)
+      })
+
       const totalAgentUnitsValue = computed(() => {
         if (
           !props.order ||
@@ -137,7 +144,7 @@
       });
 
       const percentage = computed(() => {
-        const goal = props.order.estimatedRevenue || 0;
+        const goal = revenueGoalEuros.value || 0;
         if (!goal) return 0;
         if (totalAgentUnitsValue.value === 0) return 0;
         const ret_percentage = (totalAgentUnitsValue.value / goal) * 100;
@@ -182,6 +189,7 @@
         formatSlashPair,
         formatCurrencyEUR,
         formatStatNumber,
+        revenueGoalEuros,
         totalAgentUnitsValue,
         percentage,
         percentageClass,

@@ -208,7 +208,7 @@
               {{ formatSlashPair(computeOrderQuantity(item), item.monthlyGoal ?? item.totalQuantity ?? 0) }}
             </template>
             <template #item.goal="{ item }">
-              {{ formatCurrency(Number(item.estimatedRevenue) || 0) }}
+              {{ formatCurrency(store.getters.estimatedRevenueEurosForOrder(item)) }}
             </template>
             <template #item.revenue="{ item }">
               {{ formatCurrency(computeOrderRevenue(item)) }}
@@ -516,11 +516,7 @@ const estimatedRevenueTotal = computed(() => {
     return status === 'in-progress';
   });
   
-  return nonTestOrders.reduce((total, order) => {
-    const monthlyGoal = Number(order?.monthlyGoal ?? order?.totalQuantity) || 0;
-    const pricePerUnit = Number(order?.pricePerUnit) || 0;
-    return total + (monthlyGoal * pricePerUnit);
-  }, 0);
+  return nonTestOrders.reduce((total, order) => total + store.getters.estimatedRevenueEurosForOrder(order), 0);
 });
 
 // Per-case breakdown of estimated revenue (for verification)
@@ -531,7 +527,7 @@ const estimatedRevenueBreakdown = computed(() => {
   const rows = ordersToCalculate.map((order) => {
     const monthlyGoal = Number(order?.monthlyGoal ?? order?.totalQuantity) || 0;
     const pricePerUnit = Number(order?.pricePerUnit) || 0;
-    const revenue = monthlyGoal * pricePerUnit;
+    const revenue = store.getters.estimatedRevenueEurosForOrder(order);
 
     let excludedReason = null;
     if (isTestCase(order)) excludedReason = 'Test case';

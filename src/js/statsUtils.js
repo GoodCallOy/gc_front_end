@@ -226,6 +226,16 @@ export function populateCasesSortedByAgent(agentStats, selectedAgent) {
   }
 
   /**
+   * Estimated revenue (€) for an order — same formula as `ordersDashboard.vue`
+   * (`estimatedRevenueTotal` / breakdown): `(monthlyGoal ?? totalQuantity) * pricePerUnit`.
+   */
+  export function ordersDashboardRevenueGoalEuros(order) {
+    const monthlyGoal = Number(order?.monthlyGoal ?? order?.totalQuantity) || 0
+    const pricePerUnit = Number(order?.pricePerUnit) || 0
+    return monthlyGoal * pricePerUnit
+  }
+
+  /**
    * Check if an order spans multiple months
    * @param {Object} order - Order object with startDate and deadline
    * @returns {boolean} - True if order spans multiple months
