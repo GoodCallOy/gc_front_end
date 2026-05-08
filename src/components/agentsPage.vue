@@ -507,29 +507,47 @@ import { getPercentageToGoalBadgeClass, getPercentageToGoalVuetifyColor } from '
         this.$router.push({ name: 'editAgent', query: { activeAgent: agent.name } })
       },
       editGCAgent(agent) {
-        // Resolve user from user collection by EMAIL only and pass user _id to editGcAgent
+        // Resolve the auth user for this gcAgent and pass user _id to editGcAgent.
+        // Prefer explicit link (linkedUserId) when present; fallback to email, then name.
         const users = Array.isArray(this.users) ? this.users : [];
+        const linkedUserId = String(agent?.linkedUserId ?? '').trim();
         const agentEmail = String(agent?.email ?? '').trim().toLowerCase();
+        const agentName = String(agent?.name ?? '').trim().toLowerCase();
 
-        const foundUser = users.find((u) => {
+        const foundById = linkedUserId
+          ? users.find((u) => String(u?._id ?? u?.id ?? '') === linkedUserId) || null
+          : null;
+
+        const foundByEmail = users.find((u) => {
           const userEmail = String(u?.email ?? u?.emails?.[0]?.value ?? '').trim().toLowerCase();
           if (agentEmail && userEmail && userEmail === agentEmail) return true;
           return false;
         }) || null;
 
+        const foundByName = users.find((u) => {
+          const userName = String(u?.name ?? u?.username ?? '').trim().toLowerCase();
+          return agentName && userName && userName === agentName;
+        }) || null;
+
+        const foundUser = foundById || foundByEmail || foundByName;
+
         const selectedUser = String(foundUser?._id ?? foundUser?.id ?? '');
-        const payload = { selectedUser };
+        const selectedGcAgent = String(agent?._id ?? agent?.id ?? '');
+        const payload = { selectedUser, selectedGcAgent };
 
         console.log('editGCAgent() agent object:', agent);
         console.log('editGCAgent() lookup:', {
           usersCount: users.length,
+          linkedUserId: linkedUserId || null,
           agentEmail: agent?.email ?? null,
+          agentName: agent?.name ?? null,
           matchedUser: foundUser ? {
             _id: foundUser._id ?? foundUser.id ?? null,
             name: foundUser.name ?? null,
             email: foundUser.email ?? null,
           } : null,
           selectedUserSent: selectedUser || null,
+          selectedGcAgentSent: selectedGcAgent || null,
         });
         console.log('editGCAgent() route payload:', payload);
         if (!selectedUser) {
