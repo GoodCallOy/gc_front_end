@@ -1,6 +1,7 @@
 import { createStore } from 'vuex'
 import axios from 'axios'
 import urls from './js/config.js'
+import { ordersDashboardRevenueGoalEuros } from './js/statsUtils'
 
 const CACHE_TIMEOUT = 10 * 60 * 1000 // 10 minutes
 
@@ -77,6 +78,22 @@ const store = createStore({
     lastFetch: state => state.lastFetch,
     activeComponents: state => state.activeComponents,
     caseTypes: state => state.caseTypes,
+
+    /** Per-order € goal saved when orders are loaded (`setOrders`). */
+    estimatedRevenueEurosForOrder: () => (order) => {
+      const v = Number(order?.estimatedRevenueEuros)
+      if (Number.isFinite(v) && v >= 0) return v
+      return ordersDashboardRevenueGoalEuros(order)
+    },
+
+    /** Sum of `estimatedRevenueEuros` for the given order list (e.g. agent’s `userOrders`). */
+    sumEstimatedRevenueEurosForOrders: (state, getters) => (orderList) => {
+      if (!Array.isArray(orderList)) return 0
+      return orderList.reduce(
+        (sum, order) => sum + getters.estimatedRevenueEurosForOrder(order),
+        0
+      )
+    },
   },
 
   actions: {
@@ -448,10 +465,16 @@ const store = createStore({
       state.dateRange = range
     },
     setOrders(state, orders) {
-      state.orders = (orders || []).map(o => ({
-        ...o,
-        monthlyGoal: o.monthlyGoal ?? o.totalQuantity
-      }))
+      state.orders = (orders || []).map((o) => {
+        const normalized = {
+          ...o,
+          monthlyGoal: o.monthlyGoal ?? o.totalQuantity,
+        }
+        return {
+          ...normalized,
+          estimatedRevenueEuros: ordersDashboardRevenueGoalEuros(normalized),
+        }
+      })
     },
     setgcAgents(state, gcAgents) {
       state.gcAgents = gcAgents

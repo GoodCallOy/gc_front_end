@@ -182,7 +182,6 @@
       const euro = new Intl.NumberFormat(undefined, { style: 'currency', currency: 'EUR' })
       const displayMyGoal = computed(() => (myAgentId.value ? `${myGoal.value}` : 'N/A'))
 
-      // ✅ make this computed so it updates when myGoal or price changes
       const myRevenue = computed(() =>
         myGoal.value * (Number(props.order?.pricePerUnit) || 0)
       )
