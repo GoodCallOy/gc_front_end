@@ -154,6 +154,15 @@ import { goToNextMonth, goToPreviousMonth, formattedDateRange, isCurrentMonth } 
 import { formatStatNumber } from '@/js/formatNumbers';
 import { computeAgentMyProgressPercent } from '@/js/agentMyProgress';
 import { getPercentageToGoalBadgeClass, getPercentageToGoalVuetifyColor } from '@/js/percentageToGoalStyle';
+
+/** Display order on agents page: callers → managers → admins → other */
+function agentRoleSortRank(role) {
+  const r = String(role || 'caller').toLowerCase();
+  if (r === 'caller') return 0;
+  if (r === 'manager') return 1;
+  if (r === 'admin') return 2;
+  return 3;
+}
   
   export default {
     name: 'agentsPage',
@@ -173,14 +182,17 @@ import { getPercentageToGoalBadgeClass, getPercentageToGoalVuetifyColor } from '
           ? (this.gcAgents || [])
           : (this.gcAgents || []).filter(agent => agent.active !== false);
 
-        // When showing all agents, put active agents first
-        if (this.showAllAgents && agents.length) {
-          agents = [...agents].sort((a, b) => {
+        agents = [...agents].sort((a, b) => {
+          const ra = agentRoleSortRank(a.role);
+          const rb = agentRoleSortRank(b.role);
+          if (ra !== rb) return ra - rb;
+          if (this.showAllAgents) {
             const aActive = a.active !== false ? 0 : 1;
             const bActive = b.active !== false ? 0 : 1;
-            return aActive - bActive;
-          });
-        }
+            if (aActive !== bActive) return aActive - bActive;
+          }
+          return String(a.name || '').toLowerCase().localeCompare(String(b.name || '').toLowerCase());
+        });
 
         if (!this.dailyLogs) {
           return agents;

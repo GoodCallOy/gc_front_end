@@ -730,12 +730,13 @@ async function bulkCopyOrdersToNextMonth() {
         (o.assignedCallers || []).map(x => String(x?._id ?? x?.id ?? x))
       )];
 
-      const monthlyGoal = Number(o.monthlyGoal ?? o.totalQuantity) || 0;
+      const remainingGoal = getRemainingCampaignGoalForCopy(o, nextStart)
       const payload = {
         caseId: o.caseId || null,
         caseUnit: o.caseUnit || null,
         pricePerUnit: Number(o.pricePerUnit) || 0,
-        monthlyGoal,
+        monthlyGoal: remainingGoal,
+        campaignGoal: remainingGoal,
         startDate: nextStart,
         deadline: nextEnd,
         orderStatus: o.orderStatus || 'pending',
@@ -746,7 +747,7 @@ async function bulkCopyOrdersToNextMonth() {
         assignedCallers: assignedIds,
         agentGoals: { ...(o.agentGoals || {}) },
         caseName: o.caseName || '',
-        estimatedRevenue: (Number(o.pricePerUnit) || 0) * monthlyGoal,
+        estimatedRevenue: (Number(o.pricePerUnit) || 0) * remainingGoal,
       };
 
       try {
@@ -1079,6 +1080,7 @@ function copyOrder(item) {
     (item.assignedCallers || []).map(x => String(x?._id ?? x?.id ?? x))
   )];
   const [nextStart, nextEnd] = monthDateRangeForNextMonthFrom(item.startDate || currentDateRange.value?.[0]);
+  const remainingGoal = getRemainingCampaignGoalForCopy(item, nextStart)
 
   const goals = item.agentGoals || {};
   const rates = item.agentRates || {};
@@ -1098,7 +1100,8 @@ function copyOrder(item) {
       caseId: item.caseId || null,
       caseUnit: item.caseUnit || null,
       pricePerUnit: Number(item.pricePerUnit) || 0,
-      totalQuantity: Number(item.monthlyGoal ?? item.totalQuantity) || 0,
+      totalQuantity: remainingGoal,
+      campaignGoal: remainingGoal,
       startDate: nextStart,
       deadline: nextEnd,
       orderStatus: item.orderStatus || 'pending',
@@ -1315,6 +1318,33 @@ function getDisplayGoal(order) {
     }
   }
   return Number(order?.monthlyGoal ?? order?.totalQuantity) || 0
+}
+
+/** Sum quantityCompleted for calendar months strictly before beforeMonthKey (YYYY-MM). */
+function getCompletedQuantityBeforeMonth(order, beforeMonthKey) {
+  if (!order || !beforeMonthKey || String(beforeMonthKey).length < 7) return 0
+  const logs = Array.isArray(dailyLogs.value) ? dailyLogs.value : []
+  let breakdown = order.monthlyBreakdown
+  if (!breakdown?.length) {
+    breakdown = calculateMonthlyProgress(order, logs)
+  }
+  if (!breakdown?.length) return 0
+  const prefix = String(beforeMonthKey).slice(0, 7)
+  return breakdown.reduce((sum, m) => {
+    if (String(m.monthKey) < prefix) {
+      return sum + (Number(m.quantityCompleted) || 0)
+    }
+    return sum
+  }, 0)
+}
+
+/** Remaining campaign units for a copy whose new segment starts at nextRangeStartDateStr (YYYY-MM-DD). */
+function getRemainingCampaignGoalForCopy(order, nextRangeStartDateStr) {
+  const base = getDisplayGoal(order)
+  const mk = String(nextRangeStartDateStr || '').split('T')[0].slice(0, 7)
+  if (!mk || mk.length < 7) return base
+  const prior = getCompletedQuantityBeforeMonth(order, mk)
+  return Math.max(0, Math.round(base - prior))
 }
 
 function completedUnitsForOrderInDateRange(order, logs, dateRange) {

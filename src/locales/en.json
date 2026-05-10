@@ -109,7 +109,41 @@
     "ordersDashboard": {
       "tabs": {
         "tables": "Tables",
-        "cards": "Cards"
+        "cards": "Cards",
+        "charts": "Charts",
+        "insights": "Case charts"
+      },
+      "charts": {
+        "kpiEstimated": "Estimated revenue",
+        "kpiCurrent": "Current revenue",
+        "kpiEstimatedHint": "Monthly plan (in-progress)",
+        "ofEstimate": "of estimate",
+        "ofTotal": "of total",
+        "noEstimate": "No estimate for month",
+        "revenueByCaseType": "Revenue by case type",
+        "revenueByCase": "Revenue by case",
+        "revenueOverWeeks": "Revenue by case type over weeks",
+        "revenue": "Revenue",
+        "week": "Week",
+        "noData": "No revenue data for this period.",
+        "kpiVsPlan": "vs monthly plan",
+        "kpiVsPlanNoEstimate": "Add estimates to compare pace",
+        "kpiAheadOfPlan": "Ahead of plan",
+        "kpiAheadOfPlanHint": "Above monthly estimate",
+        "kpiRemainingToPlan": "Remaining to plan",
+        "kpiPlanMet": "Monthly estimate reached",
+        "ofEstimateRemaining": "of estimate still open",
+        "showBreakdown": "Show breakdown",
+        "hideBreakdown": "Hide breakdown",
+        "breakdownTitle": "Estimated revenue by case (included + excluded)",
+        "breakdownCaseType": "Case Type",
+        "breakdownCase": "Case",
+        "breakdownStatus": "Status",
+        "breakdownGoal": "Goal",
+        "breakdownPerUnit": "€/Unit",
+        "breakdownRevenue": "Revenue",
+        "breakdownIncluded": "Included",
+        "breakdownIncludedYes": "✓ Yes"
       },
       "filterByCaseType": "Filter by Case Type",
       "revenue": {
@@ -165,7 +199,20 @@
       "dateFormat": {
         "through": "through"
       },
-      "unknown": "Unknown"
+      "unknown": "Unknown",
+      "tableInsights": {
+        "estVsCurrentTitle": "Estimated vs current revenue by case",
+        "pctToGoalTitle": "% to monthly goal by case",
+        "workloadTitle": "Meetings completed by team member (this month)",
+        "qtyProgressTitle": "Campaign goal progress (completed vs remaining, all campaign months)",
+        "estimated": "Estimated revenue",
+        "current": "Current revenue",
+        "pctGoal": "% to goal",
+        "meetingsLogged": "Meetings",
+        "qtyCompleted": "Completed",
+        "qtyRemaining": "Remaining",
+        "noData": "No cases in this view."
+      }
     },
     "assignGoals": {
       "buttons": {

@@ -1,5 +1,5 @@
 <template>
-  <v-container  style="width: 90%;" >
+  <v-container class="orders-dashboard-wrap" fluid>
     <!-- Sticky Menu/Header -->
     <div class="sticky-toolbar">
       <!-- Date Navigation Header -->
@@ -16,6 +16,8 @@
         <v-col cols="12" md="8">
           <v-tabs v-model="activeTab" density="comfortable">
             <v-tab value="tables">{{ t('ordersDashboard.tabs.tables') }}</v-tab>
+            <v-tab value="charts">{{ t('ordersDashboard.tabs.charts') }}</v-tab>
+            <v-tab value="insights">{{ t('ordersDashboard.tabs.insights') }}</v-tab>
             <v-tab value="cards">{{ t('ordersDashboard.tabs.cards') }}</v-tab>
           </v-tabs>
         </v-col>
@@ -31,65 +33,6 @@
         </v-col>
       </v-row>
     </div>
-
-    <!-- Revenue Summary Row -->
-    <v-card class="mb-4 pa-2 revenue-summary" elevation="2">
-      <v-row align="center" justify="center">
-        <v-col cols="6" class="text-center">
-          <div class="text-subtitle-2 font-weight-bold text-primary">{{ t('ordersDashboard.revenue.estimated') }}</div>
-          <div class="text-h6 font-weight-bold">€{{ estimatedRevenueTotal.toFixed(2) }}</div>
-        </v-col>
-        <v-col cols="6" class="text-center">
-          <div class="text-subtitle-2 font-weight-bold text-success">{{ t('ordersDashboard.revenue.current') }}</div>
-          <div class="text-h6 font-weight-bold">€{{ currentRevenueTotal.toFixed(2) }}</div>
-        </v-col>
-      </v-row>
-      <v-expand-transition v-if="isAdmin">
-        <div v-show="showRevenueBreakdown">
-          <v-divider class="my-2" />
-          <div class="px-2 pb-2">
-            <div class="text-caption font-weight-bold mb-2">Estimated revenue by case (included + excluded)</div>
-            <v-table density="compact" class="text-caption">
-              <thead>
-                <tr>
-                  <th class="text-left">Case Type</th>
-                  <th class="text-left">Case</th>
-                  <th class="text-left">Status</th>
-                  <th class="text-right">Goal</th>
-                  <th class="text-right">€/Unit</th>
-                  <th class="text-right">Revenue</th>
-                  <th class="text-left">Included</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="(row, i) in estimatedRevenueBreakdown" :key="i" :class="{ 'bg-grey-lighten-4': !row.included }">
-                  <td>{{ row.caseType }}</td>
-                  <td>{{ row.caseName }}</td>
-                  <td>{{ row.status }}</td>
-                  <td class="text-right">{{ formatStatNumber(row.monthlyGoal) }}</td>
-                  <td class="text-right">{{ row.pricePerUnit.toFixed(2) }}</td>
-                  <td class="text-right">€{{ row.revenue.toFixed(2) }}</td>
-                  <td>
-                    <span v-if="row.included" class="text-success">✓ Yes</span>
-                    <span v-else class="text-error">{{ row.excludedReason }}</span>
-                  </td>
-                </tr>
-              </tbody>
-            </v-table>
-          </div>
-        </div>
-      </v-expand-transition>
-      <v-btn
-        v-if="isAdmin"
-        variant="text"
-        size="small"
-        density="compact"
-        class="mt-1"
-        @click="showRevenueBreakdown = !showRevenueBreakdown"
-      >
-        {{ showRevenueBreakdown ? 'Hide' : 'Show' }} breakdown
-      </v-btn>
-    </v-card>
     
     <h1 class="text-h4 mb-4" style="width: 100%;">{{ t('ordersDashboard.allCases') }} - {{ getFormattedDateRange() }}</h1>
 
@@ -232,6 +175,28 @@
         </div>
       </v-window-item>
 
+      <v-window-item value="charts">
+        <OrdersAnalyticsCharts
+          v-model:show-revenue-breakdown="showRevenueBreakdown"
+          :orders="filteredOrdersByCaseType"
+          :daily-logs="dailyLogs"
+          :month-weeks="monthWeeks"
+          :current-revenue-total="currentRevenueTotal"
+          :estimated-revenue-total="estimatedRevenueTotal"
+          :is-admin="isAdmin"
+          :estimated-revenue-breakdown="estimatedRevenueBreakdown"
+        />
+      </v-window-item>
+
+      <v-window-item value="insights">
+        <OrdersTableInsights
+          :rows="tableInsightRows"
+          :agents="gcAgents"
+          :daily-logs="dailyLogs"
+          :month-weeks="monthWeeks"
+        />
+      </v-window-item>
+
       <v-window-item value="cards">
         <div v-for="group in groupedOrdersByCaseTypeForCards" :key="`cards-${group.caseType}`" class="mb-6">
           <v-card elevation="2" class="mb-2">
@@ -265,6 +230,8 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { goToNextMonth, goToPreviousMonth, formattedDateRange, isCurrentMonth, getMonthWeeks } from '@/js/dateUtils';
 import DashboardCard01 from '@/partials/dashboard/caseCard2.vue'
+import OrdersAnalyticsCharts from '@/partials/dashboard/orders-analytics-charts.vue'
+import OrdersTableInsights from '@/partials/dashboard/orders-table-insights.vue'
 import DateHeader from '@/components/DateHeader.vue'
 import { orderSpansMultipleMonths, calculateMonthlyProgress } from '@/js/statsUtils'
 import { getPercentageToGoalBadgeClass } from '@/js/percentageToGoalStyle'
@@ -844,6 +811,66 @@ function getTotalCompletedUpToMonth(monthlyBreakdown, upToMonthKey) {
   return total
 }
 
+/** Match daily log to order — aligned with calculateMonthlyProgress in statsUtils */
+function logBelongsToOrder(log, order) {
+  if (!log || !order) return false
+  const orderId = order._id || order.id
+  return (
+    (log.order?._id && orderId && String(log.order._id) === String(orderId)) ||
+    (log.order && orderId && String(log.order) === String(orderId)) ||
+    (log.caseId && order.caseId && String(log.caseId) === String(order.caseId)) ||
+    (log.caseName && order.caseName && String(log.caseName) === String(order.caseName))
+  )
+}
+
+/** Sum quantityCompleted for logs tied to this order between startDate and deadline (inclusive). */
+function sumQuantityLogsForOrderInDateRange(order) {
+  if (!order?.startDate || !order?.deadline || !Array.isArray(dailyLogs.value)) return 0
+  const rangeStart = new Date(order.startDate)
+  const rangeEnd = new Date(order.deadline)
+  rangeEnd.setHours(23, 59, 59, 999)
+  return dailyLogs.value
+    .filter((log) => {
+      const d = new Date(log.date)
+      if (d < rangeStart || d > rangeEnd) return false
+      return logBelongsToOrder(log, order)
+    })
+    .reduce((sum, log) => sum + Number(log.quantityCompleted || 0), 0)
+}
+
+/**
+ * Meetings completed toward the campaign goal: all months for multi-month orders,
+ * else full order date range (not only the dashboard month).
+ */
+function computeCampaignQuantityCompleted(order) {
+  if (!order) return 0
+  if (order.isMultiMonth && Array.isArray(order.monthlyBreakdown) && order.monthlyBreakdown.length > 0) {
+    return getTotalQuantity(order.monthlyBreakdown)
+  }
+  if (order.startDate && order.deadline) {
+    return sumQuantityLogsForOrderInDateRange(order)
+  }
+  return computeOrderQuantity(order)
+}
+
+const tableInsightRows = computed(() => {
+  return enrichedOrders.value.map((order) => {
+    const monthlyGoal = Number(order?.monthlyGoal ?? order?.totalQuantity) || 0
+    return {
+      id: order._id,
+      caseName: order.caseName || '—',
+      caseType: order.caseType || 'Unspecified',
+      estimatedRevenue: Number(order?.estimatedRevenue) || 0,
+      currentRevenue: computeOrderRevenue(order),
+      pctToGoal: computePercentageToGoal(order),
+      qtyCompleted: computeCampaignQuantityCompleted(order),
+      campaignGoal: getDisplayGoal(order),
+      monthlyGoal,
+      callerIds: Array.isArray(order.assignedCallers) ? [...order.assignedCallers] : [],
+    }
+  })
+})
+
 onMounted(async () => {
   try {
     // Register this component as active
@@ -969,6 +996,13 @@ async function loadMonthWeeks() {
 </script>
 
 <style scoped>
+.orders-dashboard-wrap {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding-inline: clamp(16px, 4vw, 40px) !important;
+}
+
 .monthly-breakdown-scroll {
   -webkit-overflow-scrolling: touch;
   padding-bottom: 4px;
@@ -1055,16 +1089,6 @@ async function loadMonthWeeks() {
 
   /* Remove horizontal hover scroll to avoid cut-off */
   
-  /* Revenue summary card styling */
-  .revenue-summary {
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-    border: 1px solid #dee2e6;
-  }
-  
-  .revenue-summary .text-primary {
-    color: #0d6efd !important;
-  }
-  
   /* Make table rows clickable */
   :deep(.v-data-table__tr) {
     cursor: pointer;
@@ -1072,9 +1096,5 @@ async function loadMonthWeeks() {
   
   :deep(.v-data-table__tr:hover) {
     background-color: rgba(0, 0, 0, 0.04) !important;
-  }
-  
-  .revenue-summary .text-success {
-    color: #198754 !important;
   }
 </style>

@@ -92,7 +92,41 @@
     "ordersDashboard": {
       "tabs": {
         "tables": "Taulukot",
-        "cards": "Kortit"
+        "cards": "Kortit",
+        "charts": "Kaaviot",
+        "insights": "Tapausten kaaviot"
+      },
+      "charts": {
+        "kpiEstimated": "Arvioitu liikevaihto",
+        "kpiCurrent": "Nykyinen liikevaihto",
+        "kpiEstimatedHint": "Kuukausisuunnitelma (käynnissä)",
+        "ofEstimate": "arviosta",
+        "ofTotal": "kokonaismäärästä",
+        "noEstimate": "Ei kuukausiarviota",
+        "revenueByCaseType": "Liikevaihto tapauksen tyypin mukaan",
+        "revenueByCase": "Liikevaihto tapauksittain",
+        "revenueOverWeeks": "Liikevaihto viikoittain tyypeittäin",
+        "revenue": "Liikevaihto",
+        "week": "Vk",
+        "noData": "Ei liikevaihtoa tällä ajanjaksolla.",
+        "kpiVsPlan": "suhteessa kuukausisuunnitelmaan",
+        "kpiVsPlanNoEstimate": "Lisää arviot vertailuun",
+        "kpiAheadOfPlan": "Yli suunnitelman",
+        "kpiAheadOfPlanHint": "Yli kuukausiarvion",
+        "kpiRemainingToPlan": "Jäljellä suunnitelmaan",
+        "kpiPlanMet": "Kuukausiarvio saavutettu",
+        "ofEstimateRemaining": "arviosta vielä jäljellä",
+        "showBreakdown": "Näytä erittely",
+        "hideBreakdown": "Piilota erittely",
+        "breakdownTitle": "Arvioitu liikevaihto tapauksittain (mukana + pois jätetyt)",
+        "breakdownCaseType": "Tapauksen tyyppi",
+        "breakdownCase": "Tapaus",
+        "breakdownStatus": "Tila",
+        "breakdownGoal": "Tavoite",
+        "breakdownPerUnit": "€/yks.",
+        "breakdownRevenue": "Liikevaihto",
+        "breakdownIncluded": "Mukana",
+        "breakdownIncludedYes": "✓ Kyllä"
       },
       "filterByCaseType": "Suodata tapauksen tyypin mukaan",
       "revenue": {
@@ -148,7 +182,20 @@
       "dateFormat": {
         "through": "läpi"
       },
-      "unknown": "Tuntematon"
+      "unknown": "Tuntematon",
+      "tableInsights": {
+        "estVsCurrentTitle": "Arvioitu vs toteutunut liikevaihto tapauksittain",
+        "pctToGoalTitle": "% kuukausitavoitteesta tapauksittain",
+        "workloadTitle": "Tapaamiset tiimin jäsenittäin (tämä kuukausi)",
+        "qtyProgressTitle": "Kampanjatavoite (tehty vs jäljellä, koko kampanja)",
+        "estimated": "Arvioitu liikevaihto",
+        "current": "Toteutunut liikevaihto",
+        "pctGoal": "% tavoitteesta",
+        "meetingsLogged": "Tapaamiset",
+        "qtyCompleted": "Valmiina",
+        "qtyRemaining": "Jäljellä",
+        "noData": "Ei tapauksia tässä näkymässä."
+      }
     },
     "assignGoals": {
       "buttons": {
