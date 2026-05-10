@@ -136,13 +136,55 @@ export function getWeekNumber(date) {
   return Math.ceil((((d - week1) / 86400000) + week1.getDay() + 1) / 7);
 }
 
+/**
+ * Parse week config or log timestamps as a local calendar day (no UTC shift for YYYY-MM-DD).
+ * Use for custom week boundaries so bucket 1 includes meetings on the first local day of the week.
+ */
+export function parseWeekDateLocal(dateVal, endOfDay = false) {
+  if (dateVal == null || dateVal === '') return new Date(NaN)
+  if (dateVal instanceof Date) {
+    if (isNaN(dateVal.getTime())) return new Date(NaN)
+    const y = dateVal.getFullYear()
+    const mo = dateVal.getMonth()
+    const d = dateVal.getDate()
+    return endOfDay
+      ? new Date(y, mo, d, 23, 59, 59, 999)
+      : new Date(y, mo, d, 0, 0, 0, 0)
+  }
+  const s = String(dateVal)
+  const match = s.match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (match) {
+    const y = Number(match[1])
+    const mo = Number(match[2]) - 1
+    const d = Number(match[3])
+    return endOfDay
+      ? new Date(y, mo, d, 23, 59, 59, 999)
+      : new Date(y, mo, d, 0, 0, 0, 0)
+  }
+  const parsed = new Date(s)
+  if (isNaN(parsed.getTime())) return new Date(NaN)
+  const y = parsed.getFullYear()
+  const mo = parsed.getMonth()
+  const d = parsed.getDate()
+  return endOfDay
+    ? new Date(y, mo, d, 23, 59, 59, 999)
+    : new Date(y, mo, d, 0, 0, 0, 0)
+}
+
+/** Local calendar day as YYYYMMDD for inclusive range checks (logs vs week boundaries). */
+export function toLocalYmdNumber(dateVal) {
+  const x = parseWeekDateLocal(dateVal, false)
+  if (isNaN(x.getTime())) return null
+  return x.getFullYear() * 10000 + (x.getMonth() + 1) * 100 + x.getDate()
+}
+
 // Get all weeks for a month using custom configuration
 export async function getMonthWeeks(year, month) {
   const config = await fetchWeekConfiguration(year, month);
   return config.weeks.map(week => ({
     weekNumber: week.weekNumber,
-    start: new Date(week.startDate),
-    end: new Date(week.endDate),
+    start: parseWeekDateLocal(week.startDate, false),
+    end: parseWeekDateLocal(week.endDate, true),
     isActive: week.isActive,
     notes: week.notes || '',
     isCustom: !config.isDefault

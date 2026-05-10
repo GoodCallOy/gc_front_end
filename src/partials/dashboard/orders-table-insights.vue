@@ -102,6 +102,7 @@ import {
 import ChartDataLabels from 'chartjs-plugin-datalabels'
 import { Bar } from 'vue-chartjs'
 import { formatStatNumber, formatCurrencyEUR } from '@/js/formatNumbers'
+import { toLocalYmdNumber } from '@/js/dateUtils'
 
 ChartJS.register(BarElement, CategoryScale, LinearScale, Tooltip, Legend, ChartDataLabels)
 
@@ -281,10 +282,14 @@ const meetingsByAgentPairs = computed(() => {
   const rows = props.rows || []
   if (!bounds) return []
 
+  const startN = toLocalYmdNumber(bounds.monthStart)
+  const endN = toLocalYmdNumber(bounds.monthEnd)
+  if (startN == null || endN == null) return []
+
   const map = new Map()
   for (const log of props.dailyLogs || []) {
-    const d = new Date(log.date)
-    if (d < bounds.monthStart || d > bounds.monthEnd) continue
+    const logN = toLocalYmdNumber(log.date)
+    if (logN == null || logN < startN || logN > endN) continue
 
     const cn = String(log.caseName || '').toLowerCase()
     if (cn === 'case good call' || cn === 'good call') continue

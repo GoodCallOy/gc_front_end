@@ -149,6 +149,7 @@ import {
 import ChartDataLabels from 'chartjs-plugin-datalabels'
 import { Doughnut, Bar } from 'vue-chartjs'
 import { formatStatNumber, formatCurrencyEUR } from '@/js/formatNumbers'
+import { toLocalYmdNumber } from '@/js/dateUtils'
 
 ChartJS.register(ArcElement, BarElement, CategoryScale, LinearScale, Tooltip, Legend, ChartDataLabels)
 
@@ -206,13 +207,21 @@ function getMonthBoundsFromWeeks(weeks) {
 
 function computeOrderQuantity(order, dailyLogs, bounds) {
   if (!order || !Array.isArray(dailyLogs) || !bounds) return 0
-  const { monthStart, monthEnd } = bounds
+  const startN = toLocalYmdNumber(bounds.monthStart)
+  const endN = toLocalYmdNumber(bounds.monthEnd)
+  if (startN == null || endN == null) return 0
   const oid = String(order._id)
   return dailyLogs
     .filter((log) => {
-      const d = new Date(log.date)
+      const logN = toLocalYmdNumber(log.date)
+      if (logN == null) return false
       const idMatch = String(log.order?._id || log.order || log.orderId) === oid
-      return idMatch && d >= monthStart && d <= monthEnd && typeof log.quantityCompleted === 'number'
+      return (
+        idMatch &&
+        logN >= startN &&
+        logN <= endN &&
+        typeof log.quantityCompleted === 'number'
+      )
     })
     .reduce((sum, log) => sum + Number(log.quantityCompleted || 0), 0)
 }
@@ -467,20 +476,23 @@ const facetCharts = computed(() => {
     .sort((a, b) => b[1] - a[1])
     .slice(0, 4)
 
-  const labels = weeks.map((_, i) => `${t('ordersDashboard.charts.week')} ${i + 1}`)
+  const labels = weeks.map(
+    (w, i) =>
+      `${t('ordersDashboard.charts.week')} ${w.weekNumber != null ? w.weekNumber : i + 1}`
+  )
 
   return byType.map(([caseType]) => {
     const color = caseTypeColorMap.value.get(caseType) || CHANNEL_COLORS[0]
     const data = weeks.map((week) => {
-      const wStart = new Date(week.start)
-      const wEnd = new Date(week.end)
-      wEnd.setHours(23, 59, 59, 999)
+      const startN = toLocalYmdNumber(week.start)
+      const endN = toLocalYmdNumber(week.end)
+      if (startN == null || endN == null) return 0
       const typeOrders = eligibleOrders.value.filter((o) => (o.caseType || t('ordersDashboard.unspecified')) === caseType)
       const idSet = new Set(typeOrders.map((o) => String(o._id)))
       let sum = 0
       for (const log of props.dailyLogs || []) {
-        const d = new Date(log.date)
-        if (d < wStart || d > wEnd) continue
+        const logN = toLocalYmdNumber(log.date)
+        if (logN == null || logN < startN || logN > endN) continue
         const oid = String(log.order?._id || log.order || log.orderId)
         if (!idSet.has(oid)) continue
         const order = typeOrders.find((o) => String(o._id) === oid)
