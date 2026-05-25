@@ -195,8 +195,8 @@
                 <template #item.teamUnits="{ item }">
                   {{ formatSlashPair((item?.raw ?? item)?.teamUnits, (item?.raw ?? item)?.teamGoal || 0) }}
                 </template>
-                <template #item.revenueGoal="{ item }">
-                  {{ formatCurrency((item?.raw ?? item)?.revenueGoal) }}
+                <template #item.myRevenueGoal="{ item }">
+                  {{ formatCurrency((item?.raw ?? item)?.myRevenueGoal) }}
                 </template>
                 <template #item.currentRevenue="{ item }">
                   {{ formatCurrency((item?.raw ?? item)?.currentRevenue) }}
@@ -273,7 +273,7 @@
                     <td class="cases-table-total-cell"></td>
                     <td class="cases-table-total-cell">{{ totalsRow.teamUnits }}</td>
                     <td class="cases-table-total-cell">{{ totalsRow.currentRevenue }}</td>
-                    <td class="cases-table-total-cell">{{ totalsRow.revenueGoal }}</td>
+                    <td class="cases-table-total-cell">{{ totalsRow.myRevenueGoal }}</td>
                     <td class="cases-table-total-cell"></td>
                     <td class="cases-table-total-cell"></td>
                     <td class="cases-table-total-cell"></td>
@@ -1417,7 +1417,7 @@ const casesTableHeaders = computed(() => [
   { title: t('ordersDashboard.tableHeaders.unit'), key: 'caseUnit', sortable: true },
   { title: t('agentTables.teamResults'), key: 'teamUnits', sortable: true },
   { title: 'Results now', key: 'currentRevenue', sortable: true },
-  { title: t('ordersDashboard.tableHeaders.revenueGoal'), key: 'revenueGoal', sortable: true },
+  { title: t('agentCaseCard.myRevenueGoal'), key: 'myRevenueGoal', sortable: true },
   { title: '%', key: 'percentage', sortable: true },
   { title: t('agentDashboard.myRate'), key: 'myRate', sortable: true },
   { title: t('ordersDashboard.tableHeaders.callers'), key: 'callers', sortable: false },
@@ -1820,7 +1820,7 @@ const totalsRow = computed(() => {
     myUnits: formatSlashPair(totals.myUnits, totals.myGoal),
     teamUnits: formatSlashPair(totals.teamUnits, totals.teamGoal),
     currentRevenue: formatCurrency(totals.currentRevenue),
-    revenueGoal: formatCurrency(totals.teamRevenueGoal),
+    myRevenueGoal: formatCurrency(totals.myRevenueGoal),
   };
 });
 
