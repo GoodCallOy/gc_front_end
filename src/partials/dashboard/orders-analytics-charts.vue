@@ -151,7 +151,47 @@ import { Doughnut, Bar } from 'vue-chartjs'
 import { formatStatNumber, formatCurrencyEUR } from '@/js/formatNumbers'
 import { toLocalYmdNumber } from '@/js/dateUtils'
 
-ChartJS.register(ArcElement, BarElement, CategoryScale, LinearScale, Tooltip, Legend, ChartDataLabels)
+const stackedBarTotalsPlugin = {
+  id: 'stackedBarTotals',
+  afterDatasetsDraw(chart, _args, pluginOptions) {
+    if (!pluginOptions?.enabled) return
+
+    const values = Array.isArray(pluginOptions.values) ? pluginOptions.values : []
+    const offset = Number(pluginOptions.offset ?? 6)
+    const color = pluginOptions.color || '#424242'
+    const font = pluginOptions.font || { size: 11, weight: '700', family: "'Roboto', sans-serif" }
+
+    const currentMeta = chart.getDatasetMeta(0)
+    const remainingMeta = chart.getDatasetMeta(1)
+    if (!currentMeta?.data?.length) return
+
+    const ctx = chart.ctx
+    ctx.save()
+    ctx.fillStyle = color
+    ctx.textAlign = 'left'
+    ctx.textBaseline = 'middle'
+    ctx.font = `${font.weight || '700'} ${font.size || 11}px ${font.family || 'sans-serif'}`
+
+    for (let i = 0; i < values.length; i += 1) {
+      const endEl = remainingMeta?.data?.[i] || currentMeta?.data?.[i]
+      if (!endEl) continue
+      ctx.fillText(String(values[i] ?? ''), endEl.x + offset, endEl.y)
+    }
+
+    ctx.restore()
+  },
+}
+
+ChartJS.register(
+  ArcElement,
+  BarElement,
+  CategoryScale,
+  LinearScale,
+  Tooltip,
+  Legend,
+  ChartDataLabels,
+  stackedBarTotalsPlugin
+)
 
 const CHANNEL_COLORS = ['#26a69a', '#5d5d5d', '#ef5350', '#ffc107', '#7e57c2', '#42a5f5', '#8d6e63', '#ab47bc']
 
@@ -230,6 +270,14 @@ function computeOrderRevenue(order, dailyLogs, bounds) {
   const qty = computeOrderQuantity(order, dailyLogs, bounds)
   const price = Number(order?.pricePerUnit) || 0
   return qty * price
+}
+
+function estimatedRevenueForOrder(order) {
+  const direct = Number(order?.estimatedRevenueEuros)
+  if (Number.isFinite(direct) && direct >= 0) return direct
+  const goal = Number(order?.monthlyGoal ?? order?.totalQuantity) || 0
+  const price = Number(order?.pricePerUnit) || 0
+  return goal * price
 }
 
 const eligibleOrders = computed(() => (props.orders || []).filter(eligibleOrder))
@@ -401,25 +449,45 @@ const donutOptions = computed(() => ({
   },
 }))
 
-const horizontalBarData = computed(() => {
-  if (!bounds.value) return { labels: [], datasets: [] }
+const revenueByCaseRows = computed(() => {
+  if (!bounds.value) return []
   const rows = eligibleOrders.value
     .map((order) => ({
       name: order.caseName || '—',
       type: order.caseType || t('ordersDashboard.unspecified'),
       revenue: computeOrderRevenue(order, props.dailyLogs, bounds.value),
+      estimatedRevenue: estimatedRevenueForOrder(order),
     }))
-    .filter((r) => r.revenue > 0)
-    .sort((a, b) => b.revenue - a.revenue)
+    .map((row) => ({
+      ...row,
+      remainingRevenue: Math.max(0, row.estimatedRevenue - row.revenue),
+      displayTotal: Math.max(row.revenue, row.estimatedRevenue),
+    }))
+    .filter((r) => r.revenue > 0 || r.remainingRevenue > 0)
+    .sort((a, b) => b.displayTotal - a.displayTotal)
     .slice(0, 12)
+
+  return rows
+})
+
+const horizontalBarData = computed(() => {
+  const rows = revenueByCaseRows.value
 
   return {
     labels: rows.map((r) => r.name),
     datasets: [
       {
-        label: t('ordersDashboard.charts.revenue'),
+        label: t('ordersDashboard.revenue.current'),
         data: rows.map((r) => r.revenue),
         backgroundColor: rows.map((r) => caseTypeColorMap.value.get(r.type)),
+        borderSkipped: false,
+        borderRadius: 4,
+      },
+      {
+        label: t('ordersDashboard.monthlyBreakdown.remaining'),
+        data: rows.map((r) => r.remainingRevenue),
+        backgroundColor: '#cfd8dc',
+        borderSkipped: false,
         borderRadius: 4,
       },
     ],
@@ -427,7 +495,7 @@ const horizontalBarData = computed(() => {
 })
 
 const horizontalBarHeight = computed(() => {
-  const n = horizontalBarData.value.labels?.length || 0
+  const n = revenueByCaseRows.value.length || 0
   return Math.min(560, Math.max(300, n * 34 + 48))
 })
 
@@ -435,32 +503,48 @@ const horizontalBarOptions = computed(() => ({
   indexAxis: 'y',
   responsive: true,
   maintainAspectRatio: false,
-  layout: { padding: { right: 56 } },
+  interaction: { mode: 'index', intersect: false },
+  layout: { padding: { right: 64 } },
   plugins: {
-    legend: { display: false },
+    legend: { display: true, position: 'top' },
     datalabels: {
-      anchor: 'end',
-      align: 'start',
-      offset: 4,
-      color: '#424242',
+      clip: false,
+      anchor: 'center',
+      align: 'center',
+      offset: 0,
+      color: (ctx) => (ctx.datasetIndex === 0 ? '#ffffff' : '#424242'),
       font: { size: 11, weight: '600' },
       formatter: (v) => (v > 0 ? formatCurrencyEUR(v) : ''),
     },
+    stackedBarTotals: {
+      enabled: true,
+      offset: 6,
+      color: '#424242',
+      font: { size: 11, weight: '700', family: "'Roboto', sans-serif" },
+      values: revenueByCaseRows.value.map((row) => formatCurrencyEUR(row.estimatedRevenue)),
+    },
     tooltip: {
       callbacks: {
-        label: (ctx) => formatCurrencyEUR(ctx.raw || 0),
+        label: (ctx) => `${ctx.dataset.label}: ${formatCurrencyEUR(ctx.raw || 0)}`,
+        footer: (items) => {
+          const idx = items?.[0]?.dataIndex
+          const row = Number.isInteger(idx) ? revenueByCaseRows.value[idx] : null
+          return row ? `${t('ordersDashboard.tableHeaders.revenueGoal')}: ${formatCurrencyEUR(row.estimatedRevenue)}` : ''
+        },
       },
     },
   },
   scales: {
     x: {
       beginAtZero: true,
+      stacked: true,
       grid: { display: true, color: 'rgba(0,0,0,0.06)' },
       ticks: {
         callback: (v) => formatEuroK(Number(v)),
       },
     },
     y: {
+      stacked: true,
       grid: { display: false },
       ticks: { font: { size: 11 } },
     },
