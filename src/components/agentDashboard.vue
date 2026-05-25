@@ -565,6 +565,7 @@ import AgentDashboardPersonalStatsCard from './agentDashboardPersonalStatsCard.v
 import axios from 'axios'
 import urls from '@/js/config.js'
 import { resolveLinkedGcAgent } from '@/js/resolveLinkedGcAgent.js'
+import { computeAgentMyProgressPercent } from '@/js/agentMyProgress'
 import { formatStatNumber, formatSlashPair, formatCurrencyEUR, roundTo2Decimals } from '@/js/formatNumbers'
 const store = useStore()
 const router = useRouter()
@@ -1774,14 +1775,15 @@ const topBoxStats = computed(() => {
   };
 });
 
-// Personal progress should match totals row:
-// (total current revenue / total personal revenue goal) * 100
 const myRevenueToGoalPercent = computed(() => {
-  const totals = casesTableTotals.value || {};
-  const goal = Number(totals?.myRevenueGoal) || 0;
-  const revenue = Number(totals?.currentRevenue) || 0;
-  if (goal <= 0) return 0;
-  return roundTo2Decimals((revenue / goal) * 100);
+  const percent = computeAgentMyProgressPercent(
+    selectedGcAgent.value,
+    orders.value || [],
+    dailyLogs.value || [],
+    currentDateRange.value,
+    gcAgents.value || []
+  )
+  return percent == null ? 0 : percent
 });
 
 const casesTableTotals = computed(() => {
