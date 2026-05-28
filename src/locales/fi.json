@@ -303,6 +303,7 @@
       "personalMonthlyGoal": "Kuukausitavoite",
       "personalResultsNow": "Tulos nyt",
       "personalMyProgress": "Oma edistyminen",
+      "ofMonthlyGoal": "kuukausitavoitteesta",
       "totalRevenue": "Kokonaisliikevaihto",
       "myTotalRevenue": "Oma kokonaisliikevaihto",
       "revenueToGoal": "Liikevaihto tavoitteeseen",
@@ -347,7 +348,10 @@
       "saveGoal": "Tallenna",
       "deleteWeeklyGoal": "Poista viikkotavoite",
       "confirmDeleteWeeklyGoal": "Haluatko varmasti poistaa tämän viikkotavoitteen? Tätä toimintoa ei voi perua.",
-      "failedToDeleteWeeklyGoal": "Viikkotavoitteen poistaminen epäonnistui. Yritä uudelleen."
+      "failedToDeleteWeeklyGoal": "Viikkotavoitteen poistaminen epäonnistui. Yritä uudelleen.",
+      "aLeadsDetailsButton": "Näytä A-liidit",
+      "aLeadsDetailsTitle": "A-liidien tiedot",
+      "aLeadsNoData": "Tälle kuukaudelle ei löytynyt A-liidejä."
     },
     "agentCaseCard": {
       "showOrder": "Näytä tilaus",

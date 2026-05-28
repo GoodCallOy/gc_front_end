@@ -240,7 +240,7 @@ import { formatSlashPair, formatStatNumber, formatCurrencyEUR } from '@/js/forma
 const store = useStore()
 const router = useRouter()
 const { t } = useI18n()
-const activeTab = ref('tables')
+const activeTab = ref('charts')
 
 const tableHeaders = computed(() => [
   { title: '', key: 'data-table-expand', sortable: false, width: '40px' },

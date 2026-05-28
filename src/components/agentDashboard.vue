@@ -13,54 +13,97 @@
       </div>
     </v-card>
 
-    <!-- Agent statistics: team vs personal -->
-    <v-row v-if="userOrders.length > 0" class="mx-auto my-2 stats-summary-row" dense align="stretch">
-      <v-col cols="12">
-        <AgentDashboardTeamStatsCard
-          :team-revenue-goal="topBoxStats.totalRevenueGoal"
-          :team-results-now="topBoxStats.totalTeamRevenue"
-          :team-progress-percent="topBoxStats.revenueToGoalPercent"
-        />
-      </v-col>
-      <v-col cols="12">
-        <AgentDashboardPersonalStatsCard
-          :monthly-goal-euros="personalMonthlyGoalEuros"
-          :results-now-euros="casesTableTotals.currentRevenue"
-          :my-progress-percent="myRevenueToGoalPercent"
-          :my-paycheck="casesTableTotals.myPaycheck"
-        />
-      </v-col>
-    </v-row>
-
-    <!-- Units & Call Time Breakdown -->
-    <v-card v-if="userOrders.length > 0" class="mx-auto my-2 pa-4 elevation-4" style="background-color: #eeeff1;">
-      <v-row align="center" dense>
-        <v-col cols="6" sm="3" class="py-0">
-          <div class="d-flex flex-wrap align-center" style="gap: 6px 10px;">
-            <span class="text-caption">{{ t('dailyLogForm.aLeads') }}: {{ formatStatNumber(revenueGenerated.unitsByType.aLeads) }}</span>
-            <span class="text-caption">{{ t('agentDashboard.billedHours') }}: {{ formatStatNumber(revenueGenerated.billedHours) }}</span>
-          </div>
+    <div v-if="userOrders.length > 0" class="stats-unified-panel mx-auto my-2">
+      <!-- Agent statistics: team vs personal -->
+      <v-row class="stats-summary-row mb-2" dense align="stretch">
+        <v-col cols="12">
+          <AgentDashboardTeamStatsCard
+            :team-revenue-goal="topBoxStats.totalRevenueGoal"
+            :team-results-now="topBoxStats.totalTeamRevenue"
+            embedded
+          />
         </v-col>
-        <v-col cols="6" sm="3" class="py-0">
-          <div class="d-flex flex-wrap align-center" style="gap: 6px 10px;">
-            <span class="text-caption">{{ t('agentCaseCard.meetings') }}: {{ formatStatNumber(revenueGenerated.unitsByType.meetings) }}</span>
-            <span class="text-caption">{{ t('agentDashboard.callingHours') }}: {{ formatStatNumber(revenueGenerated.callTimeByType.meetings) }}</span>
-          </div>
-        </v-col>
-        <v-col cols="6" sm="3" class="py-0">
-          <div class="d-flex flex-wrap align-center" style="gap: 6px 10px;">
-            <span class="text-caption">{{ t('agentCaseCard.interviews') }}: {{ formatStatNumber(revenueGenerated.unitsByType.interviews) }}</span>
-            <span class="text-caption">{{ t('agentDashboard.callingHours') }}: {{ formatStatNumber(revenueGenerated.callTimeByType.interviews) }}</span>
-          </div>
-        </v-col>
-        <v-col cols="6" sm="3" class="py-0">
-          <div class="d-flex flex-wrap align-center" style="gap: 6px 10px;">
-            <span class="text-caption">{{ t('agentDashboard.canceledMeeting') }}: {{ canceledMeetingCount }}</span>
-            <span class="text-caption">{{ t('agentDashboard.rebookedMeetings') }}: {{ rebookedMeetingsCount }}</span>
-          </div>
+        <v-col cols="12">
+          <AgentDashboardPersonalStatsCard
+            :monthly-goal-euros="personalMonthlyGoalEuros"
+            :results-now-euros="casesTableTotals.currentRevenue"
+            :my-progress-percent="myRevenueToGoalPercent"
+            :my-paycheck="casesTableTotals.myPaycheck"
+          />
         </v-col>
       </v-row>
-    </v-card>
+
+      <!-- Units & Call Time Breakdown -->
+      <div class="activity-strip-root">
+        <div class="activity-kpi-row">
+          <v-card
+            v-for="(card, idx) in activityKpiCards"
+            :key="idx"
+            class="activity-kpi-card"
+            elevation="2"
+            rounded="lg"
+          >
+            <v-card-text class="kpi-card-inner pa-2 px-3">
+              <div class="kpi-title text-medium-emphasis font-weight-medium">{{ card.title }}</div>
+              <div class="kpi-value font-weight-bold my-1">{{ card.value }}</div>
+              <div class="kpi-progress-track mb-1">
+                <div
+                  class="kpi-progress-fill"
+                  :style="{ width: card.progress + '%', backgroundColor: card.barColor }"
+                />
+              </div>
+              <div class="kpi-subtitle text-medium-emphasis">{{ card.subtitle }}</div>
+              <div v-if="card.key === 'aLeads'" class="mt-1">
+                <v-menu v-model="aLeadsMenuOpen" :close-on-content-click="false" location="bottom start">
+                  <template #activator="{ props: menuProps }">
+                    <v-btn
+                      v-bind="menuProps"
+                      variant="text"
+                      density="compact"
+                      size="x-small"
+                      class="pa-0 text-none a-leads-dropdown-btn"
+                    >
+                      {{ t('agentDashboard.aLeadsDetailsButton') }}
+                    </v-btn>
+                  </template>
+                  <v-card min-width="560" max-width="700">
+                    <v-card-title class="text-subtitle-2 py-2">
+                      {{ t('agentDashboard.aLeadsDetailsTitle') }}
+                    </v-card-title>
+                    <v-divider />
+                    <v-card-text class="pa-0">
+                      <v-table density="compact" class="text-caption">
+                        <thead>
+                          <tr>
+                            <th class="text-left">{{ t('agentTables.date') }}</th>
+                            <th class="text-left">{{ t('agentTables.case') }}</th>
+                            <th class="text-right">{{ t('dailyLogForm.aLeads') }}</th>
+                            <th class="text-right">{{ t('agentDashboard.callingHours') }}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr v-for="row in aLeadDetailRows" :key="row.id">
+                            <td>{{ row.date }}</td>
+                            <td>{{ row.caseName }}</td>
+                            <td class="text-right">{{ row.aLeads }}</td>
+                            <td class="text-right">{{ row.callingHours }}</td>
+                          </tr>
+                          <tr v-if="aLeadDetailRows.length === 0">
+                            <td colspan="4" class="text-center text-medium-emphasis py-3">
+                              {{ t('agentDashboard.aLeadsNoData') }}
+                            </td>
+                          </tr>
+                        </tbody>
+                      </v-table>
+                    </v-card-text>
+                  </v-card>
+                </v-menu>
+              </div>
+            </v-card-text>
+          </v-card>
+        </div>
+      </div>
+    </div>
     
     <!-- Global loading state -->
     <div v-if="isInitialLoading || isLoadingDashboard" class="dashboard-loading-placeholder">
@@ -587,6 +630,7 @@ const showWeeklyNotesDialog = ref(false)
 const selectedWeekIndexForNotes = ref(0)
 const casesViewTab = ref('table')
 const expandedCaseRows = ref(new Set())
+const aLeadsMenuOpen = ref(false)
 const editWeeklyGoalDialog = ref(false)
 const editWeeklyGoalValue = ref(0)
 const editWeeklyGoalSaving = ref(false)
@@ -1761,9 +1805,65 @@ const casesTableRows = computed(() => {
   });
 });
 
+// Team current revenue using the same approach as orders dashboard:
+// revenue from logs in selected month for in-progress, non-test, non-good-call orders.
+const teamCurrentRevenueDashboardStyle = computed(() => {
+  const allOrders = orders.value || [];
+  const logs = dailyLogs.value || [];
+  const weeks = monthWeeks.value || [];
+
+  if (!Array.isArray(allOrders) || !allOrders.length) return 0;
+  if (!Array.isArray(logs) || !logs.length) return 0;
+  if (!Array.isArray(weeks) || !weeks.length) return 0;
+
+  // Same month bounds strategy as ordersDashboard (custom month weeks).
+  const starts = weeks.map((w) => new Date(w.start));
+  const ends = weeks.map((w) => new Date(w.end));
+  const monthStart = new Date(Math.min.apply(null, starts));
+  const monthEnd = new Date(Math.max.apply(null, ends));
+  monthEnd.setHours(23, 59, 59, 999);
+
+  const eligibleOrders = allOrders.filter((order) => {
+    if (isTestCase(order) || isGoodCallCase(order)) return false;
+    const orderStart = new Date(order.startDate);
+    const orderEnd = new Date(order.deadline);
+    const overlapsMonth = orderStart <= monthEnd && orderEnd >= monthStart;
+    if (!overlapsMonth) return false;
+    const status = String(order?.orderStatus ?? order?.status ?? '')
+      .toLowerCase()
+      .replace(/\s/g, '-');
+    return status === 'in-progress';
+  });
+
+  if (!eligibleOrders.length) return 0;
+
+  const logsInMonth = logs.filter((log) => {
+    const logDate = new Date(log.date);
+    const isInDateRange = logDate >= monthStart && logDate <= monthEnd;
+    const caseName = String(log?.caseName || '').toLowerCase();
+    const isNotGoodCall = caseName !== 'case good call';
+    const isNotTest = !caseName.includes('test');
+    return isInDateRange && isNotGoodCall && isNotTest;
+  });
+
+  let totalRevenue = 0;
+  logsInMonth.forEach((log) => {
+    const quantityCompleted = Number(log?.quantityCompleted) || 0;
+    const order = eligibleOrders.find((o) =>
+      o.caseName === log?.caseName ||
+      String(o._id) === String(log?.order?._id ?? log?.order ?? log?.orderId)
+    );
+
+    if (!order || isTestCase(order)) return;
+    const pricePerUnit = Number(order?.pricePerUnit) || 0;
+    totalRevenue += quantityCompleted * pricePerUnit;
+  });
+
+  return roundTo2Decimals(totalRevenue);
+});
+
 const topBoxStats = computed(() => {
-  const totals = casesTableTotals.value || {};
-  const currentRevenue = Number(totals?.teamCurrentRevenue) || 0;
+  const currentRevenue = Number(teamCurrentRevenueDashboardStyle.value) || 0;
   const totalRevenueGoal = Number(teamEstimatedRevenueGoal.value) || 0;
   const revenueToGoalPercent = totalRevenueGoal > 0
     ? roundTo2Decimals((currentRevenue / totalRevenueGoal) * 100)
@@ -2038,6 +2138,95 @@ const rebookedMeetingsCount = computed(() => {
     const hasRebook = !!(item.rebookDate || item.rebookAgent);
     return hasRebook;
   }).length;
+});
+
+const activityKpiCards = computed(() => [
+  {
+    key: 'aLeads',
+    title: t('dailyLogForm.aLeads'),
+    value: formatStatNumber(revenueGenerated.value?.unitsByType?.aLeads || 0),
+    progress: 100,
+    barColor: '#90a4ae',
+    subtitle: `${t('agentDashboard.billedHours')}: ${formatStatNumber(revenueGenerated.value?.billedHours || 0)}`,
+  },
+  {
+    key: 'meetings',
+    title: t('agentCaseCard.meetings'),
+    value: formatStatNumber(revenueGenerated.value?.unitsByType?.meetings || 0),
+    progress: 100,
+    barColor: '#455a64',
+    subtitle: `${t('agentDashboard.callingHours')}: ${formatStatNumber(revenueGenerated.value?.callTimeByType?.meetings || 0)}`,
+  },
+  {
+    key: 'interviews',
+    title: t('agentCaseCard.interviews'),
+    value: formatStatNumber(revenueGenerated.value?.unitsByType?.interviews || 0),
+    progress: 100,
+    barColor: '#5d5d5d',
+    subtitle: `${t('agentDashboard.callingHours')}: ${formatStatNumber(revenueGenerated.value?.callTimeByType?.interviews || 0)}`,
+  },
+  {
+    key: 'canceled',
+    title: t('agentDashboard.canceledMeeting'),
+    value: formatStatNumber(canceledMeetingCount.value || 0),
+    progress: 100,
+    barColor: '#607d8b',
+    subtitle: `${t('agentDashboard.rebookedMeetings')}: ${formatStatNumber(rebookedMeetingsCount.value || 0)}`,
+  },
+]);
+
+const aLeadDetailRows = computed(() => {
+  const stats = caseStats.value || [];
+  const allOrders = orders.value || [];
+  const agent = selectedGcAgent.value;
+  const dateRange = currentDateRange.value;
+
+  if (!agent || !Array.isArray(dateRange) || dateRange.length < 2) return [];
+  const agentId = String(agent._id ?? agent.id ?? '');
+  const [startDate, endDate] = dateRange;
+  const monthStart = new Date(startDate);
+  const monthEnd = new Date(endDate);
+  monthEnd.setHours(23, 59, 59, 999);
+
+  const agentCases = allOrders.filter(order =>
+    isAgentAssignedToOrder(order, agentId) && !isTestCase(order)
+  );
+
+  const uniqueLogs = [];
+  const seen = new Set();
+  for (const log of stats) {
+    const d = new Date(log?.date);
+    if (!(d >= monthStart && d <= monthEnd)) continue;
+    const logAgentId = String(log?.agent?._id ?? log?.agent?.id ?? log?.agent ?? log?.agentId ?? '');
+    if (logAgentId !== agentId) continue;
+    const key = `${log.date}_${log.agentName || log.agent}_${log.caseName}_${log._id || log.id}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    uniqueLogs.push(log);
+  }
+
+  return uniqueLogs
+    .map((log) => {
+      const matchedOrder = findOrderForLog(log, agentCases);
+      const caseUnit = String(matchedOrder?.caseUnit || log?.caseUnit || '').toLowerCase();
+      const isALeadsCase = /^a[-_]?leads?$/i.test(caseUnit);
+      const aLeads = isALeadsCase
+        ? Number(log?.aLeads ?? log?.quantityCompleted ?? 0) || 0
+        : Number(log?.aLeads ?? 0) || 0;
+      if (aLeads <= 0) return null;
+
+      const callTime = Number(log?.call_time ?? log?.callTime ?? 0) || 0;
+      return {
+        id: String(log?._id ?? log?.id ?? `${log?.date}_${log?.caseName}_${aLeads}`),
+        date: formatDateToDDMMYYYY(log?.date),
+        caseName: log?.caseName || matchedOrder?.caseName || '—',
+        aLeads: formatStatNumber(aLeads),
+        callingHours: formatStatNumber(callTime),
+        sortDate: new Date(log?.date).getTime(),
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => b.sortDate - a.sortDate);
 });
 
 async function fetchAgentWeeklyGoals() {
@@ -2603,6 +2792,36 @@ watch(currentDateRange, async (newRange) => {
     padding: 8px 0 20px;
   }
 
+  .stats-unified-panel {
+    background: #f2f4f7;
+    border-radius: 12px;
+    padding: 12px;
+  }
+
+  .activity-strip-root {
+    padding: 0;
+    border-radius: 0;
+  }
+
+  .activity-kpi-row {
+    display: grid;
+    gap: 8px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .activity-kpi-card {
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .a-leads-dropdown-btn {
+    min-width: 0;
+    font-size: 0.72rem;
+    letter-spacing: normal;
+    height: auto !important;
+  }
+
   .cases-table-total-row {
     border-top: 1px solid rgba(0, 0, 0, 0.08) !important;
     background-color: rgba(0, 0, 0, 0.015);
@@ -2631,6 +2850,10 @@ watch(currentDateRange, async (newRange) => {
       grid-template-columns: repeat(3, 1fr); /* 3 columns for tablets */
       width: 100% !important;
     }
+
+    .activity-kpi-row {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
   }
 
   @media (max-width: 600px) {
@@ -2641,6 +2864,10 @@ watch(currentDateRange, async (newRange) => {
 
     .header-action-item {
       min-width: 100%;
+    }
+
+    .activity-kpi-row {
+      grid-template-columns: 1fr;
     }
 
     .grid-container {

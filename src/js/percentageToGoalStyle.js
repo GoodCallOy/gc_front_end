@@ -25,3 +25,13 @@ export function getPercentageToGoalVuetifyColor(percent) {
   if (cls === 'percentage-green') return 'success';
   return 'error';
 }
+
+/** Hex fill for KPI progress bars (matches badge thresholds). */
+export function getPercentageToGoalBarColor(percent) {
+  const cls = getPercentageToGoalBadgeClass(percent);
+  if (cls === 'percentage-red') return '#c62828';
+  if (cls === 'percentage-orange') return '#ef6c00';
+  if (cls === 'percentage-yellow') return '#f9a825';
+  if (cls === 'percentage-green') return '#2e7d32';
+  return '#c62828';
+}

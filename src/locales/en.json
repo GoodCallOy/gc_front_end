@@ -320,6 +320,7 @@
       "personalMonthlyGoal": "Monthly goal",
       "personalResultsNow": "Results now",
       "personalMyProgress": "My progress",
+      "ofMonthlyGoal": "of monthly goal",
       "totalRevenue": "Total Revenue",
       "myTotalRevenue": "My Total Revenue",
       "revenueToGoal": "Revenue to Goal",
@@ -364,7 +365,10 @@
       "saveGoal": "Save",
       "deleteWeeklyGoal": "Delete weekly goal",
       "confirmDeleteWeeklyGoal": "Are you sure you want to delete this weekly goal? This action cannot be undone.",
-      "failedToDeleteWeeklyGoal": "Failed to delete weekly goal. Please try again."
+      "failedToDeleteWeeklyGoal": "Failed to delete weekly goal. Please try again.",
+      "aLeadsDetailsButton": "View A-leads",
+      "aLeadsDetailsTitle": "A-leads details",
+      "aLeadsNoData": "No A-leads found for this month."
     },
     "agentCaseCard": {
       "showOrder": "Show order",
