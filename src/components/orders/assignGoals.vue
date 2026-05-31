@@ -470,6 +470,7 @@ import axios from 'axios'
 import urls from '@/js/config.js'
 import { getPercentageToGoalBadgeClass } from '@/js/percentageToGoalStyle'
 import { formatSlashPair, formatStatNumber, formatCurrencyEUR } from '@/js/formatNumbers'
+import { buildOrderCopyPayload, buildOrderCopyPrefill } from '@/js/orderCopyUtils'
 
 const store = useStore()
 const router = useRouter()
@@ -726,29 +727,12 @@ async function bulkCopyOrdersToNextMonth() {
         continue;
       }
 
-      const assignedIds = [...new Set(
-        (o.assignedCallers || []).map(x => String(x?._id ?? x?.id ?? x))
-      )];
-
-      const remainingGoal = getRemainingCampaignGoalForCopy(o, nextStart)
-      const payload = {
-        caseId: o.caseId || null,
-        caseUnit: o.caseUnit || null,
-        pricePerUnit: Number(o.pricePerUnit) || 0,
-        monthlyGoal: remainingGoal,
-        campaignGoal: remainingGoal,
-        startDate: nextStart,
-        deadline: nextEnd,
-        orderStatus: o.orderStatus || 'pending',
-        caseType: o.caseType || null,
-        ProjectStartFee: Number(o.ProjectStartFee || 0),
-        ProjectManagmentFee: Number(o.ProjectManagmentFee || 0),
-        managers: o.managers || [],
-        assignedCallers: assignedIds,
-        agentGoals: { ...(o.agentGoals || {}) },
-        caseName: o.caseName || '',
-        estimatedRevenue: (Number(o.pricePerUnit) || 0) * remainingGoal,
-      };
+      const remainingGoal = getRemainingCampaignGoalForCopy(o, nextStart);
+      const payload = buildOrderCopyPayload(o, nextStart, nextEnd, {
+        remainingGoal,
+        agents: gcAgents.value || [],
+        sourceMonthStart: currentStart,
+      });
 
       try {
         console.log(`📋 Bulk copy: Copying "${o.caseName}" with dates ${nextStart} to ${nextEnd}...`);
@@ -1076,39 +1060,18 @@ function copyOrder(item) {
 
   pendingCopySourceId.value = item._id;
 
-  const assignedIds = [...new Set(
-    (item.assignedCallers || []).map(x => String(x?._id ?? x?.id ?? x))
-  )];
-  const [nextStart, nextEnd] = monthDateRangeForNextMonthFrom(item.startDate || currentDateRange.value?.[0]);
-  const remainingGoal = getRemainingCampaignGoalForCopy(item, nextStart)
-
-  const goals = item.agentGoals || {};
-  const rates = item.agentRates || {};
-  const prices = item.agentPrices || {};
-  const agentGoalsPrefill = {};
-  const agentRatesPrefill = {};
-  assignedIds.forEach(id => {
-    agentGoalsPrefill[id] = Number(goals[id]) || 0;
-    agentRatesPrefill[id] = Number(rates[id]) || Number(prices[id]) || 0;
-  });
+  const sourceMonthStart = currentDateRange.value?.[0] || item.startDate;
+  const [nextStart, nextEnd] = monthDateRangeForNextMonthFrom(sourceMonthStart);
+  const remainingGoal = getRemainingCampaignGoalForCopy(item, nextStart);
 
   orderFormConfig.value = {
     mode: 'copy',
     orderId: null,
     initialOrder: null,
-    prefill: {
-      caseId: item.caseId || null,
-      caseUnit: item.caseUnit || null,
-      pricePerUnit: Number(item.pricePerUnit) || 0,
-      totalQuantity: remainingGoal,
-      campaignGoal: remainingGoal,
-      startDate: nextStart,
-      deadline: nextEnd,
-      orderStatus: item.orderStatus || 'pending',
-      assignedCallers: assignedIds,
-      agentGoals: agentGoalsPrefill,
-      agentRates: agentRatesPrefill
-    },
+    prefill: buildOrderCopyPrefill(item, nextStart, nextEnd, {
+      remainingGoal,
+      sourceMonthStart,
+    }),
     defaultDates: null
   };
   orderFormModalKey.value++;
