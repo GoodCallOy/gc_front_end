@@ -112,7 +112,7 @@
         {{ t('ordersDashboard.charts.revenueOverWeeks') }}
       </v-card-title>
       <v-card-text>
-        <v-row>
+        <v-row v-if="facetCharts.length">
           <v-col
             v-for="facet in facetCharts"
             :key="facet.caseType"
@@ -125,10 +125,33 @@
               <Bar :data="facet.data" :options="facet.options" />
             </div>
           </v-col>
-          <v-col v-if="!facetCharts.length" cols="12">
-            <div class="text-medium-emphasis text-body-2">{{ t('ordersDashboard.charts.noData') }}</div>
+          <v-col
+            v-if="combinedFacetChart && facetCombinedInline"
+            cols="12"
+            sm="6"
+            lg="3"
+          >
+            <div class="text-caption font-weight-bold mb-2 text-center">
+              {{ t('ordersDashboard.charts.revenueOverWeeksCombined') }}
+            </div>
+            <div class="facet-chart-height">
+              <Bar :data="combinedFacetChart.data" :options="combinedFacetChart.options" />
+            </div>
           </v-col>
         </v-row>
+        <v-row v-if="combinedFacetChart && !facetCombinedInline" class="mt-2">
+          <v-col cols="12" sm="10" md="8" lg="6" class="mx-auto">
+            <div class="text-caption font-weight-bold mb-2 text-center">
+              {{ t('ordersDashboard.charts.revenueOverWeeksCombined') }}
+            </div>
+            <div class="facet-chart-height combined-facet-chart">
+              <Bar :data="combinedFacetChart.data" :options="combinedFacetChart.options" />
+            </div>
+          </v-col>
+        </v-row>
+        <div v-if="!facetCharts.length" class="text-medium-emphasis text-body-2">
+          {{ t('ordersDashboard.charts.noData') }}
+        </div>
       </v-card-text>
     </v-card>
   </div>
@@ -588,39 +611,101 @@ const horizontalBarOptions = computed(() => ({
   },
 }))
 
+function weekChartLabels(weeks) {
+  return weeks.map(
+    (w, i) =>
+      `${t('ordersDashboard.charts.week')} ${w.weekNumber != null ? w.weekNumber : i + 1}`
+  )
+}
+
+function computeWeekRevenueForCaseType(caseType, week) {
+  const startN = toLocalYmdNumber(week.start)
+  const endN = toLocalYmdNumber(week.end)
+  if (startN == null || endN == null) return 0
+  const typeLabel = caseType || t('ordersDashboard.unspecified')
+  const typeOrders = eligibleOrders.value.filter(
+    (o) => (o.caseType || t('ordersDashboard.unspecified')) === typeLabel
+  )
+  const idSet = new Set(typeOrders.map((o) => String(o._id)))
+  let sum = 0
+  for (const log of props.dailyLogs || []) {
+    const logN = toLocalYmdNumber(log.date)
+    if (logN == null || logN < startN || logN > endN) continue
+    const oid = String(log.order?._id || log.order || log.orderId)
+    if (!idSet.has(oid)) continue
+    const order = typeOrders.find((o) => String(o._id) === oid)
+    if (!order) continue
+    sum += (Number(log.quantityCompleted) || 0) * (Number(order.pricePerUnit) || 0)
+  }
+  return sum
+}
+
+function buildFacetChartOptions({ stacked = false, showLegend = false } = {}) {
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        display: showLegend,
+        position: 'bottom',
+        labels: { boxWidth: 10, padding: 8, font: { size: 10 } },
+      },
+      datalabels: { display: false },
+      tooltip: {
+        callbacks: {
+          label: (ctx) => {
+            const label = ctx.dataset?.label ? `${ctx.dataset.label}: ` : ''
+            return `${label}${formatCurrencyEUR(ctx.raw || 0)}`
+          },
+          footer: stacked
+            ? (items) => {
+                const total = items.reduce((s, item) => s + (Number(item.raw) || 0), 0)
+                return total > 0 ? `${t('ordersDashboard.charts.revenue')}: ${formatCurrencyEUR(total)}` : ''
+              }
+            : undefined,
+        },
+      },
+    },
+    scales: {
+      x: {
+        stacked,
+        grid: { display: false },
+        ticks: { maxRotation: 0, font: { size: 10 } },
+      },
+      y: {
+        stacked,
+        beginAtZero: true,
+        grid: { color: 'rgba(0,0,0,0.06)', borderDash: [4, 4] },
+        ticks: {
+          font: { size: 10 },
+          callback: (v) => formatEuroK(Number(v)),
+        },
+      },
+    },
+  }
+}
+
+const facetCaseTypes = computed(() =>
+  [...revenueByCaseType.value.entries()]
+    .filter(([, v]) => v > 0)
+    .sort((a, b) => b[1] - a[1])
+    .map(([caseType]) => caseType)
+)
+
+const facetCombinedInline = computed(() => {
+  const n = facetCaseTypes.value.length
+  return n > 0 && n <= 3
+})
+
 const facetCharts = computed(() => {
   const weeks = props.monthWeeks || []
   if (!weeks.length || !bounds.value) return []
 
-  const byType = [...revenueByCaseType.value.entries()]
-    .filter(([, v]) => v > 0)
-    .sort((a, b) => b[1] - a[1])
+  const labels = weekChartLabels(weeks)
 
-  const labels = weeks.map(
-    (w, i) =>
-      `${t('ordersDashboard.charts.week')} ${w.weekNumber != null ? w.weekNumber : i + 1}`
-  )
-
-  return byType.map(([caseType]) => {
+  return facetCaseTypes.value.map((caseType) => {
     const color = caseTypeColorMap.value.get(caseType) || CHANNEL_COLORS[0]
-    const data = weeks.map((week) => {
-      const startN = toLocalYmdNumber(week.start)
-      const endN = toLocalYmdNumber(week.end)
-      if (startN == null || endN == null) return 0
-      const typeOrders = eligibleOrders.value.filter((o) => (o.caseType || t('ordersDashboard.unspecified')) === caseType)
-      const idSet = new Set(typeOrders.map((o) => String(o._id)))
-      let sum = 0
-      for (const log of props.dailyLogs || []) {
-        const logN = toLocalYmdNumber(log.date)
-        if (logN == null || logN < startN || logN > endN) continue
-        const oid = String(log.order?._id || log.order || log.orderId)
-        if (!idSet.has(oid)) continue
-        const order = typeOrders.find((o) => String(o._id) === oid)
-        if (!order) continue
-        sum += (Number(log.quantityCompleted) || 0) * (Number(order.pricePerUnit) || 0)
-      }
-      return sum
-    })
+    const data = weeks.map((week) => computeWeekRevenueForCaseType(caseType, week))
 
     return {
       caseType,
@@ -635,35 +720,28 @@ const facetCharts = computed(() => {
           },
         ],
       },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false },
-          datalabels: { display: false },
-          tooltip: {
-            callbacks: {
-              label: (ctx) => formatCurrencyEUR(ctx.raw || 0),
-            },
-          },
-        },
-        scales: {
-          x: {
-            grid: { display: false },
-            ticks: { maxRotation: 0, font: { size: 10 } },
-          },
-          y: {
-            beginAtZero: true,
-            grid: { color: 'rgba(0,0,0,0.06)', borderDash: [4, 4] },
-            ticks: {
-              font: { size: 10 },
-              callback: (v) => formatEuroK(Number(v)),
-            },
-          },
-        },
-      },
+      options: buildFacetChartOptions(),
     }
   })
+})
+
+const combinedFacetChart = computed(() => {
+  const weeks = props.monthWeeks || []
+  if (!weeks.length || !bounds.value || !facetCaseTypes.value.length) return null
+
+  const labels = weekChartLabels(weeks)
+  const datasets = facetCaseTypes.value.map((caseType) => ({
+    label: caseType,
+    data: weeks.map((week) => computeWeekRevenueForCaseType(caseType, week)),
+    backgroundColor: caseTypeColorMap.value.get(caseType) || CHANNEL_COLORS[0],
+    borderRadius: 4,
+    stack: 'combined',
+  }))
+
+  return {
+    data: { labels, datasets },
+    options: buildFacetChartOptions({ stacked: true, showLegend: true }),
+  }
 })
 </script>
 
@@ -780,6 +858,10 @@ const facetCharts = computed(() => {
 .facet-chart-height {
   height: 220px;
   position: relative;
+}
+
+.combined-facet-chart {
+  height: 260px;
 }
 
 </style>

@@ -106,6 +106,7 @@
         "revenueByCaseType": "Liikevaihto tapauksen tyypin mukaan",
         "revenueByCase": "Liikevaihto tapauksittain",
         "revenueOverWeeks": "Liikevaihto viikoittain tyypeittäin",
+        "revenueOverWeeksCombined": "Yhteensä (kaikki tyypit)",
         "revenue": "Liikevaihto",
         "week": "Vk",
         "noData": "Ei liikevaihtoa tällä ajanjaksolla.",

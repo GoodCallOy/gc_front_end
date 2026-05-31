@@ -123,6 +123,7 @@
         "revenueByCaseType": "Revenue by case type",
         "revenueByCase": "Revenue by case",
         "revenueOverWeeks": "Revenue by case type over weeks",
+        "revenueOverWeeksCombined": "Combined (all types)",
         "revenue": "Revenue",
         "week": "Week",
         "noData": "No revenue data for this period.",
