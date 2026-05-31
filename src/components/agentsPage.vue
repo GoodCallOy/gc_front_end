@@ -1,19 +1,13 @@
 <template>
-    <div class="d-flex flex-column align-center" style="height: 100vh;">
-      <!-- Date Navigation Header -->
-      <v-card elevation="1" class="mb-4" style="width: 90%;">
-        <div class="d-flex align-center justify-center pa-4">
-          <v-btn icon flat class="pa-0 ma-0" @click="getPreviousMonth">
-            <v-icon>mdi-chevron-left</v-icon>
-          </v-btn>
-          <div class="text-h6 font-weight-medium mx-3">{{ getFormattedDateRange() }}</div>
-          <v-btn icon flat @click="getNextMonth">
-            <v-icon>mdi-chevron-right</v-icon>
-          </v-btn>
-        </div>
-      </v-card>
+    <v-container fluid class="agents-page-root">
+      <DateHeader
+        :currentDateRange="currentDateRange"
+        :showMonthOnly="true"
+        @prev="getPreviousMonth"
+        @next="getNextMonth"
+      />
 
-      <h1 class="mb-3 mt-5">Agents Stats - {{ getFormattedDateRange() }}</h1>
+      <h1 class="text-h4 text-center mb-3">Agents Stats - {{ getFormattedDateRange() }}</h1>
 
       <!-- Toggle: active agents only (default) vs all agents -->
       <div class="d-flex align-center justify-center mb-4">
@@ -43,7 +37,7 @@
                 {{ agent.name || 'Unknown Agent' }}
               </v-card-title>
 
-              <!-- Assigned cases and total revenue -->
+              <!-- Assigned cases and monthly goal -->
               <v-card-text class="pt-0 pb-1 flex-grow-1 agent-card-content">
                 <div v-if="getAgentCases(agent).length" class="text-body-2">
                   <div class="font-weight-medium mb-1">Assigned cases</div>
@@ -88,24 +82,12 @@
                     </li>
                   </ul>
                   <div class="font-weight-medium">
-                    Total revenue: €{{ formatCurrency(getAgentTotalRevenue(agent)) }}
+                    {{ $t('agentDashboard.personalMonthlyGoal') }}: €{{ formatCurrency(monthlyGoalByAgent[String(agent._id || agent.id || agent.name)] ?? 0) }}
                   </div>
                 </div>
                 <div v-else class="text-caption text-grey">
                   No cases assigned
                 </div>
-                <template
-                  v-for="mp in [myProgressByAgent[String(agent._id || agent.id || agent.name)] || { kind: 'empty' }]"
-                  :key="(agent._id || agent.id || agent.name) + '-mp'"
-                >
-                  <div v-if="mp.kind === 'ok'" class="mt-2 font-weight-medium text-body-2">
-                    {{ $t('agentDashboard.personalMyProgress') }}:
-                    <span :class="['ml-1', mp.cls]">{{ formatStatNumber(mp.p) }}%</span>
-                  </div>
-                  <div v-else class="mt-2 font-weight-medium text-body-2">
-                    {{ $t('agentDashboard.personalMyProgress') }}: <span class="text-medium-emphasis">—</span>
-                  </div>
-                </template>
               </v-card-text>
 
               <v-spacer />
@@ -137,7 +119,7 @@
           </v-col>
         </v-row>
       </v-container>
-    </div>
+    </v-container>
 </template>
 
 <style scoped>
@@ -152,8 +134,8 @@
 import { mapGetters, mapMutations, mapActions } from 'vuex';
 import { goToNextMonth, goToPreviousMonth, formattedDateRange, isCurrentMonth } from '@/js/dateUtils';
 import { formatStatNumber } from '@/js/formatNumbers';
-import { computeAgentMyProgressPercent } from '@/js/agentMyProgress';
-import { getPercentageToGoalBadgeClass, getPercentageToGoalVuetifyColor } from '@/js/percentageToGoalStyle';
+import { getPercentageToGoalVuetifyColor } from '@/js/percentageToGoalStyle';
+import DateHeader from '@/components/DateHeader.vue';
 
 /** Display order on agents page: callers → managers → admins → other */
 function agentRoleSortRank(role) {
@@ -163,9 +145,53 @@ function agentRoleSortRank(role) {
   if (r === 'admin') return 2;
   return 3;
 }
+
+function monthBoundsFromRange(dateRange) {
+  if (!Array.isArray(dateRange) || dateRange.length < 2) {
+    const now = new Date();
+    return {
+      from: new Date(now.getFullYear(), now.getMonth(), 1),
+      to: new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999),
+    };
+  }
+  const [start, end] = dateRange;
+  const from = new Date(start);
+  const to = new Date(end);
+  to.setHours(23, 59, 59, 999);
+  return { from, to };
+}
+
+function orderOverlapsRange(order, from, to) {
+  const orderStart = new Date(order?.startDate || 0);
+  const orderEnd = new Date(order?.deadline || 0);
+  return orderStart <= to && orderEnd >= from;
+}
+
+/** Personal monthly goal (€) for one agent in the selected month */
+function computeAgentMonthlyGoalEuros(agent, orders, dateRange) {
+  const aid = String(agent?._id ?? agent?.id ?? '');
+  if (!aid || !Array.isArray(orders)) return 0;
+  const { from, to } = monthBoundsFromRange(dateRange);
+  return orders
+    .filter(
+      (order) =>
+        (order.assignedCallers || []).some((x) => String(x?._id ?? x?.id ?? x) === aid) &&
+        orderOverlapsRange(order, from, to) &&
+        Number(order?.agentGoals?.[aid] ?? 0) > 0
+    )
+    .reduce((sum, order) => {
+      const goal = Number(order?.agentGoals?.[aid] ?? 0);
+      const price = Number(order?.pricePerUnit ?? 0);
+      return sum + goal * price;
+    }, 0);
+}
   
   export default {
     name: 'agentsPage',
+
+    components: {
+      DateHeader,
+    },
 
     data() {
       return {
@@ -198,9 +224,7 @@ function agentRoleSortRank(role) {
           return agents;
         }
 
-        const now = new Date();
-        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-        const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+        const { from: monthStart, to: monthEnd } = this.getCurrentMonthBounds();
 
         return agents.map(agent => {
           // Filter daily logs for this agent within the selected month
@@ -238,24 +262,16 @@ function agentRoleSortRank(role) {
           });
       },
 
-      /**
-       * Per-agent “My progress” (same as agent dashboard) — use in template as myProgressByAgent[agentKey(agent)]
-       * so we don’t rely on a methods-callback (avoids runtime “not a function” with some loaders).
-       */
-      myProgressByAgent() {
+      /** Per-agent monthly goal (€) — computed map avoids template method loader issues */
+      monthlyGoalByAgent() {
         const list = this.agentsWithStats || [];
         const orders = this.orders || [];
-        const logs = this.dailyLogs || [];
         const range = this.currentDateRange;
-        const gca = this.gcAgents || [];
         const out = Object.create(null);
         for (const agent of list) {
           const key = String(agent?._id ?? agent?.id ?? agent?.name ?? '');
           if (!key) continue;
-          const p = computeAgentMyProgressPercent(agent, orders, logs, range, gca);
-          if (p == null) out[key] = { kind: 'empty' };
-          else
-            out[key] = { kind: 'ok', p, cls: getPercentageToGoalBadgeClass(p) };
+          out[key] = computeAgentMonthlyGoalEuros(agent, orders, range);
         }
         return out;
       },
@@ -271,18 +287,13 @@ function agentRoleSortRank(role) {
           this.fetchgcAgents(),
           this.fetchDailyLogs(),
           this.fetchOrders(),
-          this.fetchGcCases()
+          this.fetchGcCases(),
         ]);
-        
-        // Always use current month for this page (stats are for current month only)
-        const now = new Date();
-        const year = now.getFullYear();
-        const month = now.getMonth();
-        const firstDay = new Date(Date.UTC(year, month, 1));
-        const lastDay = new Date(Date.UTC(year, month + 1, 0));
-        const format = (date) => date.toISOString().split('T')[0];
-        this.updateDateRange([format(firstDay), format(lastDay)]);
-        
+
+        if (!this.currentDateRange || this.currentDateRange.length < 2) {
+          await this.fetchCurrentDateRange();
+        }
+
         console.log('🔍 agentsWithStats on mount:', this.agentsWithStats);
         console.log(
           '🔍 Agent info:',
@@ -304,29 +315,26 @@ function agentRoleSortRank(role) {
       formatStatNumber,
       getPercentageToGoalVuetifyColor,
       ...mapMutations(['setCurrentPage', 'setDateRange']),
-      ...mapActions(['fetchUsers', 'fetchgcAgents', 'fetchDailyLogs', 'fetchOrders', 'fetchGcCases']),
+      ...mapActions(['fetchUsers', 'fetchgcAgents', 'fetchDailyLogs', 'fetchOrders', 'fetchGcCases', 'fetchCurrentDateRange']),
 
-      // True if order's startDate–deadline overlaps the current calendar month
-      orderOverlapsCurrentMonth(order) {
-        const now = new Date();
-        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-        const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+      // True if order's startDate–deadline overlaps the selected month
+      orderOverlapsSelectedMonth(order) {
+        const { from: monthStart, to: monthEnd } = this.getCurrentMonthBounds();
         const orderStart = new Date(order?.startDate || 0);
         const orderEnd = new Date(order?.deadline || 0);
         return orderStart <= monthEnd && orderEnd >= monthStart;
       },
 
-      // Orders where this agent is in assignedCallers and order overlaps current month only
+      // Orders where this agent is in assignedCallers and order overlaps selected month
       getAgentOrdersCurrentMonth(agent) {
         const aid = String(agent?._id ?? agent?.id ?? '');
         if (!aid) return [];
         const all = this.orders || [];
         
-        // First, only orders where the agent is assigned and the order overlaps current month
         const agentOrders = all.filter(
           (order) =>
             (order.assignedCallers || []).some((x) => String(x?._id ?? x?.id ?? x) === aid) &&
-            this.orderOverlapsCurrentMonth(order)
+            this.orderOverlapsSelectedMonth(order)
         );
 
         // Then, exclude cases where this agent's goal is 0 or not set
@@ -337,18 +345,7 @@ function agentRoleSortRank(role) {
       },
 
       getCurrentMonthBounds() {
-        const range = this.currentDateRange;
-        if (!Array.isArray(range) || range.length < 2) {
-          const now = new Date();
-          const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
-          const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-          return { from: firstDay, to: lastDay };
-        }
-        const [start, end] = range;
-        const from = new Date(start);
-        const to = new Date(end);
-        to.setHours(23, 59, 59, 999);
-        return { from, to };
+        return monthBoundsFromRange(this.currentDateRange);
       },
 
       // Unique assigned cases for this agent in the current month (no duplicates by case name)
@@ -441,18 +438,6 @@ function agentRoleSortRank(role) {
       tooltipForAgentCaseRow(c) {
         const name = c.fullCaseName || c.displayName;
         return `${name} — ${c.completed}/${c.goal}`;
-      },
-
-      // Total revenue from assigned cases in current month: sum of (agent goal × pricePerUnit) per order
-      getAgentTotalRevenue(agent) {
-        const aid = String(agent?._id ?? agent?.id ?? '');
-        if (!aid) return 0;
-        const orders = this.getAgentOrdersCurrentMonth(agent);
-        return orders.reduce((sum, order) => {
-          const goal = Number(order?.agentGoals?.[aid] ?? 0);
-          const price = Number(order?.pricePerUnit ?? 0);
-          return sum + goal * price;
-        }, 0);
       },
 
       formatCurrency(n) {
@@ -637,6 +622,10 @@ function agentRoleSortRank(role) {
   .case-progress-linear-wrap :deep(.v-progress-linear__determinate),
   .case-progress-linear-wrap :deep(.v-progress-linear__background) {
     transition: width 0s linear, left 0s linear, right 0s linear, opacity 0s linear !important;
+  }
+
+  .agents-page-root {
+    max-width: 100%;
   }
 
   </style>
