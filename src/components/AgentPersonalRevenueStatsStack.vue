@@ -6,12 +6,6 @@
           {{ t('agentDashboard.personalMonthlyGoal') }}
         </div>
         <div class="kpi-value font-weight-bold my-1">{{ goalValue }}</div>
-        <div class="kpi-progress-track mb-1">
-          <div
-            class="kpi-progress-fill"
-            :style="{ width: goalBarWidth, backgroundColor: '#90a4ae' }"
-          />
-        </div>
         <div class="kpi-subtitle text-medium-emphasis">
           {{ goal > 0 ? t('ordersDashboard.charts.kpiEstimatedHint') : '' }}
         </div>
@@ -56,8 +50,6 @@ const pctOfGoal = computed(() => {
 
 const goalValue = computed(() => formatCurrencyEUR(goal.value));
 const resultsValue = computed(() => formatCurrencyEUR(current.value));
-
-const goalBarWidth = computed(() => (goal.value > 0 ? '100%' : '0%'));
 
 const resultsBarWidth = computed(() => `${Math.min(100, Math.max(0, pctOfGoal.value))}%`);
 
