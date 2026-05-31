@@ -27,7 +27,8 @@
           <AgentDashboardPersonalStatsCard
             :monthly-goal-euros="personalMonthlyGoalEuros"
             :results-now-euros="casesTableTotals.currentRevenue"
-            :my-progress-percent="myRevenueToGoalPercent"
+            :hours-worked="hoursWorkedThisMonth"
+            :outgoing-calls-made="outgoingCallsMadeThisMonth"
             :my-paycheck="casesTableTotals.myPaycheck"
           />
         </v-col>
@@ -608,7 +609,6 @@ import AgentDashboardPersonalStatsCard from './agentDashboardPersonalStatsCard.v
 import axios from 'axios'
 import urls from '@/js/config.js'
 import { resolveLinkedGcAgent } from '@/js/resolveLinkedGcAgent.js'
-import { computeAgentMyProgressPercent } from '@/js/agentMyProgress'
 import { formatStatNumber, formatSlashPair, formatCurrencyEUR, roundTo2Decimals } from '@/js/formatNumbers'
 const store = useStore()
 const router = useRouter()
@@ -976,6 +976,8 @@ const revenueGenerated = computed(() => {
         aLeads: 0
       },
       billedHours: 0,
+      hoursWorked: 0,
+      outgoingCallsMade: 0,
       callTimeByType: { aLeads: 0, meetings: 0, interviews: 0 }
     };
   }
@@ -1025,10 +1027,14 @@ const revenueGenerated = computed(() => {
     aLeads: 0
   };
   const callTimeByType = { aLeads: 0, meetings: 0, interviews: 0 };
+  let totalCallTime = 0;
+  let totalOutgoingCalls = 0;
 
   uniqueLogs.forEach((log) => {
     const caseName = String(log.caseName || '').toLowerCase();
     if (caseName.includes('test')) return;
+
+    totalOutgoingCalls += Number(log.outgoing_calls ?? 0) || 0;
 
     const logQuantityCompleted = Number(log.quantityCompleted) || 0;
     totalUnits += logQuantityCompleted;
@@ -1084,6 +1090,7 @@ const revenueGenerated = computed(() => {
     }
 
     const logCallTime = Number(log.call_time ?? log.callTime ?? 0) || 0;
+    totalCallTime += logCallTime;
     if (isALeadsCase) {
       callTimeByType.aLeads += logCallTime;
     } else if (isMeetingsCase) {
@@ -1113,6 +1120,8 @@ const revenueGenerated = computed(() => {
       aLeads: roundTo2Decimals(unitsByType.aLeads),
     },
     billedHours: roundTo2Decimals(unitsByType.hours),
+    hoursWorked: roundTo2Decimals(totalCallTime),
+    outgoingCallsMade: roundTo2Decimals(totalOutgoingCalls),
     callTimeByType: {
       aLeads: roundTo2Decimals(callTimeByType.aLeads),
       meetings: roundTo2Decimals(callTimeByType.meetings),
@@ -1875,16 +1884,9 @@ const topBoxStats = computed(() => {
   };
 });
 
-const myRevenueToGoalPercent = computed(() => {
-  const percent = computeAgentMyProgressPercent(
-    selectedGcAgent.value,
-    orders.value || [],
-    dailyLogs.value || [],
-    currentDateRange.value,
-    gcAgents.value || []
-  )
-  return percent == null ? 0 : percent
-});
+const hoursWorkedThisMonth = computed(() => revenueGenerated.value?.hoursWorked ?? 0);
+
+const outgoingCallsMadeThisMonth = computed(() => revenueGenerated.value?.outgoingCallsMade ?? 0);
 
 const casesTableTotals = computed(() => {
   const rows = casesTableRows.value || [];

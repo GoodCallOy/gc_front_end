@@ -3,7 +3,7 @@
     <div class="section-label text-subtitle-2 font-weight-medium text-medium-emphasis mb-2">
       {{ t('agentDashboard.personalStatsTitle') }}
     </div>
-    <div class="kpi-row kpi-row--4">
+    <div class="kpi-row kpi-row--5">
       <v-card
         v-for="(card, idx) in kpiCards"
         :key="idx"
@@ -33,7 +33,6 @@
 <script setup>
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { getPercentageToGoalBarColor } from '@/js/percentageToGoalStyle';
 import { formatStatNumber, formatCurrencyEUR } from '@/js/formatNumbers';
 
 const props = defineProps({
@@ -45,9 +44,13 @@ const props = defineProps({
     type: [String, Number],
     required: true,
   },
-  myProgressPercent: {
+  hoursWorked: {
     type: [String, Number],
-    required: true,
+    default: 0,
+  },
+  outgoingCallsMade: {
+    type: [String, Number],
+    default: 0,
   },
   myPaycheck: {
     type: [String, Number],
@@ -60,7 +63,8 @@ const { t } = useI18n();
 const kpiCards = computed(() => {
   const goal = Number(props.monthlyGoalEuros) || 0;
   const current = Number(props.resultsNowEuros) || 0;
-  const pct = Number(props.myProgressPercent) || 0;
+  const hours = Number(props.hoursWorked) || 0;
+  const outgoing = Number(props.outgoingCallsMade) || 0;
   const pctOfGoal = goal > 0 ? Math.min(100, (current / goal) * 100) : 0;
 
   return [
@@ -82,20 +86,24 @@ const kpiCards = computed(() => {
           : '',
     },
     {
-      title: t('agentDashboard.personalMyProgress'),
-      value: `${formatStatNumber(pct)}%`,
-      progress: Math.min(100, pct),
-      barColor: getPercentageToGoalBarColor(pct),
-      subtitle:
-        goal > 0
-          ? `${formatStatNumber(pct)}% ${t('agentDashboard.ofMonthlyGoal')}`
-          : '',
+      title: t('agentDashboard.personalHoursWorked'),
+      value: formatStatNumber(hours),
+      progress: 100,
+      barColor: '#5d5d5d',
+      subtitle: t('agentDashboard.personalHoursWorkedHint'),
+    },
+    {
+      title: t('agentDashboard.personalCallsMade'),
+      value: formatStatNumber(outgoing),
+      progress: 100,
+      barColor: '#7e57c2',
+      subtitle: t('agentDashboard.personalCallsMadeHint'),
     },
     {
       title: t('agentDashboard.myPaycheck'),
       value: formatCurrencyEUR(props.myPaycheck),
-      progress: goal > 0 ? Math.min(100, pct) : 0,
-      barColor: getPercentageToGoalBarColor(pct),
+      progress: pctOfGoal,
+      barColor: '#455a64',
       subtitle: '',
     },
   ];
@@ -109,18 +117,24 @@ const kpiCards = computed(() => {
   width: 100%;
 }
 
-.kpi-row--4 {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+.kpi-row--5 {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
 @media (max-width: 1279px) {
-  .kpi-row--4 {
+  .kpi-row--5 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 959px) {
+  .kpi-row--5 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 599px) {
-  .kpi-row--4 {
+  .kpi-row--5 {
     grid-template-columns: 1fr;
   }
 }
