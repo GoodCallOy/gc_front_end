@@ -151,6 +151,12 @@ import { Doughnut, Bar } from 'vue-chartjs'
 import { formatStatNumber, formatCurrencyEUR } from '@/js/formatNumbers'
 import { toLocalYmdNumber } from '@/js/dateUtils'
 
+function stackedBarEndX(el) {
+  if (!el || !Number.isFinite(el.x)) return null
+  const base = Number(el.base)
+  return Number.isFinite(base) ? Math.max(el.x, base) : el.x
+}
+
 const stackedBarTotalsPlugin = {
   id: 'stackedBarTotals',
   afterDatasetsDraw(chart, _args, pluginOptions) {
@@ -158,6 +164,10 @@ const stackedBarTotalsPlugin = {
 
     const values = Array.isArray(pluginOptions.values) ? pluginOptions.values : []
     const offset = Number(pluginOptions.offset ?? 6)
+    const gap = Number(pluginOptions.gap ?? 12)
+    const rightPadding = Number(pluginOptions.rightPadding ?? 4)
+    const alignToChartRight = pluginOptions.alignToChartRight === true
+    const gapAfterBars = pluginOptions.gapAfterBars === true
     const color = pluginOptions.color || '#424242'
     const font = pluginOptions.font || { size: 11, weight: '700', family: "'Roboto', sans-serif" }
 
@@ -166,16 +176,42 @@ const stackedBarTotalsPlugin = {
     if (!currentMeta?.data?.length) return
 
     const ctx = chart.ctx
+    const { chartArea } = chart
+    if (!chartArea) return
+
     ctx.save()
     ctx.fillStyle = color
-    ctx.textAlign = 'left'
     ctx.textBaseline = 'middle'
     ctx.font = `${font.weight || '700'} ${font.size || 11}px ${font.family || 'sans-serif'}`
+
+    let labelX = null
+    let textAlign = 'left'
+
+    if (gapAfterBars) {
+      let maxBarEndX = chartArea.left
+      for (let i = 0; i < values.length; i += 1) {
+        const curEnd = stackedBarEndX(currentMeta?.data?.[i])
+        const remEnd = stackedBarEndX(remainingMeta?.data?.[i])
+        maxBarEndX = Math.max(maxBarEndX, curEnd ?? chartArea.left, remEnd ?? chartArea.left)
+      }
+      labelX = maxBarEndX + gap
+      textAlign = 'left'
+    } else if (alignToChartRight) {
+      labelX = chartArea.right - rightPadding
+      textAlign = 'right'
+    }
+
+    ctx.textAlign = textAlign
 
     for (let i = 0; i < values.length; i += 1) {
       const endEl = remainingMeta?.data?.[i] || currentMeta?.data?.[i]
       if (!endEl) continue
-      ctx.fillText(String(values[i] ?? ''), endEl.x + offset, endEl.y)
+      const barEnd = Math.max(
+        stackedBarEndX(currentMeta?.data?.[i]) ?? chartArea.left,
+        stackedBarEndX(remainingMeta?.data?.[i]) ?? chartArea.left
+      )
+      const x = labelX != null ? labelX : barEnd + offset
+      ctx.fillText(String(values[i] ?? ''), x, endEl.y)
     }
 
     ctx.restore()
@@ -465,7 +501,6 @@ const revenueByCaseRows = computed(() => {
     }))
     .filter((r) => r.revenue > 0 || r.remainingRevenue > 0)
     .sort((a, b) => b.displayTotal - a.displayTotal)
-    .slice(0, 12)
 
   return rows
 })
@@ -496,7 +531,7 @@ const horizontalBarData = computed(() => {
 
 const horizontalBarHeight = computed(() => {
   const n = revenueByCaseRows.value.length || 0
-  return Math.min(560, Math.max(300, n * 34 + 48))
+  return Math.max(300, n * 34 + 48)
 })
 
 const horizontalBarOptions = computed(() => ({
@@ -504,7 +539,7 @@ const horizontalBarOptions = computed(() => ({
   responsive: true,
   maintainAspectRatio: false,
   interaction: { mode: 'index', intersect: false },
-  layout: { padding: { right: 64 } },
+  layout: { padding: { right: 8 } },
   plugins: {
     legend: { display: true, position: 'top' },
     datalabels: {
@@ -518,7 +553,8 @@ const horizontalBarOptions = computed(() => ({
     },
     stackedBarTotals: {
       enabled: true,
-      offset: 6,
+      gapAfterBars: true,
+      gap: 12,
       color: '#424242',
       font: { size: 11, weight: '700', family: "'Roboto', sans-serif" },
       values: revenueByCaseRows.value.map((row) => formatCurrencyEUR(row.estimatedRevenue)),
@@ -538,6 +574,7 @@ const horizontalBarOptions = computed(() => ({
     x: {
       beginAtZero: true,
       stacked: true,
+      grace: '12%',
       grid: { display: true, color: 'rgba(0,0,0,0.06)' },
       ticks: {
         callback: (v) => formatEuroK(Number(v)),
@@ -558,7 +595,6 @@ const facetCharts = computed(() => {
   const byType = [...revenueByCaseType.value.entries()]
     .filter(([, v]) => v > 0)
     .sort((a, b) => b[1] - a[1])
-    .slice(0, 4)
 
   const labels = weeks.map(
     (w, i) =>
@@ -723,6 +759,7 @@ const facetCharts = computed(() => {
 
 .horizontal-scroll {
   overflow-y: auto;
+  max-height: min(70vh, 720px);
   padding-right: 4px;
 }
 
@@ -745,9 +782,4 @@ const facetCharts = computed(() => {
   position: relative;
 }
 
-@media (min-width: 1280px) {
-  .horizontal-scroll {
-    max-height: none;
-  }
-}
 </style>
