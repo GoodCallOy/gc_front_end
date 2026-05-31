@@ -469,8 +469,12 @@ import OrderForm from '@/components/orders/OrderForm.vue';
 import axios from 'axios'
 import urls from '@/js/config.js'
 import { getPercentageToGoalBadgeClass } from '@/js/percentageToGoalStyle'
-import { formatSlashPair, formatStatNumber, formatCurrencyEUR } from '@/js/formatNumbers'
-import { buildOrderCopyPayload, buildOrderCopyPrefill } from '@/js/orderCopyUtils'
+import { formatSlashPair, formatStatNumber, formatCurrencyEUR, roundTo2Decimals } from '@/js/formatNumbers'
+import {
+  buildOrderCopyPayload,
+  buildOrderCopyPrefill,
+  resolveOrderCopyFields,
+} from '@/js/orderCopyUtils'
 
 const store = useStore()
 const router = useRouter()
@@ -727,11 +731,16 @@ async function bulkCopyOrdersToNextMonth() {
         continue;
       }
 
-      const remainingGoal = getRemainingCampaignGoalForCopy(o, nextStart);
-      const payload = buildOrderCopyPayload(o, nextStart, nextEnd, {
-        remainingGoal,
+      const copyFields = resolveOrderCopyFields(
+        o,
+        nextStart,
+        nextEnd,
+        getRemainingCampaignGoalForCopy
+      );
+      const payload = buildOrderCopyPayload(o, copyFields, {
         agents: gcAgents.value || [],
         sourceMonthStart: currentStart,
+        targetMonthStart: nextStart,
       });
 
       try {
@@ -1062,15 +1071,20 @@ function copyOrder(item) {
 
   const sourceMonthStart = currentDateRange.value?.[0] || item.startDate;
   const [nextStart, nextEnd] = monthDateRangeForNextMonthFrom(sourceMonthStart);
-  const remainingGoal = getRemainingCampaignGoalForCopy(item, nextStart);
+  const copyFields = resolveOrderCopyFields(
+    item,
+    nextStart,
+    nextEnd,
+    getRemainingCampaignGoalForCopy
+  );
 
   orderFormConfig.value = {
     mode: 'copy',
     orderId: null,
     initialOrder: null,
-    prefill: buildOrderCopyPrefill(item, nextStart, nextEnd, {
-      remainingGoal,
+    prefill: buildOrderCopyPrefill(item, copyFields, {
       sourceMonthStart,
+      targetMonthStart: nextStart,
     }),
     defaultDates: null
   };
@@ -1303,11 +1317,11 @@ function getCompletedQuantityBeforeMonth(order, beforeMonthKey) {
 
 /** Remaining campaign units for a copy whose new segment starts at nextRangeStartDateStr (YYYY-MM-DD). */
 function getRemainingCampaignGoalForCopy(order, nextRangeStartDateStr) {
-  const base = getDisplayGoal(order)
+  const base = Number(getDisplayGoal(order)) || 0
   const mk = String(nextRangeStartDateStr || '').split('T')[0].slice(0, 7)
-  if (!mk || mk.length < 7) return base
+  if (!mk || mk.length < 7) return roundTo2Decimals(base)
   const prior = getCompletedQuantityBeforeMonth(order, mk)
-  return Math.max(0, Math.round(base - prior))
+  return roundTo2Decimals(Math.max(0, base - prior))
 }
 
 function completedUnitsForOrderInDateRange(order, logs, dateRange) {
