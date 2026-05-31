@@ -23,8 +23,8 @@
       <v-container class="py-2 agents-page-container" style="width: 90%; max-width: 100%;">
         <v-row dense align="stretch">
           <v-col
-            v-for="(agent, index) in agentsWithStats"
-            :key="index"
+            v-for="agent in agentsWithStats"
+            :key="`${agent._id || agent.id || agent.name}-${currentDateRange?.[0] || ''}`"
             cols="12"
             sm="6"
             md="4"
@@ -37,56 +37,62 @@
                 {{ agent.name || 'Unknown Agent' }}
               </v-card-title>
 
-              <!-- Assigned cases and monthly goal -->
               <v-card-text class="pt-0 pb-1 flex-grow-1 agent-card-content">
-                <div v-if="getAgentCases(agent).length" class="text-body-2">
-                  <div class="font-weight-medium mb-1">Assigned cases</div>
-                  <ul class="mb-2 text-caption agent-case-list">
-                    <li
-                      v-for="(c, cIdx) in getAgentCases(agent)"
-                      :key="`${c.orderKey || cIdx}-${cIdx}`"
-                      class="mb-2"
-                      :title="tooltipForAgentCaseRow(c)"
-                    >
-                      <v-tooltip v-if="c.hasNickname" location="top">
-                        <template #activator="{ props: tip }">
-                          <div v-bind="tip" class="text-truncate text-left" style="cursor: default">
+                <div class="agent-card-sections">
+                  <v-card class="section-card" elevation="2" rounded="lg">
+                    <v-card-text class="section-card-inner pa-2 px-3">
+                      <div class="section-card-title text-medium-emphasis font-weight-medium mb-2">
+                        Assigned cases
+                      </div>
+                      <ul
+                        v-if="agent.agentCases && agent.agentCases.length"
+                        class="mb-0 text-caption agent-case-list"
+                      >
+                        <li
+                          v-for="c in agent.agentCases"
+                          :key="c.orderKey"
+                          class="mb-2"
+                          :title="c.tooltip"
+                        >
+                          <div
+                            v-if="c.hasNickname"
+                            class="text-truncate text-left"
+                            :title="c.fullCaseName"
+                          >
                             <span class="text-decoration-dotted text-high-emphasis">{{ c.displayName }}</span>
                             — {{ formatStatNumber(c.completed) }}/{{ formatStatNumber(c.goal) }}
                           </div>
-                        </template>
-                        <span>{{ c.fullCaseName }}</span>
-                      </v-tooltip>
-                      <div v-else class="text-truncate text-left">
-                        {{ c.displayName }} — {{ formatStatNumber(c.completed) }}/{{ formatStatNumber(c.goal) }}
+                          <div v-else class="text-truncate text-left">
+                            {{ c.displayName }} — {{ formatStatNumber(c.completed) }}/{{ formatStatNumber(c.goal) }}
+                          </div>
+                          <div class="case-progress-linear-wrap mt-1">
+                            <v-progress-linear
+                              :model-value="c.progressPercent"
+                              :color="c.progressColor"
+                              height="10"
+                              rounded="sm"
+                              striped
+                            />
+                            <div class="case-progress-linear-wrap__label d-flex align-center justify-center">
+                              <small
+                                :class="c.progressLabelClass"
+                                class="font-weight-bold"
+                              >{{ c.progressPercentRounded }}%</small>
+                            </div>
+                          </div>
+                        </li>
+                      </ul>
+                      <div v-else class="section-card-subtitle text-medium-emphasis">
+                        No cases assigned
                       </div>
-                      <!-- Label overlaid (no default slot) to avoid Vuetify/DOM patch issues. Stripes: not animated (CSS below). -->
-                      <div
-                        class="case-progress-linear-wrap mt-1"
-                        :key="`pg-${c.orderKey || cIdx}-${cIdx}`"
-                      >
-                        <v-progress-linear
-                          :model-value="caseProgressPercent(c)"
-                          :color="getPercentageToGoalVuetifyColor(caseProgressPercent(c))"
-                          height="10"
-                          rounded="sm"
-                          striped
-                        />
-                        <div class="case-progress-linear-wrap__label d-flex align-center justify-center">
-                          <small
-                            :class="caseProgressLabelTextClass(c)"
-                            class="font-weight-bold"
-                          >{{ caseProgressPercentRounded(c) }}%</small>
-                        </div>
-                      </div>
-                    </li>
-                  </ul>
-                  <div class="font-weight-medium">
-                    {{ $t('agentDashboard.personalMonthlyGoal') }}: €{{ formatCurrency(monthlyGoalByAgent[String(agent._id || agent.id || agent.name)] ?? 0) }}
-                  </div>
-                </div>
-                <div v-else class="text-caption text-grey">
-                  No cases assigned
+                    </v-card-text>
+                  </v-card>
+
+                  <AgentPersonalRevenueStatsStack
+                    v-if="agent.revenueKpi && agent.revenueKpi.goal > 0"
+                    :monthly-goal-euros="agent.revenueKpi.goal"
+                    :results-now-euros="agent.revenueKpi.current"
+                  />
                 </div>
               </v-card-text>
 
@@ -136,6 +142,7 @@ import { goToNextMonth, goToPreviousMonth, formattedDateRange, isCurrentMonth } 
 import { formatStatNumber } from '@/js/formatNumbers';
 import { getPercentageToGoalVuetifyColor } from '@/js/percentageToGoalStyle';
 import DateHeader from '@/components/DateHeader.vue';
+import AgentPersonalRevenueStatsStack from '@/components/AgentPersonalRevenueStatsStack.vue';
 
 /** Display order on agents page: callers → managers → admins → other */
 function agentRoleSortRank(role) {
@@ -167,23 +174,126 @@ function orderOverlapsRange(order, from, to) {
   return orderStart <= to && orderEnd >= from;
 }
 
-/** Personal monthly goal (€) for one agent in the selected month */
+function getAgentMonthOrders(agent, orders, dateRange) {
+  const aid = String(agent?._id ?? agent?.id ?? '');
+  if (!aid || !Array.isArray(orders)) return [];
+  const { from, to } = monthBoundsFromRange(dateRange);
+  return orders.filter(
+    (order) =>
+      (order.assignedCallers || []).some((x) => String(x?._id ?? x?.id ?? x) === aid) &&
+      orderOverlapsRange(order, from, to) &&
+      Number(order?.agentGoals?.[aid] ?? 0) > 0
+  );
+}
+
 function computeAgentMonthlyGoalEuros(agent, orders, dateRange) {
   const aid = String(agent?._id ?? agent?.id ?? '');
-  if (!aid || !Array.isArray(orders)) return 0;
+  if (!aid) return 0;
+  return getAgentMonthOrders(agent, orders, dateRange).reduce((sum, order) => {
+    const goal = Number(order?.agentGoals?.[aid] ?? 0);
+    const price = Number(order?.pricePerUnit ?? 0);
+    return sum + goal * price;
+  }, 0);
+}
+
+function sumAgentUnitsOnOrderInRange(agent, order, dailyLogs, from, to) {
+  const aid = String(agent?._id ?? agent?.id ?? '');
+  if (!aid || !Array.isArray(dailyLogs)) return 0;
+  const fromTime = from.getTime();
+  const toTime = to.getTime();
+  const orderId = String(order?._id ?? order?.id ?? '');
+  const caseName = order?.caseName || '';
+  const seenLogs = new Set();
+  let units = 0;
+
+  dailyLogs.forEach((log) => {
+    const logAgentId = String(log?.agent?._id ?? log?.agentId ?? log?.agent ?? '');
+    if (logAgentId !== aid) return;
+    const logOrderId = String(log?.order?._id ?? log?.order?.id ?? log?.orderId ?? '');
+    const logCaseName = log?.caseName ?? '';
+    const sameOrder =
+      (orderId && logOrderId && logOrderId === orderId) ||
+      (caseName && logCaseName && logCaseName === caseName);
+    if (!sameOrder) return;
+    const d = new Date(log.date);
+    const tMs = d.getTime();
+    if (!Number.isFinite(tMs) || tMs < fromTime || tMs > toTime) return;
+    const key = `${log.date}_${logAgentId}_${logCaseName}_${log._id || log.id}`;
+    if (seenLogs.has(key)) return;
+    seenLogs.add(key);
+    const qty = Number(log.quantityCompleted ?? 0);
+    if (Number.isFinite(qty) && !Number.isNaN(qty)) units += qty;
+  });
+
+  return units;
+}
+
+function computeAgentRevenueKpi(agent, orders, dailyLogs, dateRange) {
+  const goal = computeAgentMonthlyGoalEuros(agent, orders, dateRange);
+  if (goal <= 0) return { goal: 0, current: 0 };
   const { from, to } = monthBoundsFromRange(dateRange);
-  return orders
-    .filter(
-      (order) =>
-        (order.assignedCallers || []).some((x) => String(x?._id ?? x?.id ?? x) === aid) &&
-        orderOverlapsRange(order, from, to) &&
-        Number(order?.agentGoals?.[aid] ?? 0) > 0
-    )
-    .reduce((sum, order) => {
+  let current = 0;
+  for (const order of getAgentMonthOrders(agent, orders, dateRange)) {
+    const price = Number(order?.pricePerUnit ?? 0);
+    current += sumAgentUnitsOnOrderInRange(agent, order, dailyLogs, from, to) * price;
+  }
+  return { goal, current };
+}
+
+function caseProgressLabelTextClass(percent) {
+  const p = Number(percent) || 0;
+  return p > 2 ? 'text-white' : 'text-high-emphasis';
+}
+
+function buildAgentCasesForAgent(agent, orders, dailyLogs, gcCases, dateRange) {
+  const aid = String(agent?._id ?? agent?.id ?? '');
+  if (!aid) return [];
+  const { from, to } = monthBoundsFromRange(dateRange);
+  const seen = new Set();
+
+  return getAgentMonthOrders(agent, orders, dateRange)
+    .filter((order) => {
+      const name = order?.caseName || order?.caseId || '';
+      if (!name || seen.has(name)) return false;
+      seen.add(name);
+      return true;
+    })
+    .map((order) => {
       const goal = Number(order?.agentGoals?.[aid] ?? 0);
-      const price = Number(order?.pricePerUnit ?? 0);
-      return sum + goal * price;
-    }, 0);
+      const completed = sumAgentUnitsOnOrderInRange(agent, order, dailyLogs, from, to);
+      const progressPercent = goal > 0 ? Math.min(100, (completed / goal) * 100) : 0;
+      const fullCaseName = order.caseName || order.caseId || '—';
+      const caseId = order?.caseId;
+      const gc = (gcCases || []).find(
+        (x) => caseId && String(x._id ?? x.id) === String(caseId)
+      );
+      const nick = gc?.nickname != null ? String(gc.nickname).trim() : '';
+      const hasNickname = nick.length > 0;
+      const displayName = hasNickname ? nick : fullCaseName;
+
+      return {
+        fullCaseName,
+        displayName,
+        hasNickname,
+        orderKey: String(order?._id ?? order?.id ?? ''),
+        completed,
+        goal,
+        progressPercent,
+        progressPercentRounded: Math.round(progressPercent),
+        progressColor: getPercentageToGoalVuetifyColor(progressPercent),
+        progressLabelClass: caseProgressLabelTextClass(progressPercent),
+        tooltip: `${fullCaseName} — ${completed}/${goal}`,
+      };
+    });
+}
+
+function enrichAgentRow(agent, orders, dailyLogs, gcCases, dateRange, logStats = {}) {
+  return {
+    ...agent,
+    ...logStats,
+    agentCases: buildAgentCasesForAgent(agent, orders, dailyLogs, gcCases, dateRange),
+    revenueKpi: computeAgentRevenueKpi(agent, orders, dailyLogs, dateRange),
+  };
 }
   
   export default {
@@ -191,6 +301,7 @@ function computeAgentMonthlyGoalEuros(agent, orders, dateRange) {
 
     components: {
       DateHeader,
+      AgentPersonalRevenueStatsStack,
     },
 
     data() {
@@ -220,60 +331,40 @@ function computeAgentMonthlyGoalEuros(agent, orders, dateRange) {
           return String(a.name || '').toLowerCase().localeCompare(String(b.name || '').toLowerCase());
         });
 
+        const orders = this.orders || [];
+        const logs = this.dailyLogs || [];
+        const range = this.currentDateRange;
+        const gcCases = this.gcCases || [];
+
         if (!this.dailyLogs) {
-          return agents;
+          return agents.map((agent) => enrichAgentRow(agent, orders, logs, gcCases, range));
         }
 
-        const { from: monthStart, to: monthEnd } = this.getCurrentMonthBounds();
+        const { from: monthStart, to: monthEnd } = monthBoundsFromRange(range);
 
-        return agents.map(agent => {
-          // Filter daily logs for this agent within the selected month
-          const agentLogs = this.dailyLogs.filter(log => {
+        return agents.map((agent) => {
+          const agentLogs = this.dailyLogs.filter((log) => {
             const logAgentId = String(log?.agent?._id ?? log?.agent ?? '');
             const agentId = String(agent._id ?? agent.id);
-            
             if (logAgentId !== agentId) return false;
-            
             const logDate = new Date(log.date);
             if (isNaN(logDate.getTime())) return false;
-            
             return logDate >= monthStart && logDate <= monthEnd;
           });
 
-          // Calculate combined stats
-          const totalCallTime = agentLogs.reduce((sum, log) => sum + (log.call_time || 0), 0);
           const totalOutgoingCalls = agentLogs.reduce((sum, log) => sum + (log.outgoing_calls || 0), 0);
           const totalAnsweredCalls = agentLogs.reduce((sum, log) => sum + (log.answered_calls || 0), 0);
-          const totalCompletedCalls = agentLogs.reduce((sum, log) => sum + (log.completed_calls || 0), 0);
-          const totalQuantityCompleted = agentLogs.reduce((sum, log) => sum + (log.quantityCompleted || 0), 0);
-          const responseRate = totalOutgoingCalls > 0 ? (totalAnsweredCalls / totalOutgoingCalls) * 100 : 0;
 
-          return {
-            ...agent,
-            // Combined stats from daily logs
-            call_time: totalCallTime.toFixed(2),
+          return enrichAgentRow(agent, orders, logs, gcCases, range, {
+            call_time: agentLogs.reduce((sum, log) => sum + (log.call_time || 0), 0).toFixed(2),
             outgoing_calls: totalOutgoingCalls,
             answered_calls: totalAnsweredCalls,
-            completed_calls: totalCompletedCalls,
-            quantityCompleted: totalQuantityCompleted,
-            response_rate: responseRate.toFixed(2),
-            meetings: agentLogs.length
-          };
+            completed_calls: agentLogs.reduce((sum, log) => sum + (log.completed_calls || 0), 0),
+            quantityCompleted: agentLogs.reduce((sum, log) => sum + (log.quantityCompleted || 0), 0),
+            response_rate: (totalOutgoingCalls > 0 ? (totalAnsweredCalls / totalOutgoingCalls) * 100 : 0).toFixed(2),
+            meetings: agentLogs.length,
           });
-      },
-
-      /** Per-agent monthly goal (€) — computed map avoids template method loader issues */
-      monthlyGoalByAgent() {
-        const list = this.agentsWithStats || [];
-        const orders = this.orders || [];
-        const range = this.currentDateRange;
-        const out = Object.create(null);
-        for (const agent of list) {
-          const key = String(agent?._id ?? agent?.id ?? agent?.name ?? '');
-          if (!key) continue;
-          out[key] = computeAgentMonthlyGoalEuros(agent, orders, range);
-        }
-        return out;
+        });
       },
     },
 
@@ -313,157 +404,8 @@ function computeAgentMonthlyGoalEuros(agent, orders, dateRange) {
 
     methods: {
       formatStatNumber,
-      getPercentageToGoalVuetifyColor,
       ...mapMutations(['setCurrentPage', 'setDateRange']),
       ...mapActions(['fetchUsers', 'fetchgcAgents', 'fetchDailyLogs', 'fetchOrders', 'fetchGcCases', 'fetchCurrentDateRange']),
-
-      // True if order's startDate–deadline overlaps the selected month
-      orderOverlapsSelectedMonth(order) {
-        const { from: monthStart, to: monthEnd } = this.getCurrentMonthBounds();
-        const orderStart = new Date(order?.startDate || 0);
-        const orderEnd = new Date(order?.deadline || 0);
-        return orderStart <= monthEnd && orderEnd >= monthStart;
-      },
-
-      // Orders where this agent is in assignedCallers and order overlaps selected month
-      getAgentOrdersCurrentMonth(agent) {
-        const aid = String(agent?._id ?? agent?.id ?? '');
-        if (!aid) return [];
-        const all = this.orders || [];
-        
-        const agentOrders = all.filter(
-          (order) =>
-            (order.assignedCallers || []).some((x) => String(x?._id ?? x?.id ?? x) === aid) &&
-            this.orderOverlapsSelectedMonth(order)
-        );
-
-        // Then, exclude cases where this agent's goal is 0 or not set
-        return agentOrders.filter(order => {
-          const goal = Number(order?.agentGoals?.[aid] ?? 0);
-          return goal > 0;
-        });
-      },
-
-      getCurrentMonthBounds() {
-        return monthBoundsFromRange(this.currentDateRange);
-      },
-
-      // Unique assigned cases for this agent in the current month (no duplicates by case name)
-      getAgentCases(agent) {
-        const orders = this.getAgentOrdersCurrentMonth(agent);
-        const seen = new Set();
-        const { from, to } = this.getCurrentMonthBounds();
-        const fromTime = from.getTime();
-        const toTime = to.getTime();
-
-        return orders
-          .filter((order) => {
-            const name = order?.caseName || order?.caseId || '';
-            if (!name || seen.has(name)) return false;
-            seen.add(name);
-            return true;
-          })
-          .map((order) => {
-            const aid = String(agent?._id ?? agent?.id ?? '');
-            const goal = Number(order?.agentGoals?.[aid] ?? 0);
-            let completed = 0;
-
-            try {
-              const logs = Array.isArray(this.dailyLogs) ? this.dailyLogs : [];
-              const orderId = String(order?._id ?? order?.id ?? '');
-              const caseName = order?.caseName || '';
-
-              const seenLogs = new Set();
-              logs.forEach((log) => {
-                const logAgentId = String(
-                  log?.agent?._id ??
-                  log?.agentId ??
-                  log?.agent ??
-                  ''
-                );
-                if (logAgentId !== aid) return;
-
-                const logOrderId = String(
-                  log?.order?._id ??
-                  log?.order?.id ??
-                  log?.orderId ??
-                  ''
-                );
-                const logCaseName = log?.caseName ?? '';
-                const sameOrder =
-                  (orderId && logOrderId && logOrderId === orderId) ||
-                  (caseName && logCaseName && logCaseName === caseName);
-                if (!sameOrder) return;
-
-                const d = new Date(log.date);
-                const tMs = d.getTime();
-                if (!Number.isFinite(tMs)) return;
-                if (tMs < fromTime || tMs > toTime) return;
-
-                const key = `${log.date}_${logAgentId}_${logCaseName}_${log._id || log.id}`;
-                if (seenLogs.has(key)) return;
-                seenLogs.add(key);
-
-                const units = Number(log.quantityCompleted ?? 0);
-                if (Number.isFinite(units) && !Number.isNaN(units)) {
-                  completed += units;
-                }
-              });
-            } catch (e) {
-              console.warn('Failed to compute case progress on agentsPage:', e);
-            }
-
-            const fullCaseName = order.caseName || order.caseId || '—';
-            const caseId = order?.caseId;
-            const gc = (this.gcCases || []).find(
-              (x) => caseId && String(x._id ?? x.id) === String(caseId)
-            );
-            const nick = gc?.nickname != null ? String(gc.nickname).trim() : '';
-            const hasNickname = nick.length > 0;
-            const displayName = hasNickname ? nick : fullCaseName;
-
-            return {
-              caseName: fullCaseName,
-              fullCaseName,
-              displayName,
-              hasNickname,
-              orderKey: String(order?._id ?? order?.id ?? ''),
-              completed,
-              goal,
-            };
-          });
-      },
-
-      /** Native title for row when v-tooltip is not used (or extra hint on li) */
-      tooltipForAgentCaseRow(c) {
-        const name = c.fullCaseName || c.displayName;
-        return `${name} — ${c.completed}/${c.goal}`;
-      },
-
-      formatCurrency(n) {
-        try {
-          return new Intl.NumberFormat(undefined, { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n ?? 0);
-        } catch {
-          return n ?? 0;
-        }
-      },
-
-      caseProgressPercent(c) {
-        const goal = Number(c?.goal) || 0;
-        const done = Number(c?.completed) || 0;
-        if (goal <= 0) return 0;
-        return Math.min(100, (done / goal) * 100);
-      },
-
-      caseProgressPercentRounded(c) {
-        return Math.round(this.caseProgressPercent(c));
-      },
-
-      /** Contrast: white on filled area; darker when the bar is nearly empty */
-      caseProgressLabelTextClass(c) {
-        const p = this.caseProgressPercent(c);
-        return p > 2 ? 'text-white' : 'text-high-emphasis';
-      },
 
       updatePage(newPage) {
         this.setCurrentPage(newPage);
@@ -577,7 +519,7 @@ function computeAgentMonthlyGoalEuros(agent, orders, dateRange) {
     width: 100%;
   }
   .agent-card-content {
-    text-align: center;
+    text-align: left;
     width: 100%;
   }
   .agent-case-list {
@@ -626,6 +568,35 @@ function computeAgentMonthlyGoalEuros(agent, orders, dateRange) {
 
   .agents-page-root {
     max-width: 100%;
+  }
+
+  .agent-card-sections {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .section-card {
+    min-width: 0;
+    overflow: hidden;
+    background: #fff;
+    width: 100%;
+  }
+
+  .section-card-inner {
+    min-width: 0;
+    text-align: left;
+  }
+
+  .section-card-title {
+    font-size: 0.65rem;
+    line-height: 1.2;
+  }
+
+  .section-card-subtitle {
+    font-size: 0.65rem;
+    line-height: 1.2;
   }
 
   </style>
