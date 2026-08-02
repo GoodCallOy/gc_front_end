@@ -15,8 +15,8 @@
       <v-row class="mb-2" align="center">
         <v-col cols="12" md="8">
           <v-tabs v-model="activeTab" density="comfortable">
-            <v-tab value="tables">{{ t('ordersDashboard.tabs.tables') }}</v-tab>
             <v-tab value="charts">{{ t('ordersDashboard.tabs.charts') }}</v-tab>
+            <v-tab value="tables">{{ t('ordersDashboard.tabs.tables') }}</v-tab>
             <v-tab value="insights">{{ t('ordersDashboard.tabs.insights') }}</v-tab>
             <v-tab value="cards">{{ t('ordersDashboard.tabs.cards') }}</v-tab>
           </v-tabs>
@@ -172,9 +172,6 @@
                 </div>
               </div>
             </template>
-            <template #item.orderId="{ item }">
-              <span class="text-medium-emphasis">{{ item._id ?? '—' }}</span>
-            </template>
             <template #item.callers="{ item }">
               {{ getCallerNames(item) }}
             </template>
@@ -285,7 +282,6 @@ const activeTab = ref('charts')
 const tableHeaders = computed(() => [
   { title: '', key: 'data-table-expand', sortable: false, width: '40px' },
   { title: t('ordersDashboard.tableHeaders.caseName'), key: 'caseName', minWidth: '220px' },
-  { title: t('ordersDashboard.tableHeaders.orderId'), key: 'orderId', sortable: false },
   { title: t('ordersDashboard.tableHeaders.status'), key: 'orderStatus' },
   { title: t('ordersDashboard.tableHeaders.callers'), key: 'callers', sortable: false },
   { title: t('ordersDashboard.tableHeaders.pricePerUnit'), key: 'pricePerUnit' },

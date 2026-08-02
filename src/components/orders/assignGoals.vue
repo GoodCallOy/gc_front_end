@@ -197,9 +197,6 @@
                   </div>
                 </div>
               </template>
-              <template #item.orderId="{ item: rowItem }">
-                <span class="text-medium-emphasis">{{ rowItem._id ?? '—' }}</span>
-              </template>
               <template #item.monthlyGoal="{ item: rowItem }">
                 {{ rowItem.monthlyGoal ?? rowItem.totalQuantity ?? '—' }}
               </template>
@@ -1000,7 +997,6 @@ const currentMonthLabel = computed(() => {
 const orderHeaders = computed(() => [
   { title: '', key: 'select', sortable: false, width: '48px' },
   { title: t('assignGoals.tableHeaders.caseName'), key: 'caseName', minWidth: '180px' },
-  { title: t('assignGoals.tableHeaders.orderId'), key: 'orderId', sortable: false },
   { title: t('assignGoals.tableHeaders.totalGoals'), key: 'monthlyGoal' },
   { title: t('assignGoals.tableHeaders.campaignGoal'), key: 'campaignGoal', sortable: false },
   { title: t('assignGoals.tableHeaders.goalsDistributed'), key: 'goalsDistributed', sortable: false },
