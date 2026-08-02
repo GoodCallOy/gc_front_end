@@ -127,7 +127,11 @@
         "breakdownPerUnit": "€/yks.",
         "breakdownRevenue": "Liikevaihto",
         "breakdownIncluded": "Mukana",
-        "breakdownIncludedYes": "✓ Kyllä"
+        "breakdownIncludedYes": "✓ Kyllä",
+        "breakdownTitleCurrent": "Nykyinen liikevaihto tapauksittain",
+        "breakdownTitleCaseType": "Nykyinen liikevaihto tapauksittain ({caseType})",
+        "breakdownQuantity": "Valmistunut määrä",
+        "breakdownShare": "% tyypistä"
       },
       "filterByCaseType": "Suodata tapauksen tyypin mukaan",
       "revenue": {

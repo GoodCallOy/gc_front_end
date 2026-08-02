@@ -144,7 +144,11 @@
         "breakdownPerUnit": "€/Unit",
         "breakdownRevenue": "Revenue",
         "breakdownIncluded": "Included",
-        "breakdownIncludedYes": "✓ Yes"
+        "breakdownIncludedYes": "✓ Yes",
+        "breakdownTitleCurrent": "Current revenue by case",
+        "breakdownTitleCaseType": "Current revenue by case ({caseType})",
+        "breakdownQuantity": "Qty completed",
+        "breakdownShare": "% of type"
       },
       "filterByCaseType": "Filter by Case Type",
       "revenue": {

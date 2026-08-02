@@ -20,15 +20,15 @@
               }"
             />
           </div>
-          <div v-if="idx === 0 && isAdmin" class="kpi-breakdown-slot">
+          <div v-if="cardSupportsBreakdown(card, idx)" class="kpi-breakdown-slot">
             <v-btn
               variant="text"
               density="compact"
               size="x-small"
               class="pa-0 mt-n1 text-none kpi-breakdown-btn"
-              @click="toggleBreakdown"
+              @click="toggleBreakdown(idx)"
             >
-              {{ showRevenueBreakdown ? t('ordersDashboard.charts.hideBreakdown') : t('ordersDashboard.charts.showBreakdown') }}
+              {{ openKpiBreakdownIndex === idx ? t('ordersDashboard.charts.hideBreakdown') : t('ordersDashboard.charts.showBreakdown') }}
             </v-btn>
           </div>
           <div v-else class="kpi-subtitle text-medium-emphasis">{{ card.subtitle }}</div>
@@ -37,11 +37,11 @@
     </div>
 
     <v-expand-transition>
-      <div v-if="isAdmin && showRevenueBreakdown" key="revenue-breakdown">
+      <div v-if="isAdmin && openKpiBreakdownIndex != null" key="kpi-breakdown">
         <v-card class="mb-4 revenue-summary breakdown-table-card" elevation="2" rounded="lg">
           <v-card-text class="pa-3">
-            <div class="text-caption font-weight-bold mb-2">{{ t('ordersDashboard.charts.breakdownTitle') }}</div>
-            <v-table density="compact" class="text-caption">
+            <div class="text-caption font-weight-bold mb-2">{{ activeBreakdownTitle }}</div>
+            <v-table v-if="activeBreakdownKind === 'estimated'" density="compact" class="text-caption">
               <thead>
                 <tr>
                   <th class="text-left">{{ t('ordersDashboard.charts.breakdownCaseType') }}</th>
@@ -69,6 +69,46 @@
                     <span v-if="row.included" class="text-success">{{ t('ordersDashboard.charts.breakdownIncludedYes') }}</span>
                     <span v-else class="text-error">{{ row.excludedReason }}</span>
                   </td>
+                </tr>
+              </tbody>
+            </v-table>
+            <v-table v-else-if="activeBreakdownKind === 'current'" density="compact" class="text-caption">
+              <thead>
+                <tr>
+                  <th class="text-left">{{ t('ordersDashboard.charts.breakdownCaseType') }}</th>
+                  <th class="text-left">{{ t('ordersDashboard.charts.breakdownCase') }}</th>
+                  <th class="text-right">{{ t('ordersDashboard.charts.breakdownQuantity') }}</th>
+                  <th class="text-right">{{ t('ordersDashboard.charts.breakdownPerUnit') }}</th>
+                  <th class="text-right">{{ t('ordersDashboard.charts.breakdownRevenue') }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(row, i) in currentRevenueBreakdown" :key="i">
+                  <td>{{ row.caseType }}</td>
+                  <td>{{ row.caseName }}</td>
+                  <td class="text-right">{{ formatStatNumber(row.quantityCompleted) }}</td>
+                  <td class="text-right">{{ row.pricePerUnit.toFixed(2) }}</td>
+                  <td class="text-right">{{ formatCurrencyEUR(row.revenue) }}</td>
+                </tr>
+              </tbody>
+            </v-table>
+            <v-table v-else-if="activeBreakdownKind === 'caseType'" density="compact" class="text-caption">
+              <thead>
+                <tr>
+                  <th class="text-left">{{ t('ordersDashboard.charts.breakdownCase') }}</th>
+                  <th class="text-right">{{ t('ordersDashboard.charts.breakdownQuantity') }}</th>
+                  <th class="text-right">{{ t('ordersDashboard.charts.breakdownPerUnit') }}</th>
+                  <th class="text-right">{{ t('ordersDashboard.charts.breakdownRevenue') }}</th>
+                  <th class="text-right">{{ t('ordersDashboard.charts.breakdownShare') }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(row, i) in activeCaseTypeBreakdown" :key="i">
+                  <td>{{ row.caseName }}</td>
+                  <td class="text-right">{{ formatStatNumber(row.quantityCompleted) }}</td>
+                  <td class="text-right">{{ row.pricePerUnit.toFixed(2) }}</td>
+                  <td class="text-right">{{ formatCurrencyEUR(row.revenue) }}</td>
+                  <td class="text-right">{{ formatStatNumber(row.sharePct) }}%</td>
                 </tr>
               </tbody>
             </v-table>
@@ -262,13 +302,32 @@ const props = defineProps({
   estimatedRevenueTotal: { type: Number, default: 0 },
   isAdmin: { type: Boolean, default: false },
   estimatedRevenueBreakdown: { type: Array, default: () => [] },
-  showRevenueBreakdown: { type: Boolean, default: false },
+  openKpiBreakdownIndex: { default: null },
 })
 
-const emit = defineEmits(['update:showRevenueBreakdown'])
+const emit = defineEmits(['update:openKpiBreakdownIndex'])
 
-function toggleBreakdown() {
-  emit('update:showRevenueBreakdown', !props.showRevenueBreakdown)
+function toggleBreakdown(idx) {
+  emit('update:openKpiBreakdownIndex', props.openKpiBreakdownIndex === idx ? null : idx)
+}
+
+function cardSupportsBreakdown(card, idx) {
+  if (!props.isAdmin || idx >= 5) return false
+  if (idx >= 2 && (!card?.title || card.title === '—')) return false
+  return true
+}
+
+function sortBreakdownRows(rows) {
+  return [...rows].sort((a, b) => {
+    const typeA = a.caseType || ''
+    const typeB = b.caseType || ''
+    if (typeA !== typeB) {
+      if (typeA === t('ordersDashboard.unspecified')) return 1
+      if (typeB === t('ordersDashboard.unspecified')) return -1
+      return typeA.localeCompare(typeB)
+    }
+    return String(a.caseName).localeCompare(String(b.caseName))
+  })
 }
 
 const { t } = useI18n()
@@ -421,6 +480,7 @@ const kpiCards = computed(() => {
         : est > 0
           ? t('ordersDashboard.charts.kpiEstimatedHint')
           : t('ordersDashboard.charts.noEstimate'),
+      breakdownKind: 'estimated',
     },
     {
       title: t('ordersDashboard.charts.kpiCurrent'),
@@ -431,6 +491,7 @@ const kpiCards = computed(() => {
         est > 0
           ? `${formatStatNumber(pctEst)}% ${t('ordersDashboard.charts.ofEstimate')}`
           : t('ordersDashboard.charts.noEstimate'),
+      breakdownKind: 'current',
     },
   ]
 
@@ -443,6 +504,8 @@ const kpiCards = computed(() => {
       progress: Math.min(100, share),
       barColor: col,
       subtitle: `${formatStatNumber(share)}% ${t('ordersDashboard.charts.ofTotal')}`,
+      breakdownKind: 'caseType',
+      caseTypeKey: type,
     })
   }
 
@@ -453,13 +516,82 @@ const kpiCards = computed(() => {
       progress: 0,
       barColor: '#e0e0e0',
       subtitle: '',
+      breakdownKind: null,
     })
   }
 
   const insight = buildInsightKpi(est, total, t)
-  cards.push(insight)
+  cards.push({ ...insight, breakdownKind: null })
 
   return cards.slice(0, 6)
+})
+
+const currentRevenueBreakdown = computed(() => {
+  if (!bounds.value) return []
+  const rows = eligibleOrders.value.map((order) => {
+    const quantityCompleted = computeOrderQuantity(order, props.dailyLogs, bounds.value)
+    const pricePerUnit = Number(order?.pricePerUnit) || 0
+    const revenue = quantityCompleted * pricePerUnit
+    return {
+      caseType: order.caseType || t('ordersDashboard.unspecified'),
+      caseName: order.caseName || '—',
+      quantityCompleted,
+      pricePerUnit,
+      revenue,
+    }
+  })
+  return sortBreakdownRows(rows.filter((row) => row.revenue > 0))
+})
+
+const activeBreakdownCard = computed(() => {
+  const idx = props.openKpiBreakdownIndex
+  if (idx == null || idx < 0) return null
+  return kpiCards.value[idx] || null
+})
+
+const activeBreakdownKind = computed(() => activeBreakdownCard.value?.breakdownKind || null)
+
+const activeBreakdownTitle = computed(() => {
+  const card = activeBreakdownCard.value
+  if (!card) return ''
+  if (card.breakdownKind === 'estimated') {
+    return t('ordersDashboard.charts.breakdownTitle')
+  }
+  if (card.breakdownKind === 'current') {
+    return t('ordersDashboard.charts.breakdownTitleCurrent')
+  }
+  if (card.breakdownKind === 'caseType') {
+    return t('ordersDashboard.charts.breakdownTitleCaseType', { caseType: card.caseTypeKey || card.title })
+  }
+  return ''
+})
+
+const activeCaseTypeBreakdown = computed(() => {
+  const card = activeBreakdownCard.value
+  if (!card || card.breakdownKind !== 'caseType' || !bounds.value) return []
+
+  const caseType = card.caseTypeKey || card.title
+  const rows = eligibleOrders.value
+    .filter((order) => (order.caseType || t('ordersDashboard.unspecified')) === caseType)
+    .map((order) => {
+      const quantityCompleted = computeOrderQuantity(order, props.dailyLogs, bounds.value)
+      const pricePerUnit = Number(order?.pricePerUnit) || 0
+      const revenue = quantityCompleted * pricePerUnit
+      return {
+        caseName: order.caseName || '—',
+        quantityCompleted,
+        pricePerUnit,
+        revenue,
+      }
+    })
+    .filter((row) => row.revenue > 0)
+    .sort((a, b) => String(a.caseName).localeCompare(String(b.caseName)))
+
+  const typeTotal = rows.reduce((sum, row) => sum + row.revenue, 0)
+  return rows.map((row) => ({
+    ...row,
+    sharePct: typeTotal > 0 ? Math.round((row.revenue / typeTotal) * 100) : 0,
+  }))
 })
 
 const donutData = computed(() => {

@@ -188,7 +188,7 @@
 
       <v-window-item value="charts">
         <OrdersAnalyticsCharts
-          v-model:show-revenue-breakdown="showRevenueBreakdown"
+          v-model:open-kpi-breakdown-index="openKpiBreakdownIndex"
           :orders="filteredOrdersByCaseType"
           :daily-logs="dailyLogs"
           :month-weeks="monthWeeks"
@@ -285,8 +285,8 @@ const expandedRows = ref(new Set())
 // Case type filter
 const selectedCaseType = ref(null)
 
-// Toggle for estimated revenue breakdown (admin only)
-const showRevenueBreakdown = ref(false)
+// Which KPI card breakdown is open (0–4), or null
+const openKpiBreakdownIndex = ref(null)
 const isAdmin = computed(() => {
   const user = store.state.user?.user ?? JSON.parse(localStorage.getItem('auth_user') || 'null')
   return user?.role === 'admin'
