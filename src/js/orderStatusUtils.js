@@ -62,6 +62,12 @@ export function isOrderCancelledForMonth(order, monthKey) {
   return getOrderStatusForMonth(order, monthKey) === 'cancelled'
 }
 
+/** Orders that contribute agent goal/revenue on the agents page for a month. */
+export function isOrderEligibleForAgentGoalsForMonth(order, monthKey) {
+  const status = getOrderStatusForMonth(order, monthKey)
+  return status === 'in-progress' || status === 'completed'
+}
+
 /** Callers see assigned orders except pending and cancelled for the month. */
 export function isOrderVisibleToCallerForMonth(order, monthKey) {
   return !isOrderPendingForMonth(order, monthKey) && !isOrderCancelledForMonth(order, monthKey)

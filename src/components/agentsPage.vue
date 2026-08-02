@@ -141,6 +141,7 @@ import { mapGetters, mapMutations, mapActions } from 'vuex';
 import { goToNextMonth, goToPreviousMonth, formattedDateRange, isCurrentMonth } from '@/js/dateUtils';
 import { formatStatNumber } from '@/js/formatNumbers';
 import { getPercentageToGoalVuetifyColor } from '@/js/percentageToGoalStyle';
+import { isOrderEligibleForAgentGoalsForMonth, monthKeyFromDateRange } from '@/js/orderStatusUtils';
 import DateHeader from '@/components/DateHeader.vue';
 import AgentPersonalRevenueStatsStack from '@/components/AgentPersonalRevenueStatsStack.vue';
 
@@ -178,11 +179,13 @@ function getAgentMonthOrders(agent, orders, dateRange) {
   const aid = String(agent?._id ?? agent?.id ?? '');
   if (!aid || !Array.isArray(orders)) return [];
   const { from, to } = monthBoundsFromRange(dateRange);
+  const monthKey = monthKeyFromDateRange(dateRange);
   return orders.filter(
     (order) =>
       (order.assignedCallers || []).some((x) => String(x?._id ?? x?.id ?? x) === aid) &&
       orderOverlapsRange(order, from, to) &&
-      Number(order?.agentGoals?.[aid] ?? 0) > 0
+      Number(order?.agentGoals?.[aid] ?? 0) > 0 &&
+      (!monthKey || isOrderEligibleForAgentGoalsForMonth(order, monthKey))
   );
 }
 
