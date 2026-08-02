@@ -105,7 +105,7 @@
       "addLog": "Add Log",
       "logCreatedSuccessfully": "Log created successfully!",
       "logUpdatedSuccessfully": "Log updated successfully!",
-      "frozenCompleted": "Daily logs are frozen for this case — the order is completed for this month."
+      "frozenCompleted": "Daily logs are frozen for this case — the order is completed or cancelled for this month."
     },
     "ordersDashboard": {
       "tabs": {

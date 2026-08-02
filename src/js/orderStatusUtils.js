@@ -58,15 +58,19 @@ export function isOrderPendingForMonth(order, monthKey) {
   return getOrderStatusForMonth(order, monthKey) === 'pending'
 }
 
-/** Callers only see assigned orders that are active (not pending or completed) for the month. */
-export function isOrderVisibleToCallerForMonth(order, monthKey) {
-  const status = getOrderStatusForMonth(order, monthKey)
-  return status !== 'pending' && status !== 'completed'
+export function isOrderCancelledForMonth(order, monthKey) {
+  return getOrderStatusForMonth(order, monthKey) === 'cancelled'
 }
 
-/** Completed orders cannot receive new or edited daily logs for that month. */
+/** Callers see assigned orders except pending and cancelled for the month. */
+export function isOrderVisibleToCallerForMonth(order, monthKey) {
+  return !isOrderPendingForMonth(order, monthKey) && !isOrderCancelledForMonth(order, monthKey)
+}
+
+/** Completed and cancelled orders cannot receive new or edited daily logs for that month. */
 export function areDailyLogsFrozenForOrderMonth(order, monthKey) {
-  return isOrderCompletedForMonth(order, monthKey)
+  const status = getOrderStatusForMonth(order, monthKey)
+  return status === 'completed' || status === 'cancelled'
 }
 
 export function findOrderForDailyLog(orders, log) {

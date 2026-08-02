@@ -88,7 +88,7 @@
       "addLog": "Lisää loki",
       "logCreatedSuccessfully": "Loki luotu onnistuneesti!",
       "logUpdatedSuccessfully": "Loki päivitetty onnistuneesti!",
-      "frozenCompleted": "Päivittäiset lokit on jäädytetty tälle tapaukselle — tilaus on valmis tältä kuukaudelta."
+      "frozenCompleted": "Päivittäiset lokit on jäädytetty tälle tapaukselle — tilaus on valmis tai peruutettu tältä kuukaudelta."
     },
     "ordersDashboard": {
       "tabs": {
