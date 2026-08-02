@@ -34,11 +34,11 @@
 
             <v-btn
                 color="success"
-                :disabled="bulkCopying || !filteredSortedOrders.length"
+                :disabled="bulkCopyDisabled"
                 :loading="bulkCopying"
                 @click="bulkCopyOrdersToNextMonth"
             >
-                {{ t('assignGoals.buttons.bulkCopyCampaigns') }}
+                {{ bulkCopyButtonLabel }}
             </v-btn>
         </div>
     </v-card>
@@ -70,78 +70,214 @@
               :headers="orderHeaders"
               :items="group.items"
               item-value="_id"
-              class="elevation-1 mobile-scroll"
+              class="elevation-1 mobile-scroll assign-goals-orders-table"
               :items-per-page="20"
               density="comfortable"
               show-expand
-              :expanded="Array.from(expandedRows)"
+              :cell-props="getAssignGoalsCellProps"
+              :expanded="group.items.filter((i) => orderSpansMultipleMonths(i) && expandedRows.has(String(i._id))).map((i) => i._id)"
               @update:expanded="(value) => { expandedRows = new Set(value) }"
-              :item-class="({ item }) => {
-                const id = item?.raw?._id ?? item?._id;
-                return [
-                  id === selectedOrderId ? 'selected-row' : '',
-                  copiedToNextMonth[String(id)] ? 'copied-row' : ''
-                ].filter(Boolean).join(' ');
-              }"
               @click:row="selectOrder"
             >
-          <template #item.data-table-expand="{ item }">
-            <v-btn
-              v-if="orderSpansMultipleMonths(item)"
-              icon
-              size="small"
-              variant="text"
-              @click.stop="toggleExpand(item._id)"
-            >
-              <v-icon>{{ expandedRows.has(item._id) ? 'mdi-chevron-up' : 'mdi-chevron-down' }}</v-icon>
-            </v-btn>
-            <v-icon v-else size="small" color="transparent">mdi-circle-outline</v-icon>
+          <template #header.select>
+            <v-checkbox-btn
+              :model-value="isGroupAllCopySelected(group.items)"
+              :indeterminate="isGroupSomeCopySelected(group.items)"
+              density="compact"
+              hide-details
+              @update:model-value="(v) => setGroupCopySelection(group.items, v)"
+            />
           </template>
-          <template #item.copy="{ item }">
-            <v-btn
-              icon
-              variant="text"
-              size="small"
-              color="grey"
-              class="mr-2"
-              :title="t('assignGoals.tableHeaders.copy')"
-              @click.stop="copyOrder(item)"
+          <template #header.data-table-expand>
+            <span></span>
+          </template>
+          <template #item="{ item, props: rowProps, index }">
+            <VDataTableRow v-bind="rowProps">
+              <template #item.select="{ item: rowItem }">
+                <v-checkbox-btn
+                  :model-value="isCopyOrderSelected(rowItem._id)"
+                  :disabled="orderSpansMultipleMonths(rowItem)"
+                  density="compact"
+                  hide-details
+                  @click.stop
+                  @update:model-value="(v) => setCopyOrderSelected(rowItem._id, v)"
+                />
+              </template>
+              <template #item.data-table-expand="{ item: rowItem }">
+                <v-btn
+                  v-if="orderSpansMultipleMonths(rowItem)"
+                  icon
+                  size="small"
+                  variant="text"
+                  @click.stop="toggleExpand(rowItem._id)"
+                >
+                  <v-icon>{{ expandedRows.has(String(rowItem._id)) ? 'mdi-chevron-up' : 'mdi-chevron-down' }}</v-icon>
+                </v-btn>
+                <span v-else aria-hidden="true"></span>
+              </template>
+              <template #item.copy="{ item: rowItem }">
+                <v-tooltip
+                  :text="orderSpansMultipleMonths(rowItem)
+                    ? t('assignGoals.copyMultiMonthDisabled')
+                    : t('assignGoals.tableHeaders.copy')"
+                  location="top"
+                >
+                  <template #activator="{ props: tipProps }">
+                    <v-btn
+                      v-bind="tipProps"
+                      icon
+                      variant="text"
+                      size="small"
+                      color="grey"
+                      class="mr-2"
+                      :disabled="orderSpansMultipleMonths(rowItem)"
+                      @click.stop="copyOrder(rowItem)"
+                    >
+                      <v-icon>mdi-content-copy</v-icon>
+                    </v-btn>
+                  </template>
+                </v-tooltip>
+              </template>
+              <template #item.caseName="{ item: rowItem }">
+                <div class="case-cell-block" @click.stop>
+                  <div class="d-flex align-center flex-wrap case-cell-block__header">
+                    <span class="mr-2">{{ rowItem.caseName }}</span>
+                    <v-btn
+                      icon
+                      variant="text"
+                      size="small"
+                      color="grey"
+                      :title="t('orderDetails.editCase')"
+                      @click.stop="editCaseFromOrder(rowItem)"
+                    >
+                      <v-icon>mdi-pencil</v-icon>
+                    </v-btn>
+                    <v-chip
+                      v-if="orderSpansMultipleMonths(rowItem)"
+                      size="x-small"
+                      color="primary"
+                      class="ml-1"
+                    >
+                      {{ t('ordersDashboard.multiMonth') }}
+                    </v-chip>
+                    <v-chip
+                      v-if="isOrderOnHold(rowItem)"
+                      size="x-small"
+                      color="warning"
+                      class="ml-1"
+                    >
+                      {{ t('ordersDashboard.onPause') }}
+                    </v-chip>
+                  </div>
+                </div>
+              </template>
+              <template #item.monthlyGoal="{ item: rowItem }">
+                {{ rowItem.monthlyGoal ?? rowItem.totalQuantity ?? '—' }}
+              </template>
+              <template #item.goalsDistributed="{ item: rowItem }">
+                {{ getDistributedGoals(rowItem) }}
+              </template>
+              <template #item.campaignGoal="{ item: rowItem }">
+                {{ getCampaignGoalDisplay(rowItem) }}
+              </template>
+              <template #item.goalsRemaining="{ item: rowItem }">
+                <span :class="{ 'text-primary font-weight-medium': getRemainingGoals(rowItem) > 0 }" :title="getRemainingGoals(rowItem) > 0 ? t('assignGoals.goalsRemainingTooltip') : ''">
+                  {{ getRemainingGoals(rowItem) }}
+                </span>
+              </template>
+              <template #item.caseUnit="{ item: rowItem }">
+                {{ rowItem.caseUnit }}
+              </template>
+              <template #item.edit="{ item: rowItem }">
+                <v-btn
+                  icon
+                  variant="text"
+                  size="small"
+                  color="grey"
+                  class="mr-2"
+                  :title="t('assignGoals.tableHeaders.edit')"
+                  @click.stop="selectOrderForEdit(rowItem)"
+                >
+                  <v-icon>mdi-pencil</v-icon>
+                </v-btn>
+              </template>
+              <template #item.actions="{ item: rowItem }">
+                <v-btn
+                  icon
+                  variant="text"
+                  size="small"
+                  color="grey"
+                  class="mr-2"
+                  :title="t('assignGoals.tableHeaders.delete')"
+                  @click.stop="deleteOrder(rowItem._id)"
+                >
+                  <v-icon>mdi-delete</v-icon>
+                </v-btn>
+              </template>
+            </VDataTableRow>
+            <tr
+              :class="getCaseOrderStatusRowClass(item, index)"
+              :data-case-stripe="String(Number(index) % 2)"
+              @click="selectOrder(item, { item })"
             >
-              <v-icon>mdi-content-copy</v-icon>
-            </v-btn>
+              <td
+                :colspan="orderStatusRowLeadingColspan"
+                class="case-order-status-row__pad"
+                :style="getCaseRowBackgroundStyle(item, index)"
+              ></td>
+              <td
+                :colspan="orderStatusRowBodyColspan"
+                class="case-order-status-row__body"
+                :style="getCaseRowBackgroundStyle(item, index)"
+                @click.stop
+              >
+                <div class="case-cell-block__status order-status-radios-row text-caption text-medium-emphasis">
+                  <span class="order-status-label mr-2">{{ t('assignGoals.formLabels.orderStatus') }}</span>
+                  <v-radio-group
+                    class="order-status-radios"
+                    :model-value="normalizeOrderStatus(item.orderStatus)"
+                    inline
+                    hide-details
+                    density="compact"
+                    :disabled="statusUpdatingId === String(item._id)"
+                    @update:model-value="(v) => updateOrderStatus(item, v)"
+                  >
+                    <v-radio
+                      v-for="status in orderStatusOptions"
+                      :key="status"
+                      :value="status"
+                      density="compact"
+                    >
+                      <template #label>
+                        <span class="text-caption text-medium-emphasis">{{ status }}</span>
+                      </template>
+                    </v-radio>
+                  </v-radio-group>
+                </div>
+              </td>
+              <td
+                :colspan="orderStatusRowTrailingColspan"
+                class="case-order-status-row__pad"
+                :style="getCaseRowBackgroundStyle(item, index)"
+              ></td>
+            </tr>
           </template>
 
-          <template #item.caseName="{ item }">
-            <div class="d-flex align-center">
-              <span class="mr-2">{{ item.caseName }}</span>
-              <v-btn
-                icon
-                variant="text"
-                size="small"
-                color="grey"
-                :title="t('orderDetails.editCase')"
-                @click.stop="editCaseFromOrder(item)"
+          <template #expanded-row="{ item, index }">
+            <tr
+              v-if="orderSpansMultipleMonths(item) && item.monthlyBreakdown"
+              class="monthly-breakdown-row"
+              :data-case-stripe="String(Number(index) % 2)"
+            >
+              <td class="monthly-breakdown-row__expand" :style="getCaseRowBackgroundStyle(item, index)"></td>
+              <td class="monthly-breakdown-row__select" :style="getCaseRowBackgroundStyle(item, index)"></td>
+              <td
+                :colspan="orderHeaders.length"
+                class="monthly-breakdown-row__body"
+                :style="getCaseRowBackgroundStyle(item, index)"
               >
-                <v-icon>mdi-pencil</v-icon>
-              </v-btn>
-              <v-chip
-                v-if="orderSpansMultipleMonths(item)"
-                size="x-small"
-                color="primary"
-                class="ml-1"
-                style="cursor: pointer;"
-                @click.stop="toggleExpand(item._id)"
-              >
-                {{ t('ordersDashboard.multiMonth') }}
-              </v-chip>
-            </div>
-          </template>
-
-          <template #expanded-row="{ item }">
-            <tr v-if="orderSpansMultipleMonths(item) && item.monthlyBreakdown">
-              <td :colspan="orderHeaders.length">
-                <div class="pa-4 bg-grey-lighten-4">
-                  <h3 class="text-h6 mb-3">{{ t('ordersDashboard.monthlyBreakdown.title') }}</h3>
+                <div class="pa-3 pt-0" @click.stop>
+                  <h3 class="text-subtitle-1 mb-2">{{ t('ordersDashboard.monthlyBreakdown.title') }}</h3>
                   <div class="monthly-breakdown-scroll" style="overflow-x: auto; overflow-y: visible;">
                     <v-table density="compact" style="min-width: 600px;">
                       <thead>
@@ -183,46 +319,6 @@
                 </div>
               </td>
             </tr>
-          </template>
-
-          <template #item.goalsDistributed="{ item }">
-            {{ getDistributedGoals(item) }}
-          </template>
-          <template #item.campaignGoal="{ item }">
-            {{ getCampaignGoalDisplay(item) }}
-          </template>
-          <template #item.goalsRemaining="{ item }">
-            <span :class="{ 'text-primary font-weight-medium': getRemainingGoals(item) > 0 }" :title="getRemainingGoals(item) > 0 ? t('assignGoals.goalsRemainingTooltip') : ''">
-              {{ getRemainingGoals(item) }}
-            </span>
-          </template>
-
-          <template #item.edit="{ item }">
-            <v-btn
-              icon
-              variant="text"
-              size="small"
-              color="grey"
-              class="mr-2"
-              :title="t('assignGoals.tableHeaders.edit')"
-              @click.stop="selectOrderForEdit(item)"
-            >
-              <v-icon>mdi-pencil</v-icon>
-            </v-btn>
-          </template>
-
-          <template #item.actions="{ item }">
-            <v-btn
-              icon
-              variant="text"
-              size="small"
-              color="grey"
-              class="mr-2"
-              :title="t('assignGoals.tableHeaders.delete')"
-              @click.stop="deleteOrder(item._id)"
-            >
-              <v-icon>mdi-delete</v-icon>
-            </v-btn>
           </template>
         </v-data-table>
       </v-card>
@@ -485,7 +581,52 @@ const selectedOrder = ref(null)
 const selectedOrderId = ref(null)
 const rightPanelLoading = ref(false)
 const isEditMode = ref(false);
-const expandedRows = ref(new Set())
+const statusUpdatingId = ref(null)
+const orderStatusOptions = ['pending', 'in-progress', 'completed', 'cancelled', 'on-hold']
+
+// expand + select | caseName + stats | edit + copy + delete
+const orderStatusRowLeadingColspan = 2
+const orderStatusRowBodyColspan = 6
+const orderStatusRowTrailingColspan = 3
+
+function getCaseRowStripeClass(index) {
+  return Number(index) % 2 === 1 ? 'case-row-group--alt' : ''
+}
+
+function getCaseRowBackgroundColor(item, index) {
+  const id = String(item?._id ?? '')
+  if (id === String(selectedOrderId.value ?? '')) {
+    return '#e0f7fa'
+  }
+  if (copiedToNextMonth[id]) {
+    return '#e8f5e9'
+  }
+  if (Number(index) % 2 === 1) {
+    return '#f5f5f5'
+  }
+  return undefined
+}
+
+function getCaseRowBackgroundStyle(item, index) {
+  const backgroundColor = getCaseRowBackgroundColor(item, index)
+  return backgroundColor ? { backgroundColor } : undefined
+}
+
+function getAssignGoalsCellProps({ item, index }) {
+  const backgroundColor = getCaseRowBackgroundColor(item, index)
+  return backgroundColor ? { style: { backgroundColor } } : {}
+}
+
+function getCaseOrderStatusRowClass(item, index) {
+  const id = String(item?._id ?? '')
+  return [
+    'case-data-row',
+    'case-order-status-row',
+    getCaseRowStripeClass(index),
+    id === String(selectedOrderId.value ?? '') ? 'selected-row' : '',
+    copiedToNextMonth[id] ? 'copied-row' : '',
+  ].filter(Boolean).join(' ')
+}
 
 const showEditOrderModal = ref(false);
 const showAddCaseModal = ref(false);
@@ -503,6 +644,16 @@ const orderFormConfig = ref({
 const copiedToNextMonth = reactive({});
 const pendingCopySourceId = ref(null);
 const bulkCopying = ref(false);
+const selectedCopyOrderIds = ref(new Set());
+const expandedRows = ref(new Set());
+
+function toggleExpand(id) {
+  const key = String(id);
+  const next = new Set(expandedRows.value);
+  if (next.has(key)) next.delete(key);
+  else next.add(key);
+  expandedRows.value = next;
+}
 
 // Monthly breakdown helpers (mirrors ordersDashboard)
 const formatCurrency = formatCurrencyEUR
@@ -670,8 +821,9 @@ async function bulkCopyOrdersToNextMonth() {
     console.warn('📋 Bulk copy: Already in progress, ignoring duplicate call');
     return;
   }
-  
-  if (!filteredSortedOrders.value || !filteredSortedOrders.value.length) {
+
+  const ordersToCopy = ordersForBulkCopy.value;
+  if (!ordersToCopy.length) {
     console.warn('📋 Bulk copy: No orders to copy');
     return;
   }
@@ -680,8 +832,11 @@ async function bulkCopyOrdersToNextMonth() {
     bulkCopying.value = true;
     
     // Take a snapshot of source orders to prevent reactivity issues
-    const sourceOrders = [...filteredSortedOrders.value];
-    console.log(`📋 Bulk copy: Starting copy of ${sourceOrders.length} orders`);
+    const sourceOrders = [...ordersToCopy];
+    const selectionMode = selectedCopyOrderIds.value.size > 0;
+    console.log(
+      `📋 Bulk copy: Starting copy of ${sourceOrders.length} orders${selectionMode ? ' (selected)' : ''}`
+    );
 
     // Use the currentDateRange (the displayed month) to calculate next month
     // This avoids timezone parsing issues with individual order dates
@@ -696,6 +851,7 @@ async function bulkCopyOrdersToNextMonth() {
     console.log(`📋 Bulk copy: Target month range: ${nextStart} to ${nextEnd}`);
 
     let skippedCount = 0;
+    let multiMonthSkippedCount = 0;
     let copiedCount = 0;
     let failedCount = 0;
     
@@ -707,6 +863,12 @@ async function bulkCopyOrdersToNextMonth() {
       `${String(caseId || '')}|${String(caseUnit || '')}|${Number(pricePerUnit || 0)}`;
 
     for (const o of sourceOrders) {
+      if (orderSpansMultipleMonths(o)) {
+        console.log(`📋 Bulk copy: Skipping "${o.caseName}" (multi-month campaign)`);
+        multiMonthSkippedCount++;
+        continue;
+      }
+
       const key = orderKey(o.caseId, o.caseUnit, o.pricePerUnit);
       
       // Skip if we already created this in the current batch
@@ -756,9 +918,12 @@ async function bulkCopyOrdersToNextMonth() {
       }
     }
 
-    console.log(`📋 Bulk copy complete: ${copiedCount} copied, ${skippedCount} skipped (duplicates), ${failedCount} failed`);
+    console.log(
+      `📋 Bulk copy complete: ${copiedCount} copied, ${skippedCount} skipped (duplicates), ${multiMonthSkippedCount} multi-month excluded, ${failedCount} failed`
+    );
 
     saveCopiedFlags();
+    selectedCopyOrderIds.value = new Set();
     await fetchAllData();
     recomputeCopiedFlags();
   } finally {
@@ -800,7 +965,8 @@ const currentMonthLabel = computed(() => {
 })
 
 const orderHeaders = computed(() => [
-  { title: t('assignGoals.tableHeaders.caseName'), key: 'caseName' },
+  { title: '', key: 'select', sortable: false, width: '48px' },
+  { title: t('assignGoals.tableHeaders.caseName'), key: 'caseName', minWidth: '180px' },
   { title: t('assignGoals.tableHeaders.totalGoals'), key: 'monthlyGoal' },
   { title: t('assignGoals.tableHeaders.campaignGoal'), key: 'campaignGoal', sortable: false },
   { title: t('assignGoals.tableHeaders.goalsDistributed'), key: 'goalsDistributed', sortable: false },
@@ -990,6 +1156,70 @@ const filteredSortedOrders = computed(() => {
   return list;
 });
 
+const ordersForBulkCopy = computed(() => {
+  const list = filteredSortedOrders.value || [];
+  if (selectedCopyOrderIds.value.size > 0) {
+    return list.filter((o) => selectedCopyOrderIds.value.has(String(o._id)));
+  }
+  return list;
+});
+
+const bulkCopyButtonLabel = computed(() => {
+  const count = selectedCopyOrderIds.value.size;
+  if (count > 0) {
+    return t('assignGoals.buttons.copySelectedCases', { count });
+  }
+  return t('assignGoals.buttons.bulkCopyCampaigns');
+});
+
+const bulkCopyDisabled = computed(() => {
+  if (bulkCopying.value) return true;
+  if (selectedCopyOrderIds.value.size > 0) return false;
+  return !(filteredSortedOrders.value?.length);
+});
+
+function isCopyOrderSelected(id) {
+  return selectedCopyOrderIds.value.has(String(id));
+}
+
+function setCopyOrderSelected(id, selected) {
+  const next = new Set(selectedCopyOrderIds.value);
+  const key = String(id);
+  if (selected) next.add(key);
+  else next.delete(key);
+  selectedCopyOrderIds.value = next;
+}
+
+function copyableItemsInGroup(items) {
+  return (items || []).filter((o) => !orderSpansMultipleMonths(o));
+}
+
+function isGroupAllCopySelected(items) {
+  const copyable = copyableItemsInGroup(items);
+  if (!copyable.length) return false;
+  return copyable.every((o) => isCopyOrderSelected(o._id));
+}
+
+function isGroupSomeCopySelected(items) {
+  const copyable = copyableItemsInGroup(items);
+  const selectedCount = copyable.filter((o) => isCopyOrderSelected(o._id)).length;
+  return selectedCount > 0 && selectedCount < copyable.length;
+}
+
+function setGroupCopySelection(items, selected) {
+  const next = new Set(selectedCopyOrderIds.value);
+  for (const o of copyableItemsInGroup(items)) {
+    const key = String(o._id);
+    if (selected) next.add(key);
+    else next.delete(key);
+  }
+  selectedCopyOrderIds.value = next;
+}
+
+watch(currentDateRange, () => {
+  selectedCopyOrderIds.value = new Set();
+});
+
 // Group filtered orders by case type (match ordersDashboard grouping)
 const groupedOrdersByCaseTypeAssignGoals = computed(() => {
   const groups = {};
@@ -1066,6 +1296,7 @@ function openAddOrderModal() {
 
 function copyOrder(item) {
   if (!item) return;
+  if (orderSpansMultipleMonths(item)) return;
 
   pendingCopySourceId.value = item._id;
 
@@ -1250,14 +1481,38 @@ function agentMonthlyStats(agentId, from, to, allOrders) {
   return { revenue, orders: ordersCount };
 }
 
-function toggleExpand(orderId) {
-  const newExpanded = new Set(expandedRows.value)
-  if (newExpanded.has(orderId)) {
-    newExpanded.delete(orderId)
-  } else {
-    newExpanded.add(orderId)
+function normalizeOrderStatus(status) {
+  return String(status ?? '')
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+}
+
+function isOrderOnHold(order) {
+  return normalizeOrderStatus(order?.orderStatus ?? order?.status) === 'on-hold'
+}
+
+async function updateOrderStatus(order, newStatus) {
+  const id = order?._id ?? order?.id
+  if (!id || !newStatus) return
+  const normalized = normalizeOrderStatus(newStatus)
+  if (!orderStatusOptions.includes(normalized)) return
+  if (normalizeOrderStatus(order.orderStatus) === normalized) return
+
+  statusUpdatingId.value = String(id)
+  try {
+    await axios.put(`${urls.backEndURL}/orders/${id}`, { orderStatus: normalized })
+    await store.dispatch('fetchOrders', true)
+    if (selectedOrder.value && String(selectedOrder.value._id) === String(id)) {
+      selectedOrder.value = {
+        ...selectedOrder.value,
+        orderStatus: normalized,
+      }
+    }
+  } catch (err) {
+    console.error('Failed to update order status:', err?.response?.data || err?.message || err)
+  } finally {
+    statusUpdatingId.value = null
   }
-  expandedRows.value = newExpanded
 }
 
 function getMonthlyRevenueGoal(order, month) {
@@ -1727,11 +1982,141 @@ watch(currentDateRange, loadMonthWeeks, { deep: true })
 
 </script>
 <style>
-  ::v-deep(.selected-row) {
-    background-color: #e0f7fa !important; /* light blue */
+  .assign-goals .assign-goals-orders-table :deep(table) {
+    border-collapse: collapse;
   }
-  ::v-deep(.copied-row) {
-    background-color: #e8f5e9 !important; /* light green */
+  /* Solid row backgrounds — apply to every td in the case group */
+  .assign-goals .assign-goals-orders-table :deep(tr.case-order-status-row[data-case-stripe="1"] > td),
+  .assign-goals .assign-goals-orders-table :deep(tr.v-data-table__tr:has(+ tr.case-order-status-row[data-case-stripe="1"]) > td),
+  .assign-goals .assign-goals-orders-table :deep(tbody > tr.v-data-table__tr:nth-child(4n+3) > td) {
+    background-color: #f5f5f5 !important;
+  }
+  .assign-goals .assign-goals-orders-table :deep(tr.case-order-status-row.selected-row > td),
+  .assign-goals .assign-goals-orders-table :deep(tr.v-data-table__tr:has(+ tr.case-order-status-row.selected-row) > td) {
+    background-color: #e0f7fa !important;
+  }
+  .assign-goals .assign-goals-orders-table :deep(tr.case-order-status-row.copied-row > td),
+  .assign-goals .assign-goals-orders-table :deep(tr.v-data-table__tr:has(+ tr.case-order-status-row.copied-row) > td) {
+    background-color: #e8f5e9 !important;
+  }
+  .assign-goals .assign-goals-orders-table :deep(tr.case-order-status-row[data-case-stripe="1"] + tr.monthly-breakdown-row > td) {
+    background-color: #f5f5f5 !important;
+  }
+  .assign-goals .assign-goals-orders-table :deep(tr.case-order-status-row.selected-row + tr.monthly-breakdown-row > td) {
+    background-color: #e0f7fa !important;
+  }
+  .assign-goals .assign-goals-orders-table :deep(tr.case-order-status-row.copied-row + tr.monthly-breakdown-row > td) {
+    background-color: #e8f5e9 !important;
+  }
+  .assign-goals .case-cell-block {
+    min-width: 0;
+    padding-top: 2px;
+    padding-bottom: 2px;
+  }
+  .assign-goals .case-cell-block__header {
+    margin-bottom: 0;
+  }
+  .assign-goals .case-cell-block__status {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 4px 8px;
+    overflow-x: auto;
+  }
+  .assign-goals .order-status-label {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+  .assign-goals .assign-goals-orders-table :deep(tr.v-data-table__tr:has(+ tr.case-order-status-row) td) {
+    vertical-align: top;
+    padding-top: 10px !important;
+  }
+  .assign-goals .assign-goals-orders-table :deep(tr.v-data-table__tr:has(+ tr.case-order-status-row) td) {
+    border-bottom: none !important;
+    padding-bottom: 6px !important;
+  }
+  .assign-goals .assign-goals-orders-table :deep(tr.case-order-status-row td) {
+    vertical-align: middle;
+    padding-top: 0 !important;
+    padding-bottom: 10px !important;
+    border-top: none !important;
+  }
+  .assign-goals .case-order-status-row__pad {
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+  }
+  .assign-goals .case-order-status-row__body {
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+    padding-top: 4px !important;
+  }
+  .assign-goals .assign-goals-orders-table :deep(tr.case-order-status-row:has(+ tr.monthly-breakdown-row) td) {
+    border-bottom: none !important;
+  }
+  .assign-goals .monthly-breakdown-row__expand,
+  .assign-goals .monthly-breakdown-row__select {
+    width: 0;
+    padding: 0 !important;
+  }
+  .assign-goals .monthly-breakdown-row__body {
+    border-top: none !important;
+  }
+  .assign-goals .order-status-radios-row {
+    flex-wrap: nowrap;
+    gap: 2px 6px;
+    font-size: 0.75rem !important;
+    line-height: 1.25 !important;
+  }
+  .assign-goals .order-status-radios {
+    margin: 0;
+    flex: 0 0 auto;
+    width: auto;
+    max-width: none;
+  }
+  .assign-goals .order-status-radios :deep(.v-input),
+  .assign-goals .order-status-radios :deep(.v-input__control),
+  .assign-goals .order-status-radios :deep(.v-input__details) {
+    width: auto;
+    max-width: none;
+  }
+  .assign-goals .order-status-radios :deep(.v-selection-control-group--inline),
+  .assign-goals .order-status-radios :deep(.v-selection-control-group) {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap !important;
+    align-items: center;
+    gap: 0 10px;
+  }
+  .assign-goals .order-status-radios :deep(.v-selection-control) {
+    flex: 0 0 auto;
+    min-height: 1.25rem !important;
+    height: 1.25rem !important;
+    margin-inline-end: 0 !important;
+    align-items: center;
+    --v-selection-control-size: 0.75rem;
+  }
+  .assign-goals .order-status-radios :deep(.v-selection-control__wrapper) {
+    width: 0.75rem !important;
+    height: 0.75rem !important;
+  }
+  .assign-goals .order-status-radios :deep(.v-selection-control__input) {
+    width: 0.75rem !important;
+    height: 0.75rem !important;
+    transform: none !important;
+  }
+  .assign-goals .order-status-radios :deep(.v-selection-control__input .v-icon),
+  .assign-goals .order-status-radios :deep(.v-icon) {
+    font-size: 0.75rem !important;
+    width: 0.75rem !important;
+    height: 0.75rem !important;
+  }
+  .assign-goals .order-status-radios :deep(.v-label),
+  .assign-goals .order-status-radios :deep(.v-label .text-caption) {
+    font-size: 0.75rem !important;
+    line-height: 1.25 !important;
+    white-space: nowrap;
+    opacity: var(--v-medium-emphasis-opacity, 0.6) !important;
+    color: inherit !important;
   }
   /* Mobile styles for Assign Goals */
   .assign-goals .responsive-toolbar {

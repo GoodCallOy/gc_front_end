@@ -156,6 +156,7 @@
       "case": "case",
       "cases": "cases",
       "multiMonth": "Multi-Month",
+      "onPause": "On Pause",
       "tableHeaders": {
         "caseName": "Case Name",
         "status": "Status",
@@ -222,6 +223,7 @@
         "addCampaign": "Add Campaign",
         "editCampaign": "Edit Campaign",
         "bulkCopyCampaigns": "Bulk Copy Campaigns",
+        "copySelectedCases": "Copy selected cases ({count})",
         "saveGoals": "Save goals",
         "close": "Close",
         "addCase": "Add Case",
@@ -241,6 +243,7 @@
         "delete": "Delete"
       },
       "remainingInCampaign": "remaining in campaign",
+      "copyMultiMonthDisabled": "Multi-month campaigns cannot be copied to the next month",
       "assignGoalsFor": "Assign Goals for",
       "goalsRemainingToAssign": "Goals remaining to assign",
       "goalsRemainingTooltip": "Available to give to other agents when you remove goals",

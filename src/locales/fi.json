@@ -139,6 +139,7 @@
       "case": "tapaus",
       "cases": "tapausta",
       "multiMonth": "Monikuukautinen",
+      "onPause": "Tauolla",
       "tableHeaders": {
         "caseName": "Tapauksen nimi",
         "status": "Tila",
@@ -205,6 +206,7 @@
         "addCampaign": "Lisää kampanja",
         "editCampaign": "Muokkaa kampanjaa",
         "bulkCopyCampaigns": "Kopioi kampanjat joukkona",
+        "copySelectedCases": "Kopioi valitut tapaukset ({count})",
         "saveGoals": "Tallenna tavoitteet",
         "close": "Sulje",
         "addCase": "Lisää tapaus",
@@ -224,6 +226,7 @@
         "delete": "Poista"
       },
       "remainingInCampaign": "jäljellä kampanjassa",
+      "copyMultiMonthDisabled": "Monikuukautisia kampanjoita ei voi kopioida seuraavaan kuukauteen",
       "assignGoalsFor": "Määritä tavoitteet",
       "goalsRemainingToAssign": "Jaettavana olevat tavoitteet",
       "goalsRemainingTooltip": "Saatavilla muille agenteille poistettaessa tavoitteita",

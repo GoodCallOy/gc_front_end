@@ -120,7 +120,7 @@
               </tr>
             </template>
             <template #item.caseName="{ item }">
-              <div class="d-flex align-center">
+              <div class="d-flex align-center flex-wrap">
                 <span class="mr-2">{{ item.caseName }}</span>
                 <v-btn
                   icon
@@ -141,6 +141,14 @@
                   @click.stop="toggleExpand(item._id)"
                 >
                   {{ t('ordersDashboard.multiMonth') }}
+                </v-chip>
+                <v-chip
+                  v-if="isOrderOnHold(item)"
+                  size="x-small"
+                  color="warning"
+                  class="ml-1"
+                >
+                  {{ t('ordersDashboard.onPause') }}
                 </v-chip>
               </div>
             </template>
@@ -460,6 +468,13 @@ function isTestCase(order) {
   if (order.isTest === true || order.test === true) return true;
   
   return false;
+}
+
+function isOrderOnHold(order) {
+  const status = String(order?.orderStatus ?? order?.status ?? '')
+    .toLowerCase()
+    .replace(/\s+/g, '-');
+  return status === 'on-hold';
 }
 
 // Helper function to check if an order is the "case good call" case
