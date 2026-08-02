@@ -152,6 +152,9 @@
                 </v-chip>
               </div>
             </template>
+            <template #item.orderId="{ item }">
+              <span class="text-medium-emphasis">{{ item._id ?? '—' }}</span>
+            </template>
             <template #item.callers="{ item }">
               {{ getCallerNames(item) }}
             </template>
@@ -253,6 +256,7 @@ const activeTab = ref('charts')
 const tableHeaders = computed(() => [
   { title: '', key: 'data-table-expand', sortable: false, width: '40px' },
   { title: t('ordersDashboard.tableHeaders.caseName'), key: 'caseName' },
+  { title: t('ordersDashboard.tableHeaders.orderId'), key: 'orderId', sortable: false },
   { title: t('ordersDashboard.tableHeaders.status'), key: 'orderStatus' },
   { title: t('ordersDashboard.tableHeaders.callers'), key: 'callers', sortable: false },
   { title: t('ordersDashboard.tableHeaders.pricePerUnit'), key: 'pricePerUnit' },

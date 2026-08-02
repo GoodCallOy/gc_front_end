@@ -159,6 +159,7 @@
       "onPause": "On Pause",
       "tableHeaders": {
         "caseName": "Case Name",
+        "orderId": "Order ID",
         "status": "Status",
         "callers": "Callers",
         "pricePerUnit": "Price/Unit (€)",
@@ -232,6 +233,7 @@
       },
       "tableHeaders": {
         "caseName": "Case Name",
+        "orderId": "Order ID",
         "totalGoals": "Total Goals",
         "campaignGoal": "Campaign goal (current/total)",
         "goalsDistributed": "Goals Distributed",
@@ -244,6 +246,7 @@
       },
       "remainingInCampaign": "remaining in campaign",
       "copyMultiMonthDisabled": "Multi-month campaigns cannot be copied to the next month",
+      "copiedToNextMonth": "Copied to next month",
       "assignGoalsFor": "Assign Goals for",
       "goalsRemainingToAssign": "Goals remaining to assign",
       "goalsRemainingTooltip": "Available to give to other agents when you remove goals",

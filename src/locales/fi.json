@@ -142,6 +142,7 @@
       "onPause": "Tauolla",
       "tableHeaders": {
         "caseName": "Tapauksen nimi",
+        "orderId": "Tilaus-ID",
         "status": "Tila",
         "callers": "Soittajat",
         "pricePerUnit": "Hinta/yksikkö (€)",
@@ -215,6 +216,7 @@
       },
       "tableHeaders": {
         "caseName": "Tapauksen nimi",
+        "orderId": "Tilaus-ID",
         "totalGoals": "Tavoitteet yhteensä",
         "campaignGoal": "Kampanjatavoite (nykyinen/yhteensä)",
         "goalsDistributed": "Jaetut tavoitteet",
@@ -227,6 +229,7 @@
       },
       "remainingInCampaign": "jäljellä kampanjassa",
       "copyMultiMonthDisabled": "Monikuukautisia kampanjoita ei voi kopioida seuraavaan kuukauteen",
+      "copiedToNextMonth": "Kopioitu seuraavaan kuukauteen",
       "assignGoalsFor": "Määritä tavoitteet",
       "goalsRemainingToAssign": "Jaettavana olevat tavoitteet",
       "goalsRemainingTooltip": "Saatavilla muille agenteille poistettaessa tavoitteita",

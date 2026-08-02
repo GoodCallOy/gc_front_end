@@ -73,6 +73,7 @@
               class="elevation-1 mobile-scroll assign-goals-orders-table"
               :items-per-page="20"
               density="comfortable"
+              fixed-header
               show-expand
               :cell-props="getAssignGoalsCellProps"
               :expanded="group.items.filter((i) => orderSpansMultipleMonths(i) && expandedRows.has(String(i._id))).map((i) => i._id)"
@@ -168,8 +169,20 @@
                     >
                       {{ t('ordersDashboard.onPause') }}
                     </v-chip>
+                    <v-chip
+                      v-if="isCopiedToNextMonth(rowItem)"
+                      size="x-small"
+                      color="success"
+                      variant="tonal"
+                      class="ml-1"
+                    >
+                      {{ t('assignGoals.copiedToNextMonth') }}
+                    </v-chip>
                   </div>
                 </div>
+              </template>
+              <template #item.orderId="{ item: rowItem }">
+                <span class="text-medium-emphasis">{{ rowItem._id ?? '—' }}</span>
               </template>
               <template #item.monthlyGoal="{ item: rowItem }">
                 {{ rowItem.monthlyGoal ?? rowItem.totalQuantity ?? '—' }}
@@ -221,12 +234,7 @@
               @click="selectOrder(item, { item })"
             >
               <td
-                :colspan="orderStatusRowLeadingColspan"
-                class="case-order-status-row__pad"
-                :style="getCaseRowBackgroundStyle(item, index)"
-              ></td>
-              <td
-                :colspan="orderStatusRowBodyColspan"
+                :colspan="orderTableColumnCount"
                 class="case-order-status-row__body"
                 :style="getCaseRowBackgroundStyle(item, index)"
                 @click.stop
@@ -255,11 +263,6 @@
                   </v-radio-group>
                 </div>
               </td>
-              <td
-                :colspan="orderStatusRowTrailingColspan"
-                class="case-order-status-row__pad"
-                :style="getCaseRowBackgroundStyle(item, index)"
-              ></td>
             </tr>
           </template>
 
@@ -584,11 +587,6 @@ const isEditMode = ref(false);
 const statusUpdatingId = ref(null)
 const orderStatusOptions = ['pending', 'in-progress', 'completed', 'cancelled', 'on-hold']
 
-// expand + select | caseName + stats | edit + copy + delete
-const orderStatusRowLeadingColspan = 2
-const orderStatusRowBodyColspan = 6
-const orderStatusRowTrailingColspan = 3
-
 function getCaseRowStripeClass(index) {
   return Number(index) % 2 === 1 ? 'case-row-group--alt' : ''
 }
@@ -597,9 +595,6 @@ function getCaseRowBackgroundColor(item, index) {
   const id = String(item?._id ?? '')
   if (id === String(selectedOrderId.value ?? '')) {
     return '#e0f7fa'
-  }
-  if (copiedToNextMonth[id]) {
-    return '#e8f5e9'
   }
   if (Number(index) % 2 === 1) {
     return '#f5f5f5'
@@ -624,8 +619,12 @@ function getCaseOrderStatusRowClass(item, index) {
     'case-order-status-row',
     getCaseRowStripeClass(index),
     id === String(selectedOrderId.value ?? '') ? 'selected-row' : '',
-    copiedToNextMonth[id] ? 'copied-row' : '',
   ].filter(Boolean).join(' ')
+}
+
+function isCopiedToNextMonth(item) {
+  const id = String(item?._id ?? '')
+  return !!copiedToNextMonth[id]
 }
 
 const showEditOrderModal = ref(false);
@@ -967,6 +966,7 @@ const currentMonthLabel = computed(() => {
 const orderHeaders = computed(() => [
   { title: '', key: 'select', sortable: false, width: '48px' },
   { title: t('assignGoals.tableHeaders.caseName'), key: 'caseName', minWidth: '180px' },
+  { title: t('assignGoals.tableHeaders.orderId'), key: 'orderId', sortable: false },
   { title: t('assignGoals.tableHeaders.totalGoals'), key: 'monthlyGoal' },
   { title: t('assignGoals.tableHeaders.campaignGoal'), key: 'campaignGoal', sortable: false },
   { title: t('assignGoals.tableHeaders.goalsDistributed'), key: 'goalsDistributed', sortable: false },
@@ -976,6 +976,9 @@ const orderHeaders = computed(() => [
   { title: t('assignGoals.tableHeaders.copy'), key: 'copy', sortable: false },
   { title: t('assignGoals.tableHeaders.delete'), key: 'actions', sortable: false }
 ])
+
+// expand column + orderHeaders
+const orderTableColumnCount = computed(() => orderHeaders.value.length + 1)
 
 const agent = ref({
   name: '',
@@ -1985,6 +1988,20 @@ watch(currentDateRange, loadMonthWeeks, { deep: true })
   .assign-goals .assign-goals-orders-table :deep(table) {
     border-collapse: collapse;
   }
+  .assign-goals .assign-goals-orders-table.mobile-scroll {
+    overflow: visible;
+  }
+  .assign-goals .assign-goals-orders-table :deep(.v-table__wrapper) {
+    max-height: calc(100vh - 280px);
+    overflow: auto;
+  }
+  .assign-goals .assign-goals-orders-table :deep(thead th) {
+    position: sticky;
+    top: 0;
+    z-index: 4;
+    background: rgb(var(--v-theme-surface));
+    box-shadow: inset 0 -1px 0 rgba(var(--v-border-color), var(--v-border-opacity));
+  }
   /* Solid row backgrounds — apply to every td in the case group */
   .assign-goals .assign-goals-orders-table :deep(tr.case-order-status-row[data-case-stripe="1"] > td),
   .assign-goals .assign-goals-orders-table :deep(tr.v-data-table__tr:has(+ tr.case-order-status-row[data-case-stripe="1"]) > td),
@@ -1995,18 +2012,11 @@ watch(currentDateRange, loadMonthWeeks, { deep: true })
   .assign-goals .assign-goals-orders-table :deep(tr.v-data-table__tr:has(+ tr.case-order-status-row.selected-row) > td) {
     background-color: #e0f7fa !important;
   }
-  .assign-goals .assign-goals-orders-table :deep(tr.case-order-status-row.copied-row > td),
-  .assign-goals .assign-goals-orders-table :deep(tr.v-data-table__tr:has(+ tr.case-order-status-row.copied-row) > td) {
-    background-color: #e8f5e9 !important;
-  }
   .assign-goals .assign-goals-orders-table :deep(tr.case-order-status-row[data-case-stripe="1"] + tr.monthly-breakdown-row > td) {
     background-color: #f5f5f5 !important;
   }
   .assign-goals .assign-goals-orders-table :deep(tr.case-order-status-row.selected-row + tr.monthly-breakdown-row > td) {
     background-color: #e0f7fa !important;
-  }
-  .assign-goals .assign-goals-orders-table :deep(tr.case-order-status-row.copied-row + tr.monthly-breakdown-row > td) {
-    background-color: #e8f5e9 !important;
   }
   .assign-goals .case-cell-block {
     min-width: 0;
@@ -2042,13 +2052,10 @@ watch(currentDateRange, loadMonthWeeks, { deep: true })
     padding-bottom: 10px !important;
     border-top: none !important;
   }
-  .assign-goals .case-order-status-row__pad {
-    padding-top: 0 !important;
-    padding-bottom: 0 !important;
-  }
   .assign-goals .case-order-status-row__body {
     border-top: 1px solid rgba(0, 0, 0, 0.08);
     padding-top: 4px !important;
+    padding-left: 16px !important;
   }
   .assign-goals .assign-goals-orders-table :deep(tr.case-order-status-row:has(+ tr.monthly-breakdown-row) td) {
     border-bottom: none !important;
@@ -2063,6 +2070,7 @@ watch(currentDateRange, loadMonthWeeks, { deep: true })
   }
   .assign-goals .order-status-radios-row {
     flex-wrap: nowrap;
+    justify-content: flex-start;
     gap: 2px 6px;
     font-size: 0.75rem !important;
     line-height: 1.25 !important;
@@ -2123,7 +2131,7 @@ watch(currentDateRange, loadMonthWeeks, { deep: true })
     flex-wrap: wrap;
     gap: 8px;
   }
-  .assign-goals .mobile-scroll {
+  .assign-goals .mobile-scroll:not(.assign-goals-orders-table) {
     overflow-x: auto;
   }
   @media (max-width: 600px) {
