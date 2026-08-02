@@ -243,7 +243,7 @@
                   <span class="order-status-label mr-2">{{ t('assignGoals.formLabels.orderStatus') }}</span>
                   <v-radio-group
                     class="order-status-radios"
-                    :model-value="normalizeOrderStatus(item.orderStatus)"
+                    :model-value="getOrderStatusForMonth(item, currentMonthKey)"
                     inline
                     hide-details
                     density="compact"
@@ -251,7 +251,7 @@
                     @update:model-value="(v) => updateOrderStatus(item, v)"
                   >
                     <v-radio
-                      v-for="status in orderStatusOptions"
+                      v-for="status in ORDER_STATUS_OPTIONS"
                       :key="status"
                       :value="status"
                       density="compact"
@@ -574,6 +574,14 @@ import {
   buildOrderCopyPrefill,
   resolveOrderCopyFields,
 } from '@/js/orderCopyUtils'
+import {
+  ORDER_STATUS_OPTIONS,
+  normalizeOrderStatus,
+  getOrderStatusForMonth,
+  isOrderOnHoldForMonth,
+  buildMonthlyOrderStatusUpdate,
+  monthKeyFromDateRange,
+} from '@/js/orderStatusUtils'
 
 const store = useStore()
 const router = useRouter()
@@ -585,7 +593,7 @@ const selectedOrderId = ref(null)
 const rightPanelLoading = ref(false)
 const isEditMode = ref(false);
 const statusUpdatingId = ref(null)
-const orderStatusOptions = ['pending', 'in-progress', 'completed', 'cancelled', 'on-hold']
+const orderStatusOptions = ORDER_STATUS_OPTIONS
 
 function getCaseRowStripeClass(index) {
   return Number(index) % 2 === 1 ? 'case-row-group--alt' : ''
@@ -942,6 +950,8 @@ const gcAgents = computed(() => store.getters['gcAgents'])
 const dailyLogs = computed(() => store.getters['dailyLogs'] || [])
 const agents = gcAgents
 const currentDateRange = computed(() => store.getters['currentDateRange'])
+
+const currentMonthKey = computed(() => monthKeyFromDateRange(currentDateRange.value))
 const monthWeeks = ref([])
 const cases = computed(() => store.getters['GcCases'])
 const roles = ['admin', 'caller', 'manager']
@@ -1484,31 +1494,27 @@ function agentMonthlyStats(agentId, from, to, allOrders) {
   return { revenue, orders: ordersCount };
 }
 
-function normalizeOrderStatus(status) {
-  return String(status ?? '')
-    .toLowerCase()
-    .replace(/\s+/g, '-')
-}
-
 function isOrderOnHold(order) {
-  return normalizeOrderStatus(order?.orderStatus ?? order?.status) === 'on-hold'
+  return isOrderOnHoldForMonth(order, currentMonthKey.value)
 }
 
 async function updateOrderStatus(order, newStatus) {
   const id = order?._id ?? order?.id
-  if (!id || !newStatus) return
+  const monthKey = currentMonthKey.value
+  if (!id || !newStatus || !monthKey) return
   const normalized = normalizeOrderStatus(newStatus)
-  if (!orderStatusOptions.includes(normalized)) return
-  if (normalizeOrderStatus(order.orderStatus) === normalized) return
+  if (!ORDER_STATUS_OPTIONS.includes(normalized)) return
+  if (getOrderStatusForMonth(order, monthKey) === normalized) return
 
   statusUpdatingId.value = String(id)
   try {
-    await axios.put(`${urls.backEndURL}/orders/${id}`, { orderStatus: normalized })
+    const payload = buildMonthlyOrderStatusUpdate(order, monthKey, normalized)
+    await axios.put(`${urls.backEndURL}/orders/${id}`, payload)
     await store.dispatch('fetchOrders', true)
     if (selectedOrder.value && String(selectedOrder.value._id) === String(id)) {
       selectedOrder.value = {
         ...selectedOrder.value,
-        orderStatus: normalized,
+        monthlyOrderStatus: payload.monthlyOrderStatus,
       }
     }
   } catch (err) {

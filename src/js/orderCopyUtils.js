@@ -5,6 +5,7 @@
 
 import { orderSpansMultipleMonths } from '@/js/statsUtils';
 import { roundTo2Decimals } from '@/js/formatNumbers';
+import { buildMonthlyOrderStatusForNextMonth } from '@/js/orderStatusUtils';
 
 function monthKeyFromDate(dateVal) {
   const s = String(dateVal || '').split('T')[0];
@@ -145,6 +146,11 @@ export function buildOrderCopyPayload(order, copyFields, extra = {}) {
       extra.targetMonthStart ?? startDate,
       sourceMonthStart ?? order?.startDate
     ),
+    monthlyOrderStatus: buildMonthlyOrderStatusForNextMonth(
+      order,
+      extra.targetMonthStart ?? startDate,
+      sourceMonthStart ?? order?.startDate
+    ),
     agentGoals,
     agentRates,
     agentPrices,
@@ -196,6 +202,11 @@ export function buildOrderCopyPrefill(order, copyFields, extra = {}) {
     ProjectStartFee: order?.ProjectStartFee ?? order?.projectStartFee ?? '',
     ProjectManagmentFee: order?.ProjectManagmentFee ?? order?.projectManagementFee ?? '',
     monthlyRevenueGoals: buildMonthlyRevenueGoalsForNextMonth(
+      order,
+      extra.targetMonthStart ?? startDate,
+      sourceMonthStart ?? order?.startDate
+    ),
+    monthlyOrderStatus: buildMonthlyOrderStatusForNextMonth(
       order,
       extra.targetMonthStart ?? startDate,
       sourceMonthStart ?? order?.startDate

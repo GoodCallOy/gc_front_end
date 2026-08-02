@@ -1,5 +1,72 @@
 import axios from 'axios';
 import urls from './config.js';
+import { toLocalYmdNumber, parseWeekDateLocal } from './dateUtils';
+
+export function normalizeEntityId(value) {
+  if (value == null || value === '') return ''
+  if (typeof value === 'object') return String(value._id ?? value.id ?? '')
+  return String(value)
+}
+
+/** Match a daily log to an order for monthly revenue (order id, then case id, then case name). */
+export function logMatchesOrderForMonthRevenue(log, order) {
+  if (!log || !order) return false
+
+  const orderId = normalizeEntityId(order._id ?? order.id)
+  const logOrderId = normalizeEntityId(log.order?._id ?? log.order ?? log.orderId)
+
+  if (logOrderId && orderId) {
+    if (logOrderId !== orderId) return false
+    const logCase = log.caseName || log.case
+    if (logCase && order.caseName && String(logCase) !== String(order.caseName)) return false
+    return true
+  }
+
+  const logCaseId = normalizeEntityId(log.caseId ?? log.case?._id)
+  const orderCaseId = normalizeEntityId(order.caseId)
+  if (logCaseId && orderCaseId && logCaseId === orderCaseId) return true
+
+  const logCase = log.caseName || log.case
+  if (logCase && order.caseName && String(logCase) === String(order.caseName)) return true
+
+  return false
+}
+
+export function getSelectedMonthBounds(dateRange) {
+  if (!Array.isArray(dateRange) || dateRange.length < 2) return null
+  return {
+    monthStart: parseWeekDateLocal(dateRange[0], false),
+    monthEnd: parseWeekDateLocal(dateRange[1], true),
+  }
+}
+
+/** Sum quantityCompleted from dailyLogs for one order within a selected month. */
+export function computeOrderQuantityForMonth(order, dailyLogs, dateRange) {
+  if (!order || !Array.isArray(dailyLogs) || !dateRange) return 0
+  const bounds = getSelectedMonthBounds(dateRange)
+  if (!bounds) return 0
+  const startN = toLocalYmdNumber(bounds.monthStart)
+  const endN = toLocalYmdNumber(bounds.monthEnd)
+  if (startN == null || endN == null) return 0
+
+  return dailyLogs
+    .filter((log) => {
+      const logN = toLocalYmdNumber(log.date)
+      if (logN == null) return false
+      return (
+        logMatchesOrderForMonthRevenue(log, order) &&
+        logN >= startN &&
+        logN <= endN &&
+        typeof log.quantityCompleted === 'number'
+      )
+    })
+    .reduce((sum, log) => sum + Number(log.quantityCompleted || 0), 0)
+}
+
+export function computeOrderRevenueForMonth(order, dailyLogs, dateRange) {
+  const qty = computeOrderQuantityForMonth(order, dailyLogs, dateRange)
+  return qty * (Number(order?.pricePerUnit) || 0)
+}
 
 export function getAgentsInCase(caseName, agents) {
   const agentList = agents.filter(agent => agent.case.includes(caseName));
@@ -317,27 +384,15 @@ export function populateCasesSortedByAgent(agentStats, selectedAgent) {
     const months = getOrderMonths(order);
     if (!months || months.length === 0) return [];
     
-    const orderId = order._id || order.id;
     const isTest = isTestCase(order);
-    
-    // Helper to match log to order
-    const isOrderMatch = (log) => {
-      return (
-        (log.order?._id && orderId && String(log.order._id) === String(orderId)) ||
-        (log.caseId && order.caseId && String(log.caseId) === String(order.caseId)) ||
-        (log.caseName && order.caseName && String(log.caseName) === String(order.caseName))
-      );
-    };
     
     const monthlyProgress = months.map(monthInfo => {
       const monthStart = new Date(monthInfo.startDateStr);
       const monthEnd = new Date(monthInfo.endDateStr);
       monthEnd.setHours(23, 59, 59, 999);
       
-      // Filter logs for this month and order
-      // Include all matching logs - don't filter by test status here
       const monthLogs = dailyLogs.filter(log => {
-        if (!isOrderMatch(log)) return false;
+        if (!logMatchesOrderForMonthRevenue(log, order)) return false;
         const logDate = new Date(log.date);
         return logDate >= monthStart && logDate <= monthEnd;
       });

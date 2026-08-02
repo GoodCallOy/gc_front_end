@@ -56,11 +56,12 @@
               <tbody>
                 <tr
                   v-for="(row, i) in estimatedRevenueBreakdown"
-                  :key="i"
-                  :class="{ 'bg-grey-lighten-4': !row.included }"
+                  :key="row.orderId || i"
+                  :class="breakdownRowClass(row)"
+                  @click="goToOrderDetails(row.orderId)"
                 >
                   <td>{{ row.caseType }}</td>
-                  <td>{{ row.caseName }}</td>
+                  <td class="breakdown-case-link">{{ row.caseName }}</td>
                   <td>{{ row.status }}</td>
                   <td class="text-right">{{ formatStatNumber(row.monthlyGoal) }}</td>
                   <td class="text-right">{{ row.pricePerUnit.toFixed(2) }}</td>
@@ -83,9 +84,14 @@
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="(row, i) in currentRevenueBreakdown" :key="i">
+                <tr
+                  v-for="(row, i) in currentRevenueBreakdown"
+                  :key="row.orderId || i"
+                  :class="breakdownRowClass(row)"
+                  @click="goToOrderDetails(row.orderId)"
+                >
                   <td>{{ row.caseType }}</td>
-                  <td>{{ row.caseName }}</td>
+                  <td class="breakdown-case-link">{{ row.caseName }}</td>
                   <td class="text-right">{{ formatStatNumber(row.quantityCompleted) }}</td>
                   <td class="text-right">{{ row.pricePerUnit.toFixed(2) }}</td>
                   <td class="text-right">{{ formatCurrencyEUR(row.revenue) }}</td>
@@ -103,8 +109,13 @@
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="(row, i) in activeCaseTypeBreakdown" :key="i">
-                  <td>{{ row.caseName }}</td>
+                <tr
+                  v-for="(row, i) in activeCaseTypeBreakdown"
+                  :key="row.orderId || i"
+                  :class="breakdownRowClass(row)"
+                  @click="goToOrderDetails(row.orderId)"
+                >
+                  <td class="breakdown-case-link">{{ row.caseName }}</td>
                   <td class="text-right">{{ formatStatNumber(row.quantityCompleted) }}</td>
                   <td class="text-right">{{ row.pricePerUnit.toFixed(2) }}</td>
                   <td class="text-right">{{ formatCurrencyEUR(row.revenue) }}</td>
@@ -200,6 +211,8 @@
 <script setup>
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
+import { useStore } from 'vuex'
 import {
   Chart as ChartJS,
   ArcElement,
@@ -213,6 +226,15 @@ import ChartDataLabels from 'chartjs-plugin-datalabels'
 import { Doughnut, Bar } from 'vue-chartjs'
 import { formatStatNumber, formatCurrencyEUR } from '@/js/formatNumbers'
 import { toLocalYmdNumber } from '@/js/dateUtils'
+import {
+  computeOrderQuantityForMonth,
+  computeOrderRevenueForMonth,
+  logMatchesOrderForMonthRevenue,
+} from '@/js/statsUtils'
+import {
+  isOrderOnHoldForMonth,
+  monthKeyFromDateRange,
+} from '@/js/orderStatusUtils'
 
 function stackedBarEndX(el) {
   if (!el || !Number.isFinite(el.x)) return null
@@ -298,6 +320,7 @@ const props = defineProps({
   orders: { type: Array, default: () => [] },
   dailyLogs: { type: Array, default: () => [] },
   monthWeeks: { type: Array, default: () => [] },
+  currentDateRange: { type: Array, default: () => [] },
   currentRevenueTotal: { type: Number, default: 0 },
   estimatedRevenueTotal: { type: Number, default: 0 },
   isAdmin: { type: Boolean, default: false },
@@ -331,6 +354,27 @@ function sortBreakdownRows(rows) {
 }
 
 const { t } = useI18n()
+const router = useRouter()
+const store = useStore()
+
+function breakdownRowClass(row) {
+  return {
+    'breakdown-row-link': !!row?.orderId,
+    'bg-grey-lighten-4': row?.included === false,
+  }
+}
+
+function goToOrderDetails(orderId) {
+  if (!orderId) return
+  const range = props.currentDateRange
+  const query = { orderId: String(orderId) }
+  if (Array.isArray(range) && range.length >= 2) {
+    store.commit('setDateRange', range)
+    query.from = range[0]
+    query.to = range[1]
+  }
+  router.push({ name: 'orderDetails', query })
+}
 
 function isTestCase(order) {
   if (!order) return false
@@ -348,46 +392,29 @@ function isGoodCallCase(order) {
   return caseName === 'case good call' || caseName === 'good call'
 }
 
+function isOrderOnHold(order) {
+  return isOrderOnHoldForMonth(order, monthKeyFromDateRange(props.currentDateRange))
+}
+
 function eligibleOrder(order) {
   if (isTestCase(order) || isGoodCallCase(order)) return false
   return true
 }
 
-function getMonthBoundsFromWeeks(weeks) {
-  if (!Array.isArray(weeks) || weeks.length === 0) return null
-  const starts = weeks.map((w) => new Date(w.start))
-  const ends = weeks.map((w) => new Date(w.end))
-  const monthStart = new Date(Math.min.apply(null, starts))
-  const monthEnd = new Date(Math.max.apply(null, ends))
-  monthEnd.setHours(23, 59, 59, 999)
-  return { monthStart, monthEnd }
+function revenueEligibleOrder(order) {
+  if (!eligibleOrder(order)) return false
+  if (isOrderOnHold(order)) return false
+  return true
 }
 
-function computeOrderQuantity(order, dailyLogs, bounds) {
-  if (!order || !Array.isArray(dailyLogs) || !bounds) return 0
-  const startN = toLocalYmdNumber(bounds.monthStart)
-  const endN = toLocalYmdNumber(bounds.monthEnd)
-  if (startN == null || endN == null) return 0
-  const oid = String(order._id)
-  return dailyLogs
-    .filter((log) => {
-      const logN = toLocalYmdNumber(log.date)
-      if (logN == null) return false
-      const idMatch = String(log.order?._id || log.order || log.orderId) === oid
-      return (
-        idMatch &&
-        logN >= startN &&
-        logN <= endN &&
-        typeof log.quantityCompleted === 'number'
-      )
-    })
-    .reduce((sum, log) => sum + Number(log.quantityCompleted || 0), 0)
+function computeOrderQuantity(order, dailyLogs) {
+  if (!order || isOrderOnHold(order)) return 0
+  return computeOrderQuantityForMonth(order, dailyLogs, props.currentDateRange)
 }
 
-function computeOrderRevenue(order, dailyLogs, bounds) {
-  const qty = computeOrderQuantity(order, dailyLogs, bounds)
-  const price = Number(order?.pricePerUnit) || 0
-  return qty * price
+function computeOrderRevenue(order, dailyLogs) {
+  if (!order || isOrderOnHold(order)) return 0
+  return computeOrderRevenueForMonth(order, dailyLogs, props.currentDateRange)
 }
 
 function estimatedRevenueForOrder(order) {
@@ -400,14 +427,18 @@ function estimatedRevenueForOrder(order) {
 
 const eligibleOrders = computed(() => (props.orders || []).filter(eligibleOrder))
 
-const bounds = computed(() => getMonthBoundsFromWeeks(props.monthWeeks))
+const revenueEligibleOrders = computed(() => (props.orders || []).filter(revenueEligibleOrder))
+
+const hasSelectedMonth = computed(
+  () => Array.isArray(props.currentDateRange) && props.currentDateRange.length >= 2
+)
 
 const revenueByCaseType = computed(() => {
   const map = new Map()
-  if (!bounds.value) return map
-  for (const order of eligibleOrders.value) {
+  if (!hasSelectedMonth.value) return map
+  for (const order of revenueEligibleOrders.value) {
     const type = order.caseType || t('ordersDashboard.unspecified')
-    const rev = computeOrderRevenue(order, props.dailyLogs, bounds.value)
+    const rev = computeOrderRevenue(order, props.dailyLogs)
     map.set(type, (map.get(type) || 0) + rev)
   }
   return map
@@ -527,12 +558,13 @@ const kpiCards = computed(() => {
 })
 
 const currentRevenueBreakdown = computed(() => {
-  if (!bounds.value) return []
-  const rows = eligibleOrders.value.map((order) => {
-    const quantityCompleted = computeOrderQuantity(order, props.dailyLogs, bounds.value)
+  if (!hasSelectedMonth.value) return []
+  const rows = revenueEligibleOrders.value.map((order) => {
+    const quantityCompleted = computeOrderQuantity(order, props.dailyLogs)
     const pricePerUnit = Number(order?.pricePerUnit) || 0
     const revenue = quantityCompleted * pricePerUnit
     return {
+      orderId: order._id,
       caseType: order.caseType || t('ordersDashboard.unspecified'),
       caseName: order.caseName || '—',
       quantityCompleted,
@@ -568,16 +600,17 @@ const activeBreakdownTitle = computed(() => {
 
 const activeCaseTypeBreakdown = computed(() => {
   const card = activeBreakdownCard.value
-  if (!card || card.breakdownKind !== 'caseType' || !bounds.value) return []
+  if (!card || card.breakdownKind !== 'caseType' || !hasSelectedMonth.value) return []
 
   const caseType = card.caseTypeKey || card.title
-  const rows = eligibleOrders.value
+  const rows = revenueEligibleOrders.value
     .filter((order) => (order.caseType || t('ordersDashboard.unspecified')) === caseType)
     .map((order) => {
-      const quantityCompleted = computeOrderQuantity(order, props.dailyLogs, bounds.value)
+      const quantityCompleted = computeOrderQuantity(order, props.dailyLogs)
       const pricePerUnit = Number(order?.pricePerUnit) || 0
       const revenue = quantityCompleted * pricePerUnit
       return {
+        orderId: order._id,
         caseName: order.caseName || '—',
         quantityCompleted,
         pricePerUnit,
@@ -641,12 +674,12 @@ const donutOptions = computed(() => ({
 }))
 
 const revenueByCaseRows = computed(() => {
-  if (!bounds.value) return []
-  const rows = eligibleOrders.value
+  if (!hasSelectedMonth.value) return []
+  const rows = revenueEligibleOrders.value
     .map((order) => ({
       name: order.caseName || '—',
       type: order.caseType || t('ordersDashboard.unspecified'),
-      revenue: computeOrderRevenue(order, props.dailyLogs, bounds.value),
+      revenue: computeOrderRevenue(order, props.dailyLogs),
       estimatedRevenue: estimatedRevenueForOrder(order),
     }))
     .map((row) => ({
@@ -755,17 +788,14 @@ function computeWeekRevenueForCaseType(caseType, week) {
   const endN = toLocalYmdNumber(week.end)
   if (startN == null || endN == null) return 0
   const typeLabel = caseType || t('ordersDashboard.unspecified')
-  const typeOrders = eligibleOrders.value.filter(
+  const typeOrders = revenueEligibleOrders.value.filter(
     (o) => (o.caseType || t('ordersDashboard.unspecified')) === typeLabel
   )
-  const idSet = new Set(typeOrders.map((o) => String(o._id)))
   let sum = 0
   for (const log of props.dailyLogs || []) {
     const logN = toLocalYmdNumber(log.date)
     if (logN == null || logN < startN || logN > endN) continue
-    const oid = String(log.order?._id || log.order || log.orderId)
-    if (!idSet.has(oid)) continue
-    const order = typeOrders.find((o) => String(o._id) === oid)
+    const order = typeOrders.find((o) => logMatchesOrderForMonthRevenue(log, o))
     if (!order) continue
     sum += (Number(log.quantityCompleted) || 0) * (Number(order.pricePerUnit) || 0)
   }
@@ -831,7 +861,7 @@ const facetCombinedInline = computed(() => {
 
 const facetCharts = computed(() => {
   const weeks = props.monthWeeks || []
-  if (!weeks.length || !bounds.value) return []
+  if (!weeks.length || !hasSelectedMonth.value) return []
 
   const labels = weekChartLabels(weeks)
 
@@ -859,7 +889,7 @@ const facetCharts = computed(() => {
 
 const combinedFacetChart = computed(() => {
   const weeks = props.monthWeeks || []
-  if (!weeks.length || !bounds.value || !facetCaseTypes.value.length) return null
+  if (!weeks.length || !hasSelectedMonth.value || !facetCaseTypes.value.length) return null
 
   const labels = weekChartLabels(weeks)
   const datasets = facetCaseTypes.value.map((caseType) => ({
@@ -952,6 +982,20 @@ const combinedFacetChart = computed(() => {
 .revenue-summary.breakdown-table-card {
   background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
   border: 1px solid #dee2e6;
+}
+
+.breakdown-row-link {
+  cursor: pointer;
+}
+
+.breakdown-row-link:hover td {
+  background-color: rgba(var(--v-theme-primary), 0.08);
+}
+
+.breakdown-case-link {
+  color: rgb(var(--v-theme-primary));
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .chart-card {

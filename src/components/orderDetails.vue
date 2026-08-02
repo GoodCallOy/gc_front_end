@@ -29,7 +29,7 @@
                 <strong>{{ t('orderDetails.pricePerUnit') }}:</strong> {{ formatStatNumber(order.pricePerUnit) }}
             </v-col>
             <v-col cols="3">
-                <strong>{{ t('orderDetails.status') }}:</strong> {{ order.orderStatus }}
+                <strong>{{ t('orderDetails.status') }}:</strong> {{ displayOrderStatus }}
             </v-col>
             <v-col cols="3">
                 <strong>{{ t('orderDetails.type') }}:</strong> {{ order.caseType || t('orderDetails.nA') }}
@@ -214,6 +214,7 @@
   import urls from '@/js/config.js'
   import { formatSlashPair, formatStatNumber, formatCurrencyEUR } from '@/js/formatNumbers'
   import DateHeader from '@/components/DateHeader.vue'
+  import { getOrderStatusForMonth, monthKeyFromDateRange } from '@/js/orderStatusUtils'
 
 
   const route = useRoute()
@@ -231,6 +232,9 @@
   
   // Date range functionality
   const currentDateRange = computed(() => store.getters['currentDateRange'])
+  const displayOrderStatus = computed(() =>
+    getOrderStatusForMonth(order.value, monthKeyFromDateRange(currentDateRange.value))
+  )
   const monthWeeks = ref([])
   const orders = computed(() => store.getters['orders'])
   const gcCases = computed(() => store.getters['gcCases'])
@@ -861,8 +865,11 @@ watch(individualLogs, () => {
 
   onMounted(async () => {
     try {
-      // Initialize date range if not set
-      if (!currentDateRange.value || currentDateRange.value.length < 2) {
+      const queryFrom = route.query.from
+      const queryTo = route.query.to
+      if (queryFrom && queryTo) {
+        updateDateRange([String(queryFrom), String(queryTo)])
+      } else if (!currentDateRange.value || currentDateRange.value.length < 2) {
         const now = new Date();
         const year = now.getFullYear();
         const month = now.getMonth();

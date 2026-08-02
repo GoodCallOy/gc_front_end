@@ -119,37 +119,41 @@
                 </td>
               </tr>
             </template>
+            <template #item.orderStatus="{ item }">
+              {{ getDisplayOrderStatus(item) }}
+            </template>
             <template #item.caseName="{ item }">
-              <div class="d-flex align-center flex-wrap">
-                <span class="mr-2">{{ item.caseName }}</span>
+              <div class="orders-table-case-cell">
+                <span class="orders-table-case-cell__name">{{ item.caseName }}</span>
                 <v-btn
                   icon
                   variant="text"
                   size="small"
                   color="grey"
+                  class="orders-table-case-cell__edit"
                   title="Edit case"
                   @click.stop="editCaseFromOrder(item)"
                 >
                   <v-icon>mdi-pencil</v-icon>
                 </v-btn>
-                <v-chip
-                  v-if="item.isMultiMonth"
-                  size="x-small"
-                  color="primary"
-                  class="ml-1"
-                  style="cursor: pointer;"
-                  @click.stop="toggleExpand(item._id)"
-                >
-                  {{ t('ordersDashboard.multiMonth') }}
-                </v-chip>
-                <v-chip
-                  v-if="isOrderOnHold(item)"
-                  size="x-small"
-                  color="warning"
-                  class="ml-1"
-                >
-                  {{ t('ordersDashboard.onPause') }}
-                </v-chip>
+                <div class="orders-table-case-cell__chips">
+                  <v-chip
+                    v-if="item.isMultiMonth"
+                    size="x-small"
+                    color="primary"
+                    style="cursor: pointer;"
+                    @click.stop="toggleExpand(item._id)"
+                  >
+                    {{ t('ordersDashboard.multiMonth') }}
+                  </v-chip>
+                  <v-chip
+                    v-if="isOrderOnHold(item)"
+                    size="x-small"
+                    color="warning"
+                  >
+                    {{ t('ordersDashboard.onPause') }}
+                  </v-chip>
+                </div>
               </div>
             </template>
             <template #item.orderId="{ item }">
@@ -192,6 +196,7 @@
           :orders="filteredOrdersByCaseType"
           :daily-logs="dailyLogs"
           :month-weeks="monthWeeks"
+          :current-date-range="currentDateRange"
           :current-revenue-total="currentRevenueTotal"
           :estimated-revenue-total="estimatedRevenueTotal"
           :is-admin="isAdmin"
@@ -244,7 +249,13 @@ import DashboardCard01 from '@/partials/dashboard/caseCard2.vue'
 import OrdersAnalyticsCharts from '@/partials/dashboard/orders-analytics-charts.vue'
 import OrdersTableInsights from '@/partials/dashboard/orders-table-insights.vue'
 import DateHeader from '@/components/DateHeader.vue'
-import { orderSpansMultipleMonths, calculateMonthlyProgress } from '@/js/statsUtils'
+import { orderSpansMultipleMonths, calculateMonthlyProgress, computeOrderQuantityForMonth, computeOrderRevenueForMonth } from '@/js/statsUtils'
+import {
+  getOrderStatusForMonth,
+  isOrderOnHoldForMonth,
+  isOrderInProgressForMonth,
+  monthKeyFromDateRange,
+} from '@/js/orderStatusUtils'
 import { getPercentageToGoalBadgeClass } from '@/js/percentageToGoalStyle'
 import { formatSlashPair, formatStatNumber, formatCurrencyEUR } from '@/js/formatNumbers'
 
@@ -255,7 +266,7 @@ const activeTab = ref('charts')
 
 const tableHeaders = computed(() => [
   { title: '', key: 'data-table-expand', sortable: false, width: '40px' },
-  { title: t('ordersDashboard.tableHeaders.caseName'), key: 'caseName' },
+  { title: t('ordersDashboard.tableHeaders.caseName'), key: 'caseName', minWidth: '220px' },
   { title: t('ordersDashboard.tableHeaders.orderId'), key: 'orderId', sortable: false },
   { title: t('ordersDashboard.tableHeaders.status'), key: 'orderStatus' },
   { title: t('ordersDashboard.tableHeaders.callers'), key: 'callers', sortable: false },
@@ -275,6 +286,7 @@ const gcAgents = computed(() => store.getters['gcAgents'])
 const gcCases = computed(() => store.getters['gcCases'] || store.getters['GcCases'] || [])
 const dailyLogs = computed(() => store.getters['dailyLogs'])
 const currentDateRange = computed(() => store.getters['currentDateRange'])
+const currentMonthKey = computed(() => monthKeyFromDateRange(currentDateRange.value))
 const caseTypes = computed(() => store.getters['caseTypes'] || [])
 // Custom weeks for current month
 const monthWeeks = ref([])
@@ -475,10 +487,11 @@ function isTestCase(order) {
 }
 
 function isOrderOnHold(order) {
-  const status = String(order?.orderStatus ?? order?.status ?? '')
-    .toLowerCase()
-    .replace(/\s+/g, '-');
-  return status === 'on-hold';
+  return isOrderOnHoldForMonth(order, currentMonthKey.value)
+}
+
+function getDisplayOrderStatus(order) {
+  return getOrderStatusForMonth(order, currentMonthKey.value)
 }
 
 // Helper function to check if an order is the "case good call" case
@@ -498,8 +511,7 @@ const estimatedRevenueTotal = computed(() => {
   // Filter out test cases, good call case, and non-in-progress orders
   const nonTestOrders = ordersToCalculate.filter(order => {
     if (isTestCase(order) || isGoodCallCase(order)) return false;
-    const status = String(order?.orderStatus ?? order?.status ?? '').toLowerCase().replace(/\s/g, '-');
-    return status === 'in-progress';
+    return isOrderInProgressForMonth(order, currentMonthKey.value);
   });
   
   return nonTestOrders.reduce((total, order) => total + store.getters.estimatedRevenueEurosForOrder(order), 0);
@@ -519,14 +531,16 @@ const estimatedRevenueBreakdown = computed(() => {
     if (isTestCase(order)) excludedReason = 'Test case';
     else if (isGoodCallCase(order)) excludedReason = 'Good call case';
     else {
-      const status = String(order?.orderStatus ?? order?.status ?? '').toLowerCase().replace(/\s/g, '-');
-      if (status !== 'in-progress') excludedReason = `Status: ${order?.orderStatus ?? order?.status ?? 'unknown'}`;
+      if (!isOrderInProgressForMonth(order, currentMonthKey.value)) {
+        excludedReason = `Status: ${getOrderStatusForMonth(order, currentMonthKey.value)}`;
+      }
     }
 
     return {
+      orderId: order._id,
       caseType: order.caseType || 'Unspecified',
       caseName: order.caseName || '—',
-      status: order?.orderStatus ?? order?.status ?? '—',
+      status: getOrderStatusForMonth(order, currentMonthKey.value),
       monthlyGoal,
       pricePerUnit,
       revenue,
@@ -548,57 +562,19 @@ const estimatedRevenueBreakdown = computed(() => {
   });
 });
 
-// Calculate current revenue from daily logs for filtered orders using custom weeks
+// Sum per-order monthly revenue from dailyLogs (same logic as each table row).
 const currentRevenueTotal = computed(() => {
   const ordersToCalculate = selectedCaseType.value ? filteredOrdersByCaseType.value : filteredOrders.value;
-  if (!dailyLogs.value || !ordersToCalculate || !monthWeeks.value) {
+  if (!dailyLogs.value || !ordersToCalculate?.length || !currentDateRange.value?.length) {
     return 0;
   }
 
-  // Get date range from custom weeks
-  if (monthWeeks.value.length === 0) {
-    return 0;
-  }
-
-  const starts = monthWeeks.value.map(w => new Date(w.start));
-  const ends = monthWeeks.value.map(w => new Date(w.end));
-  const monthStart = new Date(Math.min.apply(null, starts));
-  const monthEnd = new Date(Math.max.apply(null, ends));
-  monthEnd.setHours(23, 59, 59, 999);
-
-  // Filter daily logs within the custom week date range, excluding "case good call" and test cases
-  const logsInMonth = dailyLogs.value.filter(log => {
-    const logDate = new Date(log.date);
-    const isInDateRange = logDate >= monthStart && logDate <= monthEnd;
-    const isNotCaseGoodCall = log.caseName !== 'case good call';
-    
-    // Check if the log's case name indicates test
-    const caseName = String(log.caseName || '').toLowerCase();
-    const isNotTest = !caseName.includes('test');
-    
-    return isInDateRange && isNotCaseGoodCall && isNotTest;
-  });
-
-  // Calculate revenue from quantity completed, excluding test cases
-  let totalRevenue = 0;
-  
-  logsInMonth.forEach(log => {
-    const quantityCompleted = Number(log.quantityCompleted) || 0;
-    
-    // Find the order for this log to get price per unit
-    const order = ordersToCalculate.find(o => 
-      o.caseName === log.caseName || 
-      String(o._id) === String(log.order?._id || log.order || log.orderId)
-    );
-    
-    // Skip if order is a test case
-    if (order && !isTestCase(order)) {
-      const pricePerUnit = Number(order.pricePerUnit) || 0;
-      totalRevenue += quantityCompleted * pricePerUnit;
+  return ordersToCalculate.reduce((total, order) => {
+    if (!order || isTestCase(order) || isGoodCallCase(order) || isOrderOnHold(order)) {
+      return total;
     }
-  });
-
-  return totalRevenue;
+    return total + computeOrderRevenueForMonth(order, dailyLogs.value, currentDateRange.value);
+  }, 0);
 });
 
 // Debug logging for revenue calculations
@@ -666,36 +642,14 @@ const formatDate = date => {
 
 const formatCurrency = formatCurrencyEUR
 
-function getMonthBoundsFromWeeks() {
-  if (!Array.isArray(monthWeeks.value) || monthWeeks.value.length === 0) return null
-  const starts = monthWeeks.value.map(w => new Date(w.start))
-  const ends = monthWeeks.value.map(w => new Date(w.end))
-  const monthStart = new Date(Math.min.apply(null, starts))
-  const monthEnd = new Date(Math.max.apply(null, ends))
-  monthEnd.setHours(23, 59, 59, 999)
-  return { monthStart, monthEnd }
-}
-
 function computeOrderQuantity(order) {
-  if (!order || !Array.isArray(dailyLogs.value)) return 0
-  const bounds = getMonthBoundsFromWeeks()
-  if (!bounds) return 0
-  const { monthStart, monthEnd } = bounds
-
-  const oid = String(order._id)
-  return dailyLogs.value
-    .filter(log => {
-      const d = new Date(log.date)
-      const idMatch = String(log.order?._id || log.order || log.orderId) === oid
-      return idMatch && d >= monthStart && d <= monthEnd && typeof log.quantityCompleted === 'number'
-    })
-    .reduce((sum, log) => sum + Number(log.quantityCompleted || 0), 0)
+  if (!order || isOrderOnHold(order)) return 0
+  return computeOrderQuantityForMonth(order, dailyLogs.value, currentDateRange.value)
 }
 
 function computeOrderRevenue(order) {
-  const qty = computeOrderQuantity(order)
-  const price = Number(order?.pricePerUnit) || 0
-  return qty * price
+  if (!order || isOrderOnHold(order)) return 0
+  return computeOrderRevenueForMonth(order, dailyLogs.value, currentDateRange.value)
 }
 
 function computePercentageToGoal(order) {
@@ -1111,5 +1065,31 @@ async function loadMonthWeeks() {
   
   :deep(.v-data-table__tr:hover) {
     background-color: rgba(0, 0, 0, 0.04) !important;
+  }
+
+  .orders-table-case-cell {
+    display: flex;
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: 4px;
+    min-width: 0;
+  }
+
+  .orders-table-case-cell__name {
+    flex: 0 1 auto;
+    min-width: 0;
+    margin-right: 4px;
+  }
+
+  .orders-table-case-cell__edit {
+    flex: 0 0 auto;
+  }
+
+  .orders-table-case-cell__chips {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: 4px;
+    flex: 0 0 auto;
   }
 </style>
