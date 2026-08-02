@@ -97,7 +97,7 @@
               <template #item.select="{ item: rowItem }">
                 <v-checkbox-btn
                   :model-value="isCopyOrderSelected(rowItem._id)"
-                  :disabled="orderSpansMultipleMonths(rowItem)"
+                  :disabled="isOrderCopyDisabled(rowItem)"
                   density="compact"
                   hide-details
                   @click.stop
@@ -118,9 +118,7 @@
               </template>
               <template #item.copy="{ item: rowItem }">
                 <v-tooltip
-                  :text="orderSpansMultipleMonths(rowItem)
-                    ? t('assignGoals.copyMultiMonthDisabled')
-                    : t('assignGoals.tableHeaders.copy')"
+                  :text="copyOrderDisabledTooltip(rowItem)"
                   location="top"
                 >
                   <template #activator="{ props: tipProps }">
@@ -131,7 +129,7 @@
                       size="small"
                       color="grey"
                       class="mr-2"
-                      :disabled="orderSpansMultipleMonths(rowItem)"
+                      :disabled="isOrderCopyDisabled(rowItem)"
                       @click.stop="copyOrder(rowItem)"
                     >
                       <v-icon>mdi-content-copy</v-icon>
@@ -168,6 +166,24 @@
                       class="ml-1"
                     >
                       {{ t('ordersDashboard.onPause') }}
+                    </v-chip>
+                    <v-chip
+                      v-if="isOrderPending(rowItem)"
+                      size="x-small"
+                      color="grey"
+                      variant="tonal"
+                      class="ml-1"
+                    >
+                      {{ t('ordersDashboard.pending') }}
+                    </v-chip>
+                    <v-chip
+                      v-if="isOrderCompleted(rowItem)"
+                      size="x-small"
+                      color="success"
+                      variant="tonal"
+                      class="ml-1"
+                    >
+                      {{ t('ordersDashboard.completed') }}
                     </v-chip>
                     <v-chip
                       v-if="isCopiedToNextMonth(rowItem)"
@@ -579,6 +595,8 @@ import {
   normalizeOrderStatus,
   getOrderStatusForMonth,
   isOrderOnHoldForMonth,
+  isOrderCompletedForMonth,
+  isOrderPendingForMonth,
   buildMonthlyOrderStatusUpdate,
   monthKeyFromDateRange,
 } from '@/js/orderStatusUtils'
@@ -873,6 +891,12 @@ async function bulkCopyOrdersToNextMonth() {
       if (orderSpansMultipleMonths(o)) {
         console.log(`📋 Bulk copy: Skipping "${o.caseName}" (multi-month campaign)`);
         multiMonthSkippedCount++;
+        continue;
+      }
+
+      if (isOrderCompletedForMonth(o, monthKeyFromDateRange(currentDateRange.value))) {
+        console.log(`📋 Bulk copy: Skipping "${o.caseName}" (completed for this month)`);
+        skippedCount++;
         continue;
       }
 
@@ -1196,6 +1220,8 @@ function isCopyOrderSelected(id) {
 }
 
 function setCopyOrderSelected(id, selected) {
+  const order = (filteredSortedOrders.value || []).find((o) => String(o._id) === String(id))
+  if (order && isOrderCopyDisabled(order)) return
   const next = new Set(selectedCopyOrderIds.value);
   const key = String(id);
   if (selected) next.add(key);
@@ -1204,7 +1230,29 @@ function setCopyOrderSelected(id, selected) {
 }
 
 function copyableItemsInGroup(items) {
-  return (items || []).filter((o) => !orderSpansMultipleMonths(o));
+  return (items || []).filter((o) => !isOrderCopyDisabled(o));
+}
+
+function isOrderCompleted(order) {
+  return isOrderCompletedForMonth(order, currentMonthKey.value)
+}
+
+function isOrderPending(order) {
+  return isOrderPendingForMonth(order, currentMonthKey.value)
+}
+
+function isOrderCopyDisabled(order) {
+  return orderSpansMultipleMonths(order) || isOrderCompleted(order)
+}
+
+function copyOrderDisabledTooltip(order) {
+  if (orderSpansMultipleMonths(order)) {
+    return t('assignGoals.copyMultiMonthDisabled')
+  }
+  if (isOrderCompleted(order)) {
+    return t('assignGoals.copyCompletedDisabled')
+  }
+  return t('assignGoals.tableHeaders.copy')
 }
 
 function isGroupAllCopySelected(items) {
@@ -1309,7 +1357,7 @@ function openAddOrderModal() {
 
 function copyOrder(item) {
   if (!item) return;
-  if (orderSpansMultipleMonths(item)) return;
+  if (isOrderCopyDisabled(item)) return;
 
   pendingCopySourceId.value = item._id;
 

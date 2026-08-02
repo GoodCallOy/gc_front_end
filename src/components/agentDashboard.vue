@@ -401,6 +401,7 @@
             size="small"
             color="grey"
             :title="t('agentDashboard.editLog')"
+            :disabled="isDailyLogFrozen(item.raw?.originalLog ?? item.originalLog)"
             @click.stop="editLog(item.raw?.originalLog ?? item.originalLog)"
           >
             <v-icon>mdi-pencil</v-icon>
@@ -414,6 +415,7 @@
             size="small"
             color="grey"
             :title="t('agentDashboard.deleteLog')"
+            :disabled="isDailyLogFrozen(item.raw?.originalLog ?? item.originalLog)"
             @click.stop="deleteLog(item.raw?.originalLog ?? item.originalLog)"
           >
             <v-icon>mdi-delete</v-icon>
@@ -610,6 +612,11 @@ import axios from 'axios'
 import urls from '@/js/config.js'
 import { resolveLinkedGcAgent } from '@/js/resolveLinkedGcAgent.js'
 import { formatStatNumber, formatSlashPair, formatCurrencyEUR, roundTo2Decimals } from '@/js/formatNumbers'
+import {
+  areDailyLogsFrozenForLog,
+  isOrderVisibleToCallerForMonth,
+  monthKeyFromDateRange,
+} from '@/js/orderStatusUtils'
 const store = useStore()
 const router = useRouter()
 const route = useRoute()
@@ -1007,14 +1014,7 @@ const revenueGenerated = computed(() => {
     }
   });
 
-  const agentCases = allOrders.filter(order => {
-    if (!order.assignedCallers) return false;
-    const isAssigned = order.assignedCallers.some(caller => {
-      const callerId = caller?._id || caller?.id || caller;
-      return String(callerId) === String(agentId);
-    });
-    return isAssigned && !isTestCase(order);
-  });
+  const agentCases = getAgentOrdersForView(agentId, { includeTestCases: false });
 
   let totalUnits = 0;
   let totalRevenue = 0;
@@ -1168,9 +1168,7 @@ const weeklyTotals = computed(() => {
 
   // Get all cases the agent is assigned to (handle both object and string assignedCallers)
   const agentId = String(selectedGcAgent.value._id ?? selectedGcAgent.value.id);
-  const agentCases = allOrders.filter(order =>
-    isAgentAssignedToOrder(order, agentId)
-  );
+  const agentCases = getAgentOrdersForView(agentId);
 
   // Filter logs to only include those within the selected date range AND for the specific agent
   const [startDate, endDate] = dateRange;
@@ -1319,9 +1317,7 @@ const individualLogs = computed(() => {
 
   // Get all cases the agent is assigned to (handle both object and string assignedCallers)
   const agentId = String(selectedGcAgent.value._id ?? selectedGcAgent.value.id);
-  const agentCases = allOrders.filter(order =>
-    isAgentAssignedToOrder(order, agentId)
-  );
+  const agentCases = getAgentOrdersForView(agentId);
 
   // Filter logs to only include those within the selected date range AND for the specific agent
   const [startDate, endDate] = dateRange;
@@ -2006,9 +2002,7 @@ const fetchCaseStats = async () => {
   try {
     // Get all cases the agent is assigned to (handle both object and string assignedCallers)
     const agentId = String(selectedGcAgent.value._id ?? selectedGcAgent.value.id);
-    const agentCases = orders.value.filter(order =>
-      isAgentAssignedToOrder(order, agentId)
-    );
+    const agentCases = getAgentOrdersForView(agentId);
 
 
     // Fetch data for all cases the agent is assigned to in parallel.
@@ -2190,9 +2184,7 @@ const aLeadDetailRows = computed(() => {
   const monthEnd = new Date(endDate);
   monthEnd.setHours(23, 59, 59, 999);
 
-  const agentCases = allOrders.filter(order =>
-    isAgentAssignedToOrder(order, agentId) && !isTestCase(order)
-  );
+  const agentCases = getAgentOrdersForView(agentId, { includeTestCases: false });
 
   const uniqueLogs = [];
   const seen = new Set();
@@ -2577,6 +2569,37 @@ watch([orders, selectedGcAgent, currentDateRange], async ([allOrders, agent, dat
   await refreshDashboardForCurrentSelection(allOrders, agent, dateRange);
 });
 
+function applyCallerOrderVisibility(agentOrders) {
+  if (currentUser.value?.role !== 'caller') return agentOrders
+  const monthKey = monthKeyFromDateRange(currentDateRange.value)
+  if (!monthKey) return agentOrders
+  return agentOrders.filter((o) => isOrderVisibleToCallerForMonth(o, monthKey))
+}
+
+function getAgentOrdersForView(agentId, { includeTestCases = true } = {}) {
+  const wanted = String(agentId || '')
+  if (!wanted) return []
+
+  let agentOrders = (orders.value || []).filter((order) => {
+    if (!isAgentAssignedToOrder(order, wanted)) return false
+    if (!includeTestCases && isTestCase(order)) return false
+    return true
+  })
+
+  if (currentDateRange.value?.length >= 2) {
+    const [startDate, endDate] = currentDateRange.value
+    const monthStart = new Date(startDate)
+    const monthEnd = new Date(endDate)
+    agentOrders = agentOrders.filter((order) => {
+      const orderStart = new Date(order.startDate)
+      const orderEnd = new Date(order.deadline)
+      return orderStart <= monthEnd && orderEnd >= monthStart
+    })
+  }
+
+  return applyCallerOrderVisibility(agentOrders)
+}
+
 function findOrdersForUser(allOrdersArray, agentId) {
   const wanted = String(agentId || '');
   if (!wanted) return [];
@@ -2591,7 +2614,7 @@ function findOrdersForUser(allOrdersArray, agentId) {
 
   // Early return if no date range
   if (!currentDateRange.value || currentDateRange.value.length < 2) {
-    return agentOrders;
+    return applyCallerOrderVisibility(agentOrders);
   }
   
   // Pre-calculate date boundaries once
@@ -2600,13 +2623,15 @@ function findOrdersForUser(allOrdersArray, agentId) {
   const monthEnd = new Date(endDate);
   
   // Optimized date filtering
-  return agentOrders.filter(order => {
+  const inMonth = agentOrders.filter(order => {
     const orderStart = new Date(order.startDate);
     const orderEnd = new Date(order.deadline);
     
     // Fast overlap check
     return orderStart <= monthEnd && orderEnd >= monthStart;
   });
+
+  return applyCallerOrderVisibility(inMonth);
 }
 
 
@@ -2649,7 +2674,12 @@ async function loadMonthWeeks() {
 }
 
 // Edit log function
+function isDailyLogFrozen(logData) {
+  return areDailyLogsFrozenForLog(orders.value || [], logData)
+}
+
 const editLog = (logData) => {
+  if (isDailyLogFrozen(logData)) return
   // Navigate to the daily log form with the log data for editing
   router.push({ 
     name: 'addDailyLog', 
@@ -2659,6 +2689,7 @@ const editLog = (logData) => {
 
 // Delete log function
 const deleteLog = async (logData) => {
+  if (isDailyLogFrozen(logData)) return
   if (!confirm(t('agentDashboard.confirmDeleteLog'))) {
     return;
   }

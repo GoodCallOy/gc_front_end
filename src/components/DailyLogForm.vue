@@ -1,6 +1,15 @@
 <template>
   <v-card class="pa-4" elevation="2">
     <v-form ref="formRef" v-model="formValid" @submit.prevent="submitForm">
+      <v-alert
+        v-if="isFormFrozen"
+        type="info"
+        density="compact"
+        variant="tonal"
+        class="mb-4"
+      >
+        {{ frozenMessage }}
+      </v-alert>
       <v-select
         v-model="form.agent"
         :items="gcAgents"
@@ -92,7 +101,7 @@
       />
 
       <div class="d-flex align-center mt-4" style="gap: 12px;">
-        <v-btn type="submit" :disabled="!formValid" color="primary">
+        <v-btn type="submit" :disabled="!formValid || isFormFrozen" color="primary">
           {{ isEditing ? $t('dailyLogForm.updateLog') : $t('dailyLogForm.addLog') }}
         </v-btn>
         <v-alert
@@ -116,6 +125,12 @@ import { mapState, mapActions } from 'vuex'
 import urls from '@/js/config.js'
 import { useRoute } from 'vue-router'
 import { resolveLinkedGcAgent } from '@/js/resolveLinkedGcAgent.js'
+import {
+  areDailyLogsFrozenForLog,
+  areDailyLogsFrozenForOrderMonth,
+  isOrderVisibleToCallerForMonth,
+  monthKeyFromDate,
+} from '@/js/orderStatusUtils'
 
 
 export default {
@@ -203,35 +218,54 @@ export default {
     });
   },
   filteredOrders() {
-    // Filter orders to show only cases the selected agent is assigned to for the current month
-    const currentDate = new Date()
-    const currentMonth = currentDate.getMonth()
-    const currentYear = currentDate.getFullYear()
-    
-    // Calculate month boundaries
-    const monthStart = new Date(currentYear, currentMonth, 1)
-    const monthEnd = new Date(currentYear, currentMonth + 1, 0, 23, 59, 59, 999)
+    const monthKey = this.logMonthKey
     
     return this.ordersWithCaseName.filter(order => {
-      // Check if order is active during the current month
+      // Check if order is active during the selected log month
       if (!order.startDate || !order.deadline) return false
       
       const orderStart = new Date(order.startDate)
       const orderEnd = new Date(order.deadline)
+      const [year, month] = monthKey.split('-').map(Number)
+      if (!year || !month) return false
+      const monthStart = new Date(year, month - 1, 1)
+      const monthEnd = new Date(year, month, 0, 23, 59, 59, 999)
       
-      // Check if order overlaps with current month
       const isActiveThisMonth = orderStart <= monthEnd && orderEnd >= monthStart
+      if (!isActiveThisMonth) return false
+
+      if (areDailyLogsFrozenForOrderMonth(order, monthKey)) return false
+
+      if (this.isCaller && !isOrderVisibleToCallerForMonth(order, monthKey)) return false
       
       // Check if the selected agent is assigned to this order
       const isAgentAssigned = this.form.agent && order.assignedCallers && 
         order.assignedCallers.some(caller => {
-          // Handle both string IDs and object IDs
           const callerId = typeof caller === 'string' ? caller : caller.id || caller._id;
           return callerId === this.form.agent;
         });
       
-      return isActiveThisMonth && isAgentAssigned
+      return isAgentAssigned
     })
+  },
+  logMonthKey() {
+    return monthKeyFromDate(this.form.date) || monthKeyFromDate(new Date())
+  },
+  isFormFrozen() {
+    if (this.isEditing) {
+      const logRef = this.logToEdit || {
+        order: this.form.order,
+        caseName: this.form.caseName,
+        date: this.form.date,
+      }
+      return areDailyLogsFrozenForLog(this.orders, logRef)
+    }
+    const order = this.selectedOrder
+    if (!order) return false
+    return areDailyLogsFrozenForOrderMonth(order, this.logMonthKey)
+  },
+  frozenMessage() {
+    return this.$t('dailyLogForm.frozenCompleted') || 'Daily logs are frozen for this case — the order is completed for this month.'
   },
   selectedOrder() {
     if (!this.form.order) return null
@@ -375,7 +409,7 @@ async mounted() {
     },
     
     async submitForm() {
-        if (!this.formValid) return
+        if (!this.formValid || this.isFormFrozen) return
 
         // Allow both comma and dot as decimal separators for key numeric fields
         this.form.hours = this.normalizeDecimal(this.form.hours);

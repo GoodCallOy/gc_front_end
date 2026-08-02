@@ -170,6 +170,7 @@
                 size="small"
                 color="grey"
                 :title="t('agentDashboard.editLog')"
+                :disabled="isDailyLogFrozen(item.raw?.originalLog ?? item.originalLog)"
                 @click.stop="editLog(item.raw?.originalLog ?? item.originalLog)"
               >
                 <v-icon>mdi-pencil</v-icon>
@@ -185,6 +186,7 @@
                 size="small"
                 color="grey"
                 :title="t('agentDashboard.deleteLog')"
+                :disabled="isDailyLogFrozen(item.raw?.originalLog ?? item.originalLog)"
                 @click.stop="deleteLog(item.raw?.originalLog ?? item.originalLog)"
               >
                 <v-icon>mdi-delete</v-icon>
@@ -214,7 +216,7 @@
   import urls from '@/js/config.js'
   import { formatSlashPair, formatStatNumber, formatCurrencyEUR } from '@/js/formatNumbers'
   import DateHeader from '@/components/DateHeader.vue'
-  import { getOrderStatusForMonth, monthKeyFromDateRange } from '@/js/orderStatusUtils'
+  import { getOrderStatusForMonth, monthKeyFromDateRange, areDailyLogsFrozenForLog } from '@/js/orderStatusUtils'
 
 
   const route = useRoute()
@@ -949,7 +951,12 @@ watch(individualLogs, () => {
     router.push({ name: 'editOrderForm', params: { id: orderId } });
   }
 
+  function isDailyLogFrozen(logData) {
+    return areDailyLogsFrozenForLog(orders.value || [], logData)
+  }
+
   const editLog = (logData) => {
+    if (isDailyLogFrozen(logData)) return
     // Add order ID to log data if not present (for case selection in form)
     const logWithOrder = {
       ...logData,
@@ -965,6 +972,7 @@ watch(individualLogs, () => {
   }
 
   const deleteLog = async (logData) => {
+    if (isDailyLogFrozen(logData)) return
     if (!canDeleteLog.value) {
       console.warn('User does not have permission to delete logs');
       return;

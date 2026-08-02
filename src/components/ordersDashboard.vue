@@ -153,6 +153,22 @@
                   >
                     {{ t('ordersDashboard.onPause') }}
                   </v-chip>
+                  <v-chip
+                    v-if="isOrderPendingForMonth(item, currentMonthKey)"
+                    size="x-small"
+                    color="grey"
+                    variant="tonal"
+                  >
+                    {{ t('ordersDashboard.pending') }}
+                  </v-chip>
+                  <v-chip
+                    v-if="isOrderCompletedForMonth(item, currentMonthKey)"
+                    size="x-small"
+                    color="success"
+                    variant="tonal"
+                  >
+                    {{ t('ordersDashboard.completed') }}
+                  </v-chip>
                 </div>
               </div>
             </template>
@@ -254,6 +270,8 @@ import {
   getOrderStatusForMonth,
   isOrderOnHoldForMonth,
   isOrderInProgressForMonth,
+  isOrderCompletedForMonth,
+  isOrderPendingForMonth,
   monthKeyFromDateRange,
 } from '@/js/orderStatusUtils'
 import { getPercentageToGoalBadgeClass } from '@/js/percentageToGoalStyle'

@@ -87,7 +87,8 @@
       "updateLog": "Päivitä loki",
       "addLog": "Lisää loki",
       "logCreatedSuccessfully": "Loki luotu onnistuneesti!",
-      "logUpdatedSuccessfully": "Loki päivitetty onnistuneesti!"
+      "logUpdatedSuccessfully": "Loki päivitetty onnistuneesti!",
+      "frozenCompleted": "Päivittäiset lokit on jäädytetty tälle tapaukselle — tilaus on valmis tältä kuukaudelta."
     },
     "ordersDashboard": {
       "tabs": {
@@ -144,6 +145,8 @@
       "cases": "tapausta",
       "multiMonth": "Monikuukautinen",
       "onPause": "Tauolla",
+      "completed": "Valmis",
+      "pending": "Odottaa",
       "tableHeaders": {
         "caseName": "Tapauksen nimi",
         "orderId": "Tilaus-ID",
@@ -233,6 +236,7 @@
       },
       "remainingInCampaign": "jäljellä kampanjassa",
       "copyMultiMonthDisabled": "Monikuukautisia kampanjoita ei voi kopioida seuraavaan kuukauteen",
+      "copyCompletedDisabled": "Valmiita tilauksia ei voi kopioida seuraavaan kuukauteen",
       "copiedToNextMonth": "Kopioitu seuraavaan kuukauteen",
       "assignGoalsFor": "Määritä tavoitteet",
       "goalsRemainingToAssign": "Jaettavana olevat tavoitteet",

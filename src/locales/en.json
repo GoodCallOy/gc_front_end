@@ -104,7 +104,8 @@
       "updateLog": "Update Log",
       "addLog": "Add Log",
       "logCreatedSuccessfully": "Log created successfully!",
-      "logUpdatedSuccessfully": "Log updated successfully!"
+      "logUpdatedSuccessfully": "Log updated successfully!",
+      "frozenCompleted": "Daily logs are frozen for this case — the order is completed for this month."
     },
     "ordersDashboard": {
       "tabs": {
@@ -161,6 +162,8 @@
       "cases": "cases",
       "multiMonth": "Multi-Month",
       "onPause": "On Pause",
+      "completed": "Completed",
+      "pending": "Pending",
       "tableHeaders": {
         "caseName": "Case Name",
         "orderId": "Order ID",
@@ -250,6 +253,7 @@
       },
       "remainingInCampaign": "remaining in campaign",
       "copyMultiMonthDisabled": "Multi-month campaigns cannot be copied to the next month",
+      "copyCompletedDisabled": "Completed orders cannot be copied to the next month",
       "copiedToNextMonth": "Copied to next month",
       "assignGoalsFor": "Assign Goals for",
       "goalsRemainingToAssign": "Goals remaining to assign",

@@ -127,6 +127,7 @@
                 size="small"
                 color="grey"
                 title="Edit Log"
+                :disabled="isDailyLogFrozen(item.raw?.originalLog ?? item.originalLog)"
                 @click.stop="editLog(item.raw?.originalLog ?? item.originalLog)"
               >
                 <v-icon>mdi-pencil</v-icon>
@@ -152,6 +153,7 @@
   import { goToNextMonth, goToPreviousMonth, formattedDateRange, isCurrentMonth, getMonthWeeks } from '@/js/dateUtils';
   import urls from '@/js/config.js'
   import { formatStatNumber, formatCurrencyEUR } from '@/js/formatNumbers'
+  import { areDailyLogsFrozenForLog, isOrderVisibleToCallerForMonth, monthKeyFromDateRange } from '@/js/orderStatusUtils'
 
 
   const route = useRoute()
@@ -168,6 +170,7 @@
   // Date range functionality
   const currentDateRange = computed(() => store.getters['currentDateRange'])
   const orders = computed(() => store.getters['orders'])
+  const currentUser = computed(() => store.state.user?.user ?? JSON.parse(localStorage.getItem('auth_user') || 'null'))
   const gcCases = computed(() => store.getters['gcCases'])
   const monthWeeks = ref([])
   const isLoadingStats = ref(false)
@@ -743,6 +746,16 @@ const weeklyLogGroups = computed(() => {
       ])
       order.value = orderRes.data
       agents.value = agentRes.data
+
+      const monthKey = monthKeyFromDateRange(currentDateRange.value)
+      if (
+        currentUser.value?.role === 'caller' &&
+        monthKey &&
+        !isOrderVisibleToCallerForMonth(order.value, monthKey)
+      ) {
+        router.push({ name: 'agentDashboard' })
+        return
+      }
       
       // Store orders and cases in the store
       store.commit('setOrders', ordersRes.data)
@@ -769,7 +782,12 @@ const weeklyLogGroups = computed(() => {
     router.push({ name: 'editOrderForm', params: { id: orderId } });
   }
 
+  function isDailyLogFrozen(logData) {
+    return areDailyLogsFrozenForLog(orders.value || [], logData)
+  }
+
   const editLog = (logData) => {
+    if (isDailyLogFrozen(logData)) return
     // Navigate to the daily log form with the log data for editing
     router.push({ 
       name: 'addDailyLog', 

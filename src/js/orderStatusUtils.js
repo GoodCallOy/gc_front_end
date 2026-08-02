@@ -50,6 +50,43 @@ export function isOrderInProgressForMonth(order, monthKey) {
   return getOrderStatusForMonth(order, monthKey) === 'in-progress'
 }
 
+export function isOrderCompletedForMonth(order, monthKey) {
+  return getOrderStatusForMonth(order, monthKey) === 'completed'
+}
+
+export function isOrderPendingForMonth(order, monthKey) {
+  return getOrderStatusForMonth(order, monthKey) === 'pending'
+}
+
+/** Callers only see assigned orders that are active (not pending or completed) for the month. */
+export function isOrderVisibleToCallerForMonth(order, monthKey) {
+  const status = getOrderStatusForMonth(order, monthKey)
+  return status !== 'pending' && status !== 'completed'
+}
+
+/** Completed orders cannot receive new or edited daily logs for that month. */
+export function areDailyLogsFrozenForOrderMonth(order, monthKey) {
+  return isOrderCompletedForMonth(order, monthKey)
+}
+
+export function findOrderForDailyLog(orders, log) {
+  if (!log || !Array.isArray(orders)) return null
+  const orderId = String(log.order?._id ?? log.order?.id ?? log.order ?? '')
+  if (orderId) {
+    const byId = orders.find((o) => String(o._id ?? o.id) === orderId)
+    if (byId) return byId
+  }
+  const caseName = String(log.caseName ?? '').trim()
+  if (!caseName) return null
+  return orders.find((o) => String(o.caseName ?? '').trim() === caseName) || null
+}
+
+export function areDailyLogsFrozenForLog(orders, log) {
+  const order = findOrderForDailyLog(orders, log)
+  if (!order) return false
+  return areDailyLogsFrozenForOrderMonth(order, monthKeyFromDate(log?.date))
+}
+
 /** Merge one month into monthlyOrderStatus for PUT /orders/:id */
 export function buildMonthlyOrderStatusUpdate(order, monthKey, newStatus) {
   const normalized = normalizeOrderStatus(newStatus)
