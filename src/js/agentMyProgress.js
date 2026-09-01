@@ -1,4 +1,5 @@
 import { roundTo2Decimals } from '@/js/formatNumbers';
+import { isOrderEligibleForAgentGoalsForMonth, monthKeyFromDateRange } from '@/js/orderStatusUtils';
 
 function isTestCase(order) {
   if (!order) return false;
@@ -63,11 +64,14 @@ export function computeAgentMyProgressPercent(agent, orders, statsLogs, dateRang
 
   if (!userOrders.length) return null;
 
+  const monthKey = monthKeyFromDateRange(dateRange);
   const inRange = userOrders.filter((order) => {
     if (!from || !to) return true;
     const orderStart = new Date(order.startDate || 0);
     const orderEnd = new Date(order.deadline || 0);
-    return orderStart <= to && orderEnd >= from;
+    if (!(orderStart <= to && orderEnd >= from)) return false;
+    if (monthKey && !isOrderEligibleForAgentGoalsForMonth(order, monthKey)) return false;
+    return true;
   });
 
   if (!inRange.length) return null;

@@ -62,14 +62,49 @@ export function isOrderCancelledForMonth(order, monthKey) {
   return getOrderStatusForMonth(order, monthKey) === 'cancelled'
 }
 
+const INACTIVE_ORDER_STATUSES = new Set(['pending', 'on-hold', 'completed', 'cancelled'])
+
+/**
+ * True when the campaign was marked pending, paused, completed, or cancelled in an
+ * earlier month and this month has no explicit status of its own.
+ */
+export function wasOrderInactiveBeforeMonth(order, monthKey) {
+  if (!order || !monthKey) return false
+  const monthly = getMonthlyOrderStatusMap(order)
+  const thisMonth = monthly[monthKey]
+  if (thisMonth != null && thisMonth !== '') return false
+  return Object.entries(monthly).some(([key, status]) => {
+    if (!(key < monthKey)) return false
+    return INACTIVE_ORDER_STATUSES.has(normalizeOrderStatus(status))
+  })
+}
+
+export function wasOrderCompletedBeforeMonth(order, monthKey) {
+  return wasOrderInactiveBeforeMonth(order, monthKey) &&
+    Object.entries(getMonthlyOrderStatusMap(order)).some(
+      ([key, status]) => key < monthKey && normalizeOrderStatus(status) === 'completed'
+    )
+}
+
 /** Orders that contribute agent goal/revenue on the agents page for a month. */
 export function isOrderEligibleForAgentGoalsForMonth(order, monthKey) {
+  if (wasOrderInactiveBeforeMonth(order, monthKey)) return false
   const status = getOrderStatusForMonth(order, monthKey)
   return status === 'in-progress' || status === 'completed'
 }
 
-/** Callers see assigned orders except pending and cancelled for the month. */
+/**
+ * Agent dashboard / personal revenue: only in-progress work for the viewed month.
+ * Pending, paused (on-hold), completed, and cancelled cases are excluded.
+ */
+export function isOrderActiveForAgentDashboardForMonth(order, monthKey) {
+  if (wasOrderInactiveBeforeMonth(order, monthKey)) return false
+  return isOrderInProgressForMonth(order, monthKey)
+}
+
+/** Callers see assigned orders except pending, cancelled, and campaigns already inactive in an earlier month. */
 export function isOrderVisibleToCallerForMonth(order, monthKey) {
+  if (wasOrderInactiveBeforeMonth(order, monthKey)) return false
   return !isOrderPendingForMonth(order, monthKey) && !isOrderCancelledForMonth(order, monthKey)
 }
 

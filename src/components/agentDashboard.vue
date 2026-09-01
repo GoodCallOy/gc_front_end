@@ -614,6 +614,7 @@ import { resolveLinkedGcAgent } from '@/js/resolveLinkedGcAgent.js'
 import { formatStatNumber, formatSlashPair, formatCurrencyEUR, roundTo2Decimals } from '@/js/formatNumbers'
 import {
   areDailyLogsFrozenForLog,
+  isOrderActiveForAgentDashboardForMonth,
   isOrderVisibleToCallerForMonth,
   monthKeyFromDateRange,
 } from '@/js/orderStatusUtils'
@@ -1676,10 +1677,8 @@ const teamEstimatedRevenueGoal = computed(() => {
     const overlapsMonth = orderStart <= monthEnd && orderEnd >= monthStart;
     if (!overlapsMonth) return false;
 
-    const status = String(order?.orderStatus ?? order?.status ?? '')
-      .toLowerCase()
-      .replace(/\s/g, '-');
-    return status === 'in-progress';
+    const monthKey = monthKeyFromDateRange(range)
+    return isOrderActiveForAgentDashboardForMonth(order, monthKey)
   });
 
   if (!eligibleOrders.length) return 0;
@@ -1834,10 +1833,8 @@ const teamCurrentRevenueDashboardStyle = computed(() => {
     const orderEnd = new Date(order.deadline);
     const overlapsMonth = orderStart <= monthEnd && orderEnd >= monthStart;
     if (!overlapsMonth) return false;
-    const status = String(order?.orderStatus ?? order?.status ?? '')
-      .toLowerCase()
-      .replace(/\s/g, '-');
-    return status === 'in-progress';
+    const monthKey = monthKeyFromDateRange(currentDateRange.value)
+    return isOrderActiveForAgentDashboardForMonth(order, monthKey)
   });
 
   if (!eligibleOrders.length) return 0;
@@ -2570,10 +2567,15 @@ watch([orders, selectedGcAgent, currentDateRange], async ([allOrders, agent, dat
 });
 
 function applyCallerOrderVisibility(agentOrders) {
-  if (currentUser.value?.role !== 'caller') return agentOrders
   const monthKey = monthKeyFromDateRange(currentDateRange.value)
   if (!monthKey) return agentOrders
-  return agentOrders.filter((o) => isOrderVisibleToCallerForMonth(o, monthKey))
+  return agentOrders.filter((o) => {
+    if (!isOrderActiveForAgentDashboardForMonth(o, monthKey)) return false
+    if (currentUser.value?.role === 'caller') {
+      return isOrderVisibleToCallerForMonth(o, monthKey)
+    }
+    return true
+  })
 }
 
 function getAgentOrdersForView(agentId, { includeTestCases = true } = {}) {
