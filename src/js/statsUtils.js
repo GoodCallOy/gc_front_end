@@ -1,6 +1,7 @@
 import axios from 'axios';
 import urls from './config.js';
 import { toLocalYmdNumber, parseWeekDateLocal } from './dateUtils';
+import { monthKeyFromDateRange, monthKeyFromDate } from './orderStatusUtils';
 
 export function normalizeEntityId(value) {
   if (value == null || value === '') return ''
@@ -302,6 +303,55 @@ export function populateCasesSortedByAgent(agentStats, selectedAgent) {
     return monthlyGoal * pricePerUnit
   }
 
+  /** Revenue goal (€) for a specific calendar month — uses monthlyRevenueGoals when set. */
+  export function ordersDashboardRevenueGoalEurosForMonth(order, dateRangeOrMonthKey) {
+    const monthKey =
+      typeof dateRangeOrMonthKey === 'string'
+        ? String(dateRangeOrMonthKey).slice(0, 7)
+        : monthKeyFromDateRange(dateRangeOrMonthKey)
+    const monthlyGoals = order?.monthlyRevenueGoals || {}
+    if (monthKey && monthlyGoals[monthKey] != null && monthlyGoals[monthKey] !== '') {
+      const fromMap = Number(monthlyGoals[monthKey])
+      if (Number.isFinite(fromMap) && fromMap >= 0) return fromMap
+    }
+    return ordersDashboardRevenueGoalEuros(order)
+  }
+
+  /** Group key for the same campaign (case + unit + price). */
+  export function orderCampaignGroupKey(order) {
+    return `${String(order?.caseId ?? '')}|${String(order?.caseUnit ?? '')}|${Number(order?.pricePerUnit ?? 0)}`
+  }
+
+  /**
+   * When several order rows overlap a month (e.g. multi-month parent + monthly copy),
+   * prefer the row whose startDate is in the viewed month.
+   */
+  export function pickRepresentativeOrderForMonthView(orders, viewMonthKey) {
+    if (!Array.isArray(orders) || !orders.length) return null
+    if (orders.length === 1) return orders[0]
+    const slice = orders.find((o) => monthKeyFromDate(o?.startDate) === viewMonthKey)
+    if (slice) return slice
+    const sorted = [...orders].sort(
+      (a, b) => new Date(b.startDate || 0).getTime() - new Date(a.startDate || 0).getTime()
+    )
+    return sorted[0]
+  }
+
+  /** Group overlapping campaign orders for one month view. */
+  export function groupOrderCampaignsForMonthView(orders, dateRange) {
+    const viewMonthKey = monthKeyFromDateRange(dateRange)
+    const groups = new Map()
+    for (const order of orders || []) {
+      const key = orderCampaignGroupKey(order)
+      if (!groups.has(key)) groups.set(key, [])
+      groups.get(key).push(order)
+    }
+    return [...groups.values()].map((group) => ({
+      orders: group,
+      representative: pickRepresentativeOrderForMonthView(group, viewMonthKey),
+    }))
+  }
+
   /**
    * Check if an order spans multiple months
    * @param {Object} order - Order object with startDate and deadline
@@ -418,4 +468,59 @@ export function populateCasesSortedByAgent(agentStats, selectedAgent) {
     return monthlyProgress;
   }
 
-  
+/** Sum completed units across all months of a campaign (from breakdown or daily logs). */
+export function getCampaignCompletedUnits(order, dailyLogs, monthlyBreakdown) {
+  if (!order) return 0
+  if (Array.isArray(monthlyBreakdown) && monthlyBreakdown.length) {
+    return monthlyBreakdown.reduce((sum, m) => sum + (Number(m.quantityCompleted) || 0), 0)
+  }
+  const progress = calculateMonthlyProgress(order, dailyLogs || [])
+  return progress.reduce((sum, m) => sum + (Number(m.quantityCompleted) || 0), 0)
+}
+
+/** Completed units in calendar months strictly before beforeMonthKey (YYYY-MM). */
+export function getCompletedUnitsBeforeMonthKey(order, dailyLogs, beforeMonthKey, monthlyBreakdown) {
+  if (!order || !beforeMonthKey) return 0
+  const prefix = String(beforeMonthKey).slice(0, 7)
+  if (prefix.length < 7) return 0
+  let breakdown = monthlyBreakdown
+  if (!Array.isArray(breakdown) || !breakdown.length) {
+    breakdown = calculateMonthlyProgress(order, dailyLogs || [])
+  }
+  return breakdown.reduce((sum, m) => {
+    if (String(m.monthKey) < prefix) {
+      return sum + (Number(m.quantityCompleted) || 0)
+    }
+    return sum
+  }, 0)
+}
+
+/** Campaign units still available (campaign goal minus all logged usage). */
+export function getCampaignRemainingUnits(order, dailyLogs, campaignGoal, monthlyBreakdown) {
+  const goal = Number(campaignGoal) || 0
+  if (goal <= 0) return 0
+  const completed = getCampaignCompletedUnits(order, dailyLogs, monthlyBreakdown)
+  return Math.max(0, goal - completed)
+}
+
+/**
+ * Max team goal units assignable/split for an order in Assign Goals.
+ * Multi-month: min(monthly cap, campaign remaining after usage).
+ */
+export function getAssignableGoalCap(order, dailyLogs, campaignGoal) {
+  const monthlyCap = Number(order?.monthlyGoal ?? order?.totalQuantity ?? 0) || 0
+  if (!orderSpansMultipleMonths(order)) {
+    return monthlyCap
+  }
+  const goal = Number(campaignGoal) || 0
+  const remaining = getCampaignRemainingUnits(
+    order,
+    dailyLogs,
+    goal,
+    order?.monthlyBreakdown
+  )
+  if (monthlyCap > 0) {
+    return Math.min(monthlyCap, remaining)
+  }
+  return remaining
+}

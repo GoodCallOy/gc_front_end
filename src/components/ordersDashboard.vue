@@ -262,7 +262,7 @@ import DashboardCard01 from '@/partials/dashboard/caseCard2.vue'
 import OrdersAnalyticsCharts from '@/partials/dashboard/orders-analytics-charts.vue'
 import OrdersTableInsights from '@/partials/dashboard/orders-table-insights.vue'
 import DateHeader from '@/components/DateHeader.vue'
-import { orderSpansMultipleMonths, calculateMonthlyProgress, computeOrderQuantityForMonth, computeOrderRevenueForMonth } from '@/js/statsUtils'
+import { orderSpansMultipleMonths, calculateMonthlyProgress, computeOrderQuantityForMonth, computeOrderRevenueForMonth, groupOrderCampaignsForMonthView, ordersDashboardRevenueGoalEurosForMonth } from '@/js/statsUtils'
 import {
   getOrderStatusForMonth,
   isOrderOnHoldForMonth,
@@ -515,20 +515,24 @@ function isGoodCallCase(order) {
   return caseName === 'case good call' || caseName === 'good call';
 }
 
-// Calculate estimated revenue total from filtered orders (monthlyGoal * pricePerUnit per order)
+// Calculate estimated revenue total from filtered orders (one goal per campaign per month)
 const estimatedRevenueTotal = computed(() => {
   const ordersToCalculate = selectedCaseType.value ? filteredOrdersByCaseType.value : filteredOrders.value;
   if (!ordersToCalculate || ordersToCalculate.length === 0) {
     return 0;
   }
   
-  // Filter out test cases, good call case, and non-in-progress orders
   const nonTestOrders = ordersToCalculate.filter(order => {
     if (isTestCase(order) || isGoodCallCase(order)) return false;
     return isOrderInProgressForMonth(order, currentMonthKey.value);
   });
   
-  return nonTestOrders.reduce((total, order) => total + store.getters.estimatedRevenueEurosForOrder(order), 0);
+  const groups = groupOrderCampaignsForMonthView(nonTestOrders, currentDateRange.value);
+  return groups.reduce(
+    (total, { representative }) =>
+      total + ordersDashboardRevenueGoalEurosForMonth(representative, currentMonthKey.value),
+    0
+  );
 });
 
 // Per-case breakdown of estimated revenue (for verification)
@@ -536,10 +540,11 @@ const estimatedRevenueBreakdown = computed(() => {
   const ordersToCalculate = selectedCaseType.value ? filteredOrdersByCaseType.value : filteredOrders.value;
   if (!ordersToCalculate || ordersToCalculate.length === 0) return [];
 
-  const rows = ordersToCalculate.map((order) => {
+  const groups = groupOrderCampaignsForMonthView(ordersToCalculate, currentDateRange.value);
+  const rows = groups.map(({ representative: order }) => {
     const monthlyGoal = Number(order?.monthlyGoal ?? order?.totalQuantity) || 0;
     const pricePerUnit = Number(order?.pricePerUnit) || 0;
-    const revenue = store.getters.estimatedRevenueEurosForOrder(order);
+    const revenue = ordersDashboardRevenueGoalEurosForMonth(order, currentMonthKey.value);
 
     let excludedReason = null;
     if (isTestCase(order)) excludedReason = 'Test case';

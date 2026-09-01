@@ -27,7 +27,7 @@
             <v-btn
                 color="secondary"
                 :disabled="!selectedOrder"
-                @click="openEditOrderModal"
+                @click="openEditOrderModalFromSelection"
             >
                 {{ t('assignGoals.buttons.editCampaign') }}
             </v-btn>
@@ -74,10 +74,7 @@
               :items-per-page="20"
               density="comfortable"
               fixed-header
-              show-expand
               :cell-props="getAssignGoalsCellProps"
-              :expanded="group.items.filter((i) => orderSpansMultipleMonths(i) && expandedRows.has(String(i._id))).map((i) => i._id)"
-              @update:expanded="(value) => { expandedRows = new Set(value) }"
               @click:row="selectOrder"
             >
           <template #header.select>
@@ -89,32 +86,33 @@
               @update:model-value="(v) => setGroupCopySelection(group.items, v)"
             />
           </template>
-          <template #header.data-table-expand>
-            <span></span>
-          </template>
           <template #item="{ item, props: rowProps, index }">
             <VDataTableRow v-bind="rowProps">
-              <template #item.select="{ item: rowItem }">
-                <v-checkbox-btn
-                  :model-value="isCopyOrderSelected(rowItem._id)"
-                  :disabled="isOrderCopyDisabled(rowItem)"
-                  density="compact"
-                  hide-details
-                  @click.stop
-                  @update:model-value="(v) => setCopyOrderSelected(rowItem._id, v)"
-                />
-              </template>
-              <template #item.data-table-expand="{ item: rowItem }">
-                <v-btn
-                  v-if="orderSpansMultipleMonths(rowItem)"
-                  icon
-                  size="small"
-                  variant="text"
-                  @click.stop="toggleExpand(rowItem._id)"
-                >
-                  <v-icon>{{ expandedRows.has(String(rowItem._id)) ? 'mdi-chevron-up' : 'mdi-chevron-down' }}</v-icon>
-                </v-btn>
-                <span v-else aria-hidden="true"></span>
+              <template #item.select>
+                <div class="assign-goals-select-cell">
+                  <v-checkbox-btn
+                    :model-value="isCopyOrderSelected(item._id)"
+                    :disabled="isOrderCopyDisabled(item)"
+                    density="compact"
+                    hide-details
+                    @click.stop
+                    @update:model-value="(v) => setCopyOrderSelected(item._id, v)"
+                  />
+                  <v-btn
+                    v-if="item.isMultiMonth"
+                    icon
+                    size="small"
+                    variant="text"
+                    color="grey"
+                    class="assign-goals-expand-btn"
+                    :aria-label="t('ordersDashboard.monthlyBreakdown.title')"
+                    @click.stop="toggleExpand(item._id)"
+                  >
+                    <v-icon size="20">
+                      {{ expandedRows.has(String(item._id)) ? 'mdi-chevron-up' : 'mdi-chevron-down' }}
+                    </v-icon>
+                  </v-btn>
+                </div>
               </template>
               <template #item.copy="{ item: rowItem }">
                 <v-tooltip
@@ -277,18 +275,13 @@
                 </div>
               </td>
             </tr>
-          </template>
-
-          <template #expanded-row="{ item, index }">
             <tr
-              v-if="orderSpansMultipleMonths(item) && item.monthlyBreakdown"
+              v-if="orderSpansMultipleMonths(item) && expandedRows.has(String(item._id)) && item.monthlyBreakdown"
               class="monthly-breakdown-row"
               :data-case-stripe="String(Number(index) % 2)"
             >
-              <td class="monthly-breakdown-row__expand" :style="getCaseRowBackgroundStyle(item, index)"></td>
-              <td class="monthly-breakdown-row__select" :style="getCaseRowBackgroundStyle(item, index)"></td>
               <td
-                :colspan="orderHeaders.length"
+                :colspan="orderTableColumnCount"
                 class="monthly-breakdown-row__body"
                 :style="getCaseRowBackgroundStyle(item, index)"
               >
@@ -342,103 +335,107 @@
       </v-col>
 
       <!-- Agent Assignment -->
-     <!-- Agent Assignment -->
-<v-col cols="12" md="5" class="pa-4">
-  <h3 class="text-h6 mb-2">
-    {{ t('assignGoals.assignGoalsFor') }} ({{ selectedOrder && selectedOrder.caseName || t('assignGoals.noOrderSelected') }})
-  </h3>
-  <v-alert
-    v-if="selectedOrder && selectedOrderRemainingGoals > 0"
-    type="info"
-    variant="tonal"
-    density="compact"
-    class="mb-3"
-  >
-    {{ t('assignGoals.goalsRemainingToAssign') }}: <strong>{{ formatStatNumber(selectedOrderRemainingGoals) }}</strong>
-  </v-alert>
+      <v-col cols="12" md="5" class="pa-4 assign-goals-agent-panel">
+        <div class="assign-goals-agent-panel__header">
+          <h3 class="text-h6 mb-2">
+            {{ t('assignGoals.assignGoalsFor') }} ({{ selectedOrder && selectedOrder.caseName || t('assignGoals.noOrderSelected') }})
+          </h3>
+          <v-alert
+            v-if="selectedOrder && selectedOrderRemainingGoals > 0"
+            type="info"
+            variant="tonal"
+            density="compact"
+            class="mb-0"
+          >
+            {{ t('assignGoals.goalsRemainingToAssign') }}: <strong>{{ formatStatNumber(selectedOrderRemainingGoals) }}</strong>
+          </v-alert>
+        </div>
 
-  <div v-if="rightPanelLoading" class="d-flex align-center justify-center pa-8">
-    <v-progress-circular indeterminate color="primary" size="48" />
-  </div>
+        <div class="assign-goals-agent-panel__scroll">
+          <div v-if="rightPanelLoading" class="d-flex align-center justify-center pa-8">
+            <v-progress-circular indeterminate color="primary" size="48" />
+          </div>
 
-  <v-col v-else-if="selectedOrder?.agentSummary?.length" cols="12" class="pa-0">
-    <v-row>
-      <v-col
-        v-for="agent in selectedOrder.agentSummary"
-        :key="agent.id"
-        cols="12"
-        class="mb-3"
-      >
-        <v-card outlined>
-          <v-row no-gutters>
-            <!-- Left: name + input -->
-            <v-col cols="12" md="5" class="pa-4">
-              <div class="text-subtitle-1 font-weight-medium mb-2">
-                {{ agent.name }}
-              </div>
-              <v-text-field
-                v-model.number="agent.goalForThisOrder"
-                type="number"
-                dense
-                hide-details
-                :label="t('assignGoals.formLabels.goal')"
-                style="max-width: 100px;"
-              />
-              <v-text-field
-                v-model.number="agent.rateForThisOrder"
-                type="number"
-                dense
-                hide-details
-                :label="t('assignGoals.formLabels.rate')"
-                style="max-width: 120px;"
-              />
-            </v-col>
+          <div v-else-if="selectedOrder?.agentSummary?.length" class="assign-goals-agent-panel__agents">
+            <v-card
+              v-for="agent in selectedOrder.agentSummary"
+              :key="agent.id"
+              outlined
+              class="assign-goals-agent-card mb-3"
+            >
+              <v-row no-gutters>
+                <v-col cols="12" md="5" class="pa-4">
+                  <div class="text-subtitle-1 font-weight-medium mb-2">
+                    {{ agent.name }}
+                  </div>
+                  <v-text-field
+                    v-model.number="agent.goalForThisOrder"
+                    type="number"
+                    dense
+                    hide-details
+                    :label="t('assignGoals.formLabels.goal')"
+                    style="max-width: 100px;"
+                  />
+                  <v-text-field
+                    v-model.number="agent.rateForThisOrder"
+                    type="number"
+                    dense
+                    hide-details
+                    :label="t('assignGoals.formLabels.rate')"
+                    style="max-width: 120px;"
+                  />
+                </v-col>
 
-            <!-- Right: monthly/other orders -->
-            <v-col cols="12" md="7" class="pa-4">
-              <div class="text-caption mb-1 text-grey">
-                {{ t('assignGoals.thisMonth') }}
-                <span v-if="currentMonthLabel">({{ currentMonthLabel }})</span>
-              </div>
-              <div class="mb-2">
-                {{ formatStatNumber(agent.completedUnitsForThisOrder ?? 0) }}/{{ formatStatNumber(agent.goalForThisOrder) }} {{ t('assignGoals.totalGoals') }}
-              </div>
+                <v-col cols="12" md="7" class="pa-4">
+                  <div class="text-caption mb-1 text-grey">
+                    {{ t('assignGoals.thisMonth') }}
+                    <span v-if="currentMonthLabel">({{ currentMonthLabel }})</span>
+                  </div>
+                  <div class="mb-2">
+                    {{ formatStatNumber(agent.completedUnitsForThisOrder ?? 0) }}/{{ formatStatNumber(agent.goalForThisOrder) }} {{ t('assignGoals.totalGoals') }}
+                  </div>
 
-              <div class="text-caption mb-1 text-grey">{{ t('assignGoals.otherOrders') }}</div>
-              <ul class="pl-3">
-                <li
-                  v-for="o in agent.AgentOrders"
-                  :key="o.orderId || o._oid || o.name"
-                >
-                  {{ o.caseName || o.name }} – {{ formatStatNumber(o.goal) }}
-                  <span v-if="o.pricePerUnit">
-                    ({{ formatCurrency((Number(o.goal) || 0) * (Number(o.pricePerUnit) || 0)) }})
-                  </span>
-                </li>
-              </ul>
+                  <div class="text-caption mb-1 text-grey">{{ t('assignGoals.otherOrders') }}</div>
+                  <ul class="pl-3">
+                    <li
+                      v-for="o in agent.AgentOrders"
+                      :key="o.orderId || o._oid || o.name"
+                    >
+                      {{ o.caseName || o.name }} – {{ formatStatNumber(o.goal) }}
+                      <span v-if="o.pricePerUnit">
+                        ({{ formatCurrency((Number(o.goal) || 0) * (Number(o.pricePerUnit) || 0)) }})
+                      </span>
+                    </li>
+                  </ul>
 
-              <div class="mt-2 font-bold">
-                {{ t('assignGoals.totalRevenueAcrossAllOrders') }}
-                {{ agent.monthRevenueFormatted || currency(agent.monthRevenue || 0) }}
-              </div>
-            </v-col>
-            <v-btn
-  color="primary"
-  class="mt-4"
-  :disabled="!hasGoalChanges || savingGoals"
-  :loading="savingGoals"
-  @click="submitGoals"
->
-  {{ t('assignGoals.buttons.saveGoals') }}
-</v-btn>
-          </v-row>
-        </v-card>
+                  <div class="mt-2 font-bold">
+                    {{ t('assignGoals.totalRevenueAcrossAllOrders') }}
+                    {{ agent.monthRevenueFormatted || currency(agent.monthRevenue || 0) }}
+                  </div>
+                </v-col>
+              </v-row>
+            </v-card>
+          </div>
+
+          <div v-else-if="!rightPanelLoading" class="text-grey pa-4">
+            {{ t('assignGoals.noAgentsAssigned') }}
+          </div>
+        </div>
+
+        <div
+          v-if="selectedOrder?.agentSummary?.length"
+          class="assign-goals-agent-panel__footer"
+        >
+          <v-btn
+            color="primary"
+            :disabled="!hasGoalChanges || savingGoals"
+            :loading="savingGoals"
+            @click="submitGoals"
+          >
+            {{ t('assignGoals.buttons.saveGoals') }}
+          </v-btn>
+        </div>
       </v-col>
-    </v-row>
-  </v-col>
-
-  <div v-else-if="!rightPanelLoading" class="text-grey pa-4">{{ t('assignGoals.noAgentsAssigned') }}</div>
-</v-col>
     </v-row>
   </v-container>
 
@@ -453,6 +450,7 @@
             :key="orderFormModalKey"
             :order-id="orderFormConfig.orderId"
             :initial-order="orderFormConfig.initialOrder"
+            :suggested-monthly-goal="orderFormConfig.suggestedMonthlyGoal"
             :prefill="orderFormConfig.prefill"
             :default-start-date="orderFormConfig.defaultDates?.startDate"
             :default-deadline="orderFormConfig.defaultDates?.deadline"
@@ -571,11 +569,16 @@
 
 <script setup>
 import { ref, onMounted, computed, reactive, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import { useStore } from 'vuex'
 import { useI18n } from 'vue-i18n'
 import { goToNextMonth, goToPreviousMonth, formattedDateRange, isCurrentMonth, getMonthWeeks } from '@/js/dateUtils';
-import { orderSpansMultipleMonths, calculateMonthlyProgress } from '@/js/statsUtils';
+import {
+  orderSpansMultipleMonths,
+  calculateMonthlyProgress,
+  getAssignableGoalCap,
+  getCompletedUnitsBeforeMonthKey,
+  getCampaignRemainingUnits,
+} from '@/js/statsUtils';
 import DateHeader from '@/components/DateHeader.vue';
 import OrderForm from '@/components/orders/OrderForm.vue';
 import axios from 'axios'
@@ -586,6 +589,7 @@ import {
   buildOrderCopyPayload,
   buildOrderCopyPrefill,
   resolveOrderCopyFields,
+  getRemainingMonthlyGoalForMultiMonthOrder,
 } from '@/js/orderCopyUtils'
 import {
   ORDER_STATUS_OPTIONS,
@@ -599,7 +603,6 @@ import {
 } from '@/js/orderStatusUtils'
 
 const store = useStore()
-const router = useRouter()
 const { t } = useI18n()
 const agentForm = ref(null);
 const caseForm = ref(null);
@@ -659,6 +662,7 @@ const orderFormConfig = ref({
   mode: 'add',
   orderId: null,
   initialOrder: null,
+  suggestedMonthlyGoal: null,
   prefill: null,
   defaultDates: null
 });
@@ -782,6 +786,21 @@ function isNextMonthOf(a, b) {
   return (yb === ya && mb === ma + 1) || (yb === ya + 1 && ma === 12 && mb === 1);
 }
 
+function orderStartsInMonth(order, monthStartStr) {
+  const targetKey = String(monthStartStr || '').split('T')[0].slice(0, 7);
+  const orderKey = String(toDateOnly(order?.startDate) || '').slice(0, 7);
+  return Boolean(targetKey && orderKey && targetKey === orderKey);
+}
+
+function isDuplicateCopyInTargetMonth(source, candidate, targetMonthStart) {
+  return (
+    String(candidate.caseId || '') === String(source.caseId || '') &&
+    String(candidate.caseUnit || '') === String(source.caseUnit || '') &&
+    Number(candidate.pricePerUnit || 0) === Number(source.pricePerUnit || 0) &&
+    orderStartsInMonth(candidate, targetMonthStart)
+  );
+}
+
 function deriveCopiedFlagsFromOrders(allOrders) {
   if (!Array.isArray(allOrders) || !allOrders.length) return;
   // Build quick index by caseId for faster matching
@@ -873,7 +892,6 @@ async function bulkCopyOrdersToNextMonth() {
     console.log(`📋 Bulk copy: Target month range: ${nextStart} to ${nextEnd}`);
 
     let skippedCount = 0;
-    let multiMonthSkippedCount = 0;
     let copiedCount = 0;
     let failedCount = 0;
     
@@ -885,12 +903,6 @@ async function bulkCopyOrdersToNextMonth() {
       `${String(caseId || '')}|${String(caseUnit || '')}|${Number(pricePerUnit || 0)}`;
 
     for (const o of sourceOrders) {
-      if (orderSpansMultipleMonths(o)) {
-        console.log(`📋 Bulk copy: Skipping "${o.caseName}" (multi-month campaign)`);
-        multiMonthSkippedCount++;
-        continue;
-      }
-
       if (isOrderCompletedForMonth(o, monthKeyFromDateRange(currentDateRange.value))) {
         console.log(`📋 Bulk copy: Skipping "${o.caseName}" (completed for this month)`);
         skippedCount++;
@@ -906,13 +918,10 @@ async function bulkCopyOrdersToNextMonth() {
         continue;
       }
       
-      // Skip if an equivalent order already exists in next month (from previous copies)
-      const duplicateExists = (orders.value || []).some(p => (
-        String(p.caseId || '') === String(o.caseId || '') &&
-        isNextMonthOf(o.startDate, p.startDate) &&
-        String(p.caseUnit || '') === String(o.caseUnit || '') &&
-        Number(p.pricePerUnit || 0) === Number(o.pricePerUnit || 0)
-      ));
+      // Skip if an equivalent order already exists in the target month (from previous copies)
+      const duplicateExists = (orders.value || []).some((p) =>
+        isDuplicateCopyInTargetMonth(o, p, nextStart)
+      );
       
       if (duplicateExists) {
         console.log(`📋 Bulk copy: Skipping "${o.caseName}" (already exists in next month)`);
@@ -925,7 +934,8 @@ async function bulkCopyOrdersToNextMonth() {
         o,
         nextStart,
         nextEnd,
-        getRemainingCampaignGoalForCopy
+        getRemainingCampaignGoalForCopy,
+        getDisplayGoal
       );
       const payload = buildOrderCopyPayload(o, copyFields, {
         agents: gcAgents.value || [],
@@ -947,7 +957,7 @@ async function bulkCopyOrdersToNextMonth() {
     }
 
     console.log(
-      `📋 Bulk copy complete: ${copiedCount} copied, ${skippedCount} skipped (duplicates), ${multiMonthSkippedCount} multi-month excluded, ${failedCount} failed`
+      `📋 Bulk copy complete: ${copiedCount} copied, ${skippedCount} skipped (duplicates), ${failedCount} failed`
     );
 
     saveCopiedFlags();
@@ -995,7 +1005,7 @@ const currentMonthLabel = computed(() => {
 })
 
 const orderHeaders = computed(() => [
-  { title: '', key: 'select', sortable: false, width: '48px' },
+  { title: '', key: 'select', sortable: false, width: '76px' },
   { title: t('assignGoals.tableHeaders.caseName'), key: 'caseName', minWidth: '180px' },
   { title: t('assignGoals.tableHeaders.totalGoals'), key: 'monthlyGoal' },
   { title: t('assignGoals.tableHeaders.campaignGoal'), key: 'campaignGoal', sortable: false },
@@ -1007,8 +1017,7 @@ const orderHeaders = computed(() => [
   { title: t('assignGoals.tableHeaders.delete'), key: 'actions', sortable: false }
 ])
 
-// expand column + orderHeaders
-const orderTableColumnCount = computed(() => orderHeaders.value.length + 1)
+const orderTableColumnCount = computed(() => orderHeaders.value.length)
 
 const agent = ref({
   name: '',
@@ -1046,7 +1055,7 @@ const hasGoalChanges = computed(() => {
 const selectedOrderRemainingGoals = computed(() => {
   const ord = selectedOrder.value;
   if (!ord) return 0;
-  const total = Number(ord.monthlyGoal ?? ord.totalQuantity ?? 0) || 0;
+  const total = getAssignableGoalCapForOrder(ord);
   let distributed = 0;
   if (ord.agentSummary?.length) {
     distributed = ord.agentSummary.reduce((sum, a) => sum + (Number(a.goalForThisOrder) || 0), 0);
@@ -1057,9 +1066,54 @@ const selectedOrderRemainingGoals = computed(() => {
 });
 
 const selectOrderForEdit = (item) => {
-  selectedOrderId.value = item._id
-  selectedOrder.value = item;
-  openEditOrderModal();
+  openEditOrderModal(item)
+}
+
+function resolveOrderForEdit(orderLike) {
+  const raw = orderLike?.raw ?? orderLike
+  if (!raw) return null
+  const id = String(raw._id ?? raw.id ?? '')
+  const fromList = (filteredSortedOrders.value || []).find((o) => String(o._id ?? o.id) === id)
+  const base = fromList || raw
+  const logs = dailyLogs.value || []
+  const isMultiMonth = orderSpansMultipleMonths(base) || Boolean(base.isMultiMonth)
+  const monthlyBreakdown =
+    base.monthlyBreakdown ?? (isMultiMonth ? calculateMonthlyProgress(base, logs) : null)
+  const enriched = {
+    ...base,
+    isMultiMonth,
+    monthlyBreakdown,
+  }
+  const campaignGoal = getDisplayGoal(enriched)
+  const storedMonthly = Number(enriched.monthlyGoal ?? enriched.totalQuantity) || 0
+  const shouldSuggestRemaining =
+    isMultiMonth || (campaignGoal > storedMonthly && campaignGoal > 0)
+  const suggestedMonthlyGoal = shouldSuggestRemaining
+    ? roundTo2Decimals(getCampaignRemainingUnits(enriched, logs, campaignGoal, monthlyBreakdown))
+    : null
+  return {
+    ...enriched,
+    suggestedMonthlyGoal,
+  }
+}
+
+function openEditOrderModal(orderLike) {
+  const o = resolveOrderForEdit(orderLike ?? selectedOrder.value)
+  if (!o?._id && !o?.id) return
+
+  selectedOrderId.value = o._id ?? o.id
+  selectedOrder.value = o
+  orderFormConfig.value = {
+    mode: 'edit',
+    orderId: o._id ?? o.id,
+    initialOrder: o,
+    suggestedMonthlyGoal: o.suggestedMonthlyGoal ?? null,
+    prefill: null,
+    defaultDates: null,
+  }
+  orderFormModalKey.value++
+  isEditMode.value = true
+  showAddOrderModal.value = true
 }
 
 const getFormattedDateRange = () => {
@@ -1238,13 +1292,10 @@ function isOrderPending(order) {
 }
 
 function isOrderCopyDisabled(order) {
-  return orderSpansMultipleMonths(order) || isOrderCompleted(order)
+  return isOrderCompleted(order)
 }
 
 function copyOrderDisabledTooltip(order) {
-  if (orderSpansMultipleMonths(order)) {
-    return t('assignGoals.copyMultiMonthDisabled')
-  }
   if (isOrderCompleted(order)) {
     return t('assignGoals.copyCompletedDisabled')
   }
@@ -1363,7 +1414,8 @@ function copyOrder(item) {
     item,
     nextStart,
     nextEnd,
-    getRemainingCampaignGoalForCopy
+    getRemainingCampaignGoalForCopy,
+    getDisplayGoal
   );
 
   orderFormConfig.value = {
@@ -1391,20 +1443,8 @@ function openAddCaseModal() {
   showAddCaseModal.value = true;
 }
 
-function openEditOrderModal() {
-  if (!selectedOrder.value) return;
-
-  const o = selectedOrder.value;
-  orderFormConfig.value = {
-    mode: 'edit',
-    orderId: o._id ?? o.id,
-    initialOrder: o,
-    prefill: null,
-    defaultDates: null
-  };
-  orderFormModalKey.value++;
-  isEditMode.value = true;
-  showAddOrderModal.value = true;
+function openEditOrderModalFromSelection() {
+  openEditOrderModal(selectedOrder.value)
 }
 
 async function onOrderFormSaved() {
@@ -1440,29 +1480,17 @@ const getDistributedGoals = (order) => {
 
 // Goals not yet assigned to any agent (available to give out when removing from others)
 const getRemainingGoals = (order) => {
-  const total = Number(order?.monthlyGoal ?? order?.totalQuantity ?? 0) || 0
+  const total = getAssignableGoalCapForOrder(order)
   const distributed = getDistributedGoals(order)
   return Math.max(0, total - distributed)
 }
 
+function getAssignableGoalCapForOrder(order) {
+  return getAssignableGoalCap(order, dailyLogs.value || [], getDisplayGoal(order))
+}
+
 function editCaseFromOrder(order) {
-  if (!order) return;
-  // order.caseId can be a string or an object; handle both
-  const rawCaseId = order.caseId ?? order.case?._id ?? order.case?.id ?? null;
-  const caseId =
-    typeof rawCaseId === 'object'
-      ? rawCaseId._id ?? rawCaseId.id ?? null
-      : rawCaseId;
-
-  if (!caseId) {
-    console.warn('editCaseFromOrder: no caseId found on order', order);
-    return;
-  }
-
-  router.push({
-    name: 'addCaseForm',
-    query: { caseId },
-  });
+  openEditOrderModal(order)
 }
 
 const getOrderPrice = async (orderId) => {
@@ -1607,29 +1635,23 @@ function getDisplayGoal(order) {
 
 /** Sum quantityCompleted for calendar months strictly before beforeMonthKey (YYYY-MM). */
 function getCompletedQuantityBeforeMonth(order, beforeMonthKey) {
-  if (!order || !beforeMonthKey || String(beforeMonthKey).length < 7) return 0
-  const logs = Array.isArray(dailyLogs.value) ? dailyLogs.value : []
-  let breakdown = order.monthlyBreakdown
-  if (!breakdown?.length) {
-    breakdown = calculateMonthlyProgress(order, logs)
-  }
-  if (!breakdown?.length) return 0
-  const prefix = String(beforeMonthKey).slice(0, 7)
-  return breakdown.reduce((sum, m) => {
-    if (String(m.monthKey) < prefix) {
-      return sum + (Number(m.quantityCompleted) || 0)
-    }
-    return sum
-  }, 0)
+  return getCompletedUnitsBeforeMonthKey(
+    order,
+    dailyLogs.value || [],
+    beforeMonthKey,
+    order?.monthlyBreakdown
+  )
 }
 
-/** Remaining campaign units for a copy whose new segment starts at nextRangeStartDateStr (YYYY-MM-DD). */
-function getRemainingCampaignGoalForCopy(order, nextRangeStartDateStr) {
-  const base = Number(getDisplayGoal(order)) || 0
-  const mk = String(nextRangeStartDateStr || '').split('T')[0].slice(0, 7)
-  if (!mk || mk.length < 7) return roundTo2Decimals(base)
-  const prior = getCompletedQuantityBeforeMonth(order, mk)
-  return roundTo2Decimals(Math.max(0, base - prior))
+/** Remaining campaign units for the copied order's monthly goal (campaign goal minus all logged usage). */
+function getRemainingCampaignGoalForCopy(order) {
+  const remaining = getRemainingMonthlyGoalForMultiMonthOrder(
+    order,
+    dailyLogs.value || [],
+    cases.value
+  )
+  if (remaining != null) return remaining
+  return roundTo2Decimals(Number(getDisplayGoal(order)) || 0)
 }
 
 function completedUnitsForOrderInDateRange(order, logs, dateRange) {
@@ -2045,6 +2067,37 @@ watch(currentDateRange, loadMonthWeeks, { deep: true })
     max-height: calc(100vh - 280px);
     overflow: auto;
   }
+  .assign-goals .assign-goals-agent-panel {
+    display: flex;
+    flex-direction: column;
+    align-self: flex-start;
+    position: sticky;
+    top: 12px;
+    max-height: calc(100vh - 280px);
+    min-height: 320px;
+  }
+  .assign-goals .assign-goals-agent-panel__header {
+    flex: 0 0 auto;
+    padding-bottom: 12px;
+    background: rgb(var(--v-theme-surface));
+    z-index: 2;
+  }
+  .assign-goals .assign-goals-agent-panel__scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 4px;
+  }
+  .assign-goals .assign-goals-agent-panel__footer {
+    flex: 0 0 auto;
+    padding-top: 12px;
+    background: rgb(var(--v-theme-surface));
+    border-top: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  }
+  .assign-goals .assign-goals-agent-panel__agents {
+    padding-bottom: 4px;
+  }
   .assign-goals .assign-goals-orders-table :deep(thead th) {
     position: sticky;
     top: 0;
@@ -2110,10 +2163,23 @@ watch(currentDateRange, loadMonthWeeks, { deep: true })
   .assign-goals .assign-goals-orders-table :deep(tr.case-order-status-row:has(+ tr.monthly-breakdown-row) td) {
     border-bottom: none !important;
   }
-  .assign-goals .monthly-breakdown-row__expand,
-  .assign-goals .monthly-breakdown-row__select {
-    width: 0;
-    padding: 0 !important;
+  .assign-goals .assign-goals-select-cell {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: nowrap;
+    flex-shrink: 0;
+    gap: 2px;
+    min-width: 68px;
+  }
+  .assign-goals .assign-goals-select-cell .assign-goals-expand-btn {
+    flex-shrink: 0;
+  }
+  .assign-goals .assign-goals-expand-btn {
+    flex: 0 0 auto;
+  }
+  .assign-goals .assign-goals-orders-table :deep(td:first-child) {
+    overflow: visible !important;
+    white-space: nowrap;
   }
   .assign-goals .monthly-breakdown-row__body {
     border-top: none !important;

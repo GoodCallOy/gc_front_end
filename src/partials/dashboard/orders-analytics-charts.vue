@@ -230,6 +230,8 @@ import {
   computeOrderQuantityForMonth,
   computeOrderRevenueForMonth,
   logMatchesOrderForMonthRevenue,
+  ordersDashboardRevenueGoalEurosForMonth,
+  groupOrderCampaignsForMonthView,
 } from '@/js/statsUtils'
 import {
   isOrderOnHoldForMonth,
@@ -418,11 +420,7 @@ function computeOrderRevenue(order, dailyLogs) {
 }
 
 function estimatedRevenueForOrder(order) {
-  const direct = Number(order?.estimatedRevenueEuros)
-  if (Number.isFinite(direct) && direct >= 0) return direct
-  const goal = Number(order?.monthlyGoal ?? order?.totalQuantity) || 0
-  const price = Number(order?.pricePerUnit) || 0
-  return goal * price
+  return ordersDashboardRevenueGoalEurosForMonth(order, props.currentDateRange)
 }
 
 const eligibleOrders = computed(() => (props.orders || []).filter(eligibleOrder))
@@ -433,12 +431,20 @@ const hasSelectedMonth = computed(
   () => Array.isArray(props.currentDateRange) && props.currentDateRange.length >= 2
 )
 
+const revenueEligibleGroups = computed(() => {
+  if (!hasSelectedMonth.value) return []
+  return groupOrderCampaignsForMonthView(revenueEligibleOrders.value, props.currentDateRange)
+})
+
 const revenueByCaseType = computed(() => {
   const map = new Map()
   if (!hasSelectedMonth.value) return map
-  for (const order of revenueEligibleOrders.value) {
-    const type = order.caseType || t('ordersDashboard.unspecified')
-    const rev = computeOrderRevenue(order, props.dailyLogs)
+  for (const { orders, representative } of revenueEligibleGroups.value) {
+    const type = representative?.caseType || t('ordersDashboard.unspecified')
+    const rev = orders.reduce(
+      (sum, order) => sum + computeOrderRevenue(order, props.dailyLogs),
+      0
+    )
     map.set(type, (map.get(type) || 0) + rev)
   }
   return map
@@ -675,12 +681,15 @@ const donutOptions = computed(() => ({
 
 const revenueByCaseRows = computed(() => {
   if (!hasSelectedMonth.value) return []
-  const rows = revenueEligibleOrders.value
-    .map((order) => ({
-      name: order.caseName || '—',
-      type: order.caseType || t('ordersDashboard.unspecified'),
-      revenue: computeOrderRevenue(order, props.dailyLogs),
-      estimatedRevenue: estimatedRevenueForOrder(order),
+  const rows = revenueEligibleGroups.value
+    .map(({ orders, representative }) => ({
+      name: representative?.caseName || '—',
+      type: representative?.caseType || t('ordersDashboard.unspecified'),
+      revenue: orders.reduce(
+        (sum, order) => sum + computeOrderRevenue(order, props.dailyLogs),
+        0
+      ),
+      estimatedRevenue: estimatedRevenueForOrder(representative),
     }))
     .map((row) => ({
       ...row,

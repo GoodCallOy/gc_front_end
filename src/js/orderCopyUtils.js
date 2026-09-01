@@ -3,7 +3,7 @@
  * Keeps assign-goals bulk copy and modal copy aligned with OrderForm submit fields.
  */
 
-import { orderSpansMultipleMonths } from '@/js/statsUtils';
+import { orderSpansMultipleMonths, getCampaignRemainingUnits } from '@/js/statsUtils';
 import { roundTo2Decimals } from '@/js/formatNumbers';
 import { buildMonthlyOrderStatusForNextMonth } from '@/js/orderStatusUtils';
 
@@ -22,6 +22,41 @@ export function toDateOnly(dateValue) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+/** Full campaign unit goal from order, with optional gcCases fallback. */
+export function getOrderCampaignGoal(order, cases = []) {
+  const fromOrder = order?.campaignGoal ?? order?.campaign_goal;
+  if (fromOrder != null && fromOrder !== '') {
+    const n = Number(fromOrder);
+    if (n > 0) return n;
+  }
+  const caseId = order?.caseId?._id ?? order?.caseId?.id ?? order?.caseId;
+  if (caseId && cases?.length) {
+    const match = cases.find((c) => String(c._id ?? c.id) === String(caseId));
+    const fromCase = match?.campaignGoal ?? match?.campaign_goal;
+    if (fromCase != null && fromCase !== '') {
+      const n = Number(fromCase);
+      if (n > 0) return n;
+    }
+  }
+  return Number(order?.monthlyGoal ?? order?.totalQuantity) || 0;
+}
+
+/** Campaign units still available for a multi-month order; null if not multi-month. */
+export function getRemainingMonthlyGoalForMultiMonthOrder(order, dailyLogs, cases = []) {
+  const campaignGoal = getOrderCampaignGoal(order, cases);
+  const monthlyGoal = Number(order?.monthlyGoal ?? order?.totalQuantity) || 0;
+  const isMultiMonth =
+    Boolean(order?.isMultiMonth) ||
+    orderSpansMultipleMonths(order) ||
+    (campaignGoal > monthlyGoal && campaignGoal > 0);
+
+  if (!isMultiMonth) return null;
+  if (campaignGoal <= 0) return 0;
+  return roundTo2Decimals(
+    getCampaignRemainingUnits(order, dailyLogs, campaignGoal, order?.monthlyBreakdown)
+  );
+}
+
 /** Full campaign unit goal from order (not “remaining”). */
 export function getCampaignGoalFromOrder(order) {
   const fromOrder = order?.campaignGoal ?? order?.campaign_goal;
@@ -34,12 +69,19 @@ export function getCampaignGoalFromOrder(order) {
 
 /**
  * Goals and dates for a next-month copy.
- * Multi-month: keep original campaign start/deadline + full campaign goal; monthly = units left.
+ * Multi-month: next-month start through original campaign deadline; full campaign goal; monthly = units left.
  * Single-month: one calendar month slice; monthly and campaign = remaining.
  */
-export function resolveOrderCopyFields(order, nextStart, nextEnd, getRemainingCampaignGoal) {
+export function resolveOrderCopyFields(
+  order,
+  nextStart,
+  nextEnd,
+  getRemainingCampaignGoal,
+  getCampaignGoal
+) {
   const isMultiMonth = orderSpansMultipleMonths(order);
-  const campaignGoal = roundTo2Decimals(getCampaignGoalFromOrder(order));
+  const resolveGoal = typeof getCampaignGoal === 'function' ? getCampaignGoal : getCampaignGoalFromOrder;
+  const campaignGoal = roundTo2Decimals(Number(resolveGoal(order)) || 0);
   const remaining = roundTo2Decimals(
     typeof getRemainingCampaignGoal === 'function'
       ? getRemainingCampaignGoal(order, nextStart)
@@ -49,7 +91,7 @@ export function resolveOrderCopyFields(order, nextStart, nextEnd, getRemainingCa
   if (isMultiMonth) {
     return {
       isMultiMonth: true,
-      startDate: toDateOnly(order.startDate) || nextStart,
+      startDate: nextStart,
       deadline: toDateOnly(order.deadline) || nextEnd,
       monthlyGoal: remaining,
       campaignGoal,
@@ -84,11 +126,33 @@ export function normalizeManagerIds(order) {
   return [];
 }
 
-export function copyAgentMaps(order) {
+export function copyAgentMaps(order, remainingUnits) {
   const agentGoals = { ...(order?.agentGoals || {}) };
   const rates = order?.agentRates || order?.agentPrices || {};
   const agentRates = { ...rates };
   const agentPrices = { ...(order?.agentPrices || order?.agentRates || {}) };
+
+  const cap = Number(remainingUnits);
+  if (Number.isFinite(cap) && cap >= 0) {
+    const totalAssigned = Object.values(agentGoals).reduce((s, v) => s + (Number(v) || 0), 0);
+    if (totalAssigned > cap && totalAssigned > 0) {
+      const scale = cap / totalAssigned;
+      const scaled = {};
+      let running = 0;
+      const ids = Object.keys(agentGoals);
+      ids.forEach((id, index) => {
+        if (index === ids.length - 1) {
+          scaled[id] = roundTo2Decimals(Math.max(0, cap - running));
+        } else {
+          const val = roundTo2Decimals((Number(agentGoals[id]) || 0) * scale);
+          scaled[id] = val;
+          running += val;
+        }
+      });
+      return { agentGoals: scaled, agentRates, agentPrices };
+    }
+  }
+
   return { agentGoals, agentRates, agentPrices };
 }
 
@@ -124,7 +188,7 @@ export function buildOrderCopyPayload(order, copyFields, extra = {}) {
   const campaign = Number(campaignGoal) ?? monthly;
   const assignedIds = normalizeAssignedCallerIds(order);
   const managerIds = normalizeManagerIds(order);
-  const { agentGoals, agentRates, agentPrices } = copyAgentMaps(order);
+  const { agentGoals, agentRates, agentPrices } = copyAgentMaps(order, monthly);
 
   return {
     caseId: order?.caseId || null,
@@ -175,7 +239,7 @@ export function buildOrderCopyPrefill(order, copyFields, extra = {}) {
   } = copyFields;
   const { sourceMonthStart } = extra;
   const assignedIds = normalizeAssignedCallerIds(order);
-  const { agentGoals, agentRates } = copyAgentMaps(order);
+  const { agentGoals, agentRates } = copyAgentMaps(order, monthly);
   const agentGoalsPrefill = {};
   const agentRatesPrefill = {};
   assignedIds.forEach((id) => {

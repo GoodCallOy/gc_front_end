@@ -197,8 +197,9 @@ import { useStore } from 'vuex'
 import { useI18n } from 'vue-i18n'
 import axios from 'axios'
 import urls from '@/js/config.js'
-import { getOrderMonths } from '@/js/statsUtils'
+import { getOrderMonths, orderSpansMultipleMonths, calculateMonthlyProgress } from '@/js/statsUtils'
 import { formatSlashPair } from '@/js/formatNumbers'
+import { getRemainingMonthlyGoalForMultiMonthOrder } from '@/js/orderCopyUtils'
 
 const { t } = useI18n()
 const store = useStore()
@@ -206,6 +207,7 @@ const store = useStore()
 const props = defineProps({
   orderId: { type: String, default: null },
   initialOrder: { type: Object, default: null },
+  suggestedMonthlyGoal: { type: Number, default: null },
   prefill: { type: Object, default: null },
   defaultStartDate: { type: String, default: '' },
   defaultDeadline: { type: String, default: '' },
@@ -270,6 +272,7 @@ const managerOptions = computed(() =>
   }).map(a => ({ value: a._id, title: a.name }))
 )
 const caseOptions = computed(() => (cases.value || []).map(c => ({ value: c._id, title: c.name })))
+const dailyLogs = computed(() => store.getters['dailyLogs'] || [])
 
 const estimatedRevenue = computed(() => {
   const p = parseFloat(form.pricePerUnit)
@@ -311,9 +314,22 @@ function resetForm() {
   Object.keys(agentRates).forEach(k => { agentRates[k] = 0 })
 }
 
+function applySuggestedMonthlyGoal() {
+  if (!isEditMode.value) return
+  const suggested =
+    props.suggestedMonthlyGoal ??
+    props.initialOrder?.suggestedMonthlyGoal ??
+    null
+  if (suggested != null && Number.isFinite(Number(suggested))) {
+    form.totalQuantity = Number(suggested)
+    return true
+  }
+  return false
+}
+
 function hydrateFromOrder(o) {
   if (!o) return
-  form.caseId = o.caseId || ''
+  form.caseId = o.caseId?._id ?? o.caseId?.id ?? o.caseId ?? ''
   form.caseUnit = o.caseUnit || ''
   form.pricePerUnit = o.pricePerUnit ?? ''
   form.totalQuantity = o.monthlyGoal ?? o.totalQuantity ?? ''
@@ -327,6 +343,21 @@ function hydrateFromOrder(o) {
   form.ProjectStartFee = o.ProjectStartFee ?? o.projectStartFee ?? ''
   form.ProjectManagmentFee = o.ProjectManagmentFee ?? o.projectManagementFee ?? ''
   form.monthlyRevenueGoals = { ...(o.monthlyRevenueGoals || {}) }
+
+  if (isEditMode.value && !applySuggestedMonthlyGoal()) {
+    const orderForRemaining = { ...o }
+    if (orderSpansMultipleMonths(o) && !orderForRemaining.monthlyBreakdown?.length) {
+      orderForRemaining.monthlyBreakdown = calculateMonthlyProgress(o, dailyLogs.value || [])
+    }
+    const remainingMonthly = getRemainingMonthlyGoalForMultiMonthOrder(
+      orderForRemaining,
+      dailyLogs.value,
+      cases.value
+    )
+    if (remainingMonthly != null) {
+      form.totalQuantity = remainingMonthly
+    }
+  }
 
   if (Array.isArray(o.managers)) {
     form.managers = o.managers.map(m => m?.id ?? m?._id ?? m).filter(Boolean)
@@ -412,10 +443,20 @@ async function submitForm() {
 }
 
 watch(
-  () => [props.orderId, props.initialOrder, props.prefill],
-  async ([orderId, initialOrder, prefill]) => {
+  () => [
+    props.orderId,
+    props.initialOrder,
+    props.suggestedMonthlyGoal,
+    props.prefill,
+    dailyLogs.value.length,
+    cases.value.length,
+  ],
+  async ([orderId, initialOrder, suggestedMonthlyGoal, prefill]) => {
     if (orderId && initialOrder) {
       hydrateFromOrder(initialOrder)
+      if (suggestedMonthlyGoal != null && isEditMode.value) {
+        form.totalQuantity = Number(suggestedMonthlyGoal)
+      }
     } else if (orderId) {
       await loadOrderData(orderId)
     } else if (prefill) {
@@ -440,7 +481,16 @@ onMounted(async () => {
     ])
     cases.value = caseData.data || []
     agents.value = agentData.data || []
-    await store.dispatch('fetchCaseTypes').catch(() => {})
+    await Promise.all([
+      store.dispatch('fetchCaseTypes').catch(() => {}),
+      store.dispatch('fetchDailyLogs').catch(() => {}),
+    ])
+    if (props.orderId && props.initialOrder) {
+      hydrateFromOrder(props.initialOrder)
+      if (props.suggestedMonthlyGoal != null && isEditMode.value) {
+        form.totalQuantity = Number(props.suggestedMonthlyGoal)
+      }
+    }
   } catch (err) {
     console.error('Failed to load data:', err)
   }
