@@ -317,6 +317,40 @@ export function populateCasesSortedByAgent(agentStats, selectedAgent) {
     return ordersDashboardRevenueGoalEuros(order)
   }
 
+  /** Sum of personal unit goals × price for one order row. */
+  export function assignedAgentGoalEuros(order) {
+    const price = Number(order?.pricePerUnit) || 0
+    const goals = order?.agentGoals || {}
+    return Object.values(goals).reduce((sum, g) => sum + (Number(g) || 0) * price, 0)
+  }
+
+  /**
+   * Assigned € across duplicate campaign rows for one month: one amount per agent
+   * (max if the same agent appears on parent + copy).
+   */
+  export function assignedAgentGoalEurosForGroup(orders) {
+    const byAgent = new Map()
+    for (const order of orders || []) {
+      const price = Number(order?.pricePerUnit) || 0
+      for (const [id, g] of Object.entries(order?.agentGoals || {})) {
+        const euros = (Number(g) || 0) * price
+        const key = String(id)
+        byAgent.set(key, Math.max(byAgent.get(key) || 0, euros))
+      }
+    }
+    return [...byAgent.values()].reduce((sum, v) => sum + v, 0)
+  }
+
+  /**
+   * Estimated € for a campaign in a month: case monthly goal, but never less than
+   * what is actually assigned to agents (Assign Goals totals).
+   */
+  export function estimatedRevenueEurosForCampaignGroup(orders, representative, dateRangeOrMonthKey) {
+    const caseGoal = ordersDashboardRevenueGoalEurosForMonth(representative, dateRangeOrMonthKey)
+    const assigned = assignedAgentGoalEurosForGroup(orders)
+    return Math.max(caseGoal, assigned)
+  }
+
   /** Group key for the same campaign (case + unit + price). */
   export function orderCampaignGroupKey(order) {
     return `${String(order?.caseId ?? '')}|${String(order?.caseUnit ?? '')}|${Number(order?.pricePerUnit ?? 0)}`

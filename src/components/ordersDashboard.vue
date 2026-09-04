@@ -262,13 +262,14 @@ import DashboardCard01 from '@/partials/dashboard/caseCard2.vue'
 import OrdersAnalyticsCharts from '@/partials/dashboard/orders-analytics-charts.vue'
 import OrdersTableInsights from '@/partials/dashboard/orders-table-insights.vue'
 import DateHeader from '@/components/DateHeader.vue'
-import { orderSpansMultipleMonths, calculateMonthlyProgress, computeOrderQuantityForMonth, computeOrderRevenueForMonth, groupOrderCampaignsForMonthView, ordersDashboardRevenueGoalEurosForMonth } from '@/js/statsUtils'
+import { orderSpansMultipleMonths, calculateMonthlyProgress, computeOrderQuantityForMonth, computeOrderRevenueForMonth, groupOrderCampaignsForMonthView, ordersDashboardRevenueGoalEurosForMonth, estimatedRevenueEurosForCampaignGroup } from '@/js/statsUtils'
 import {
   getOrderStatusForMonth,
   isOrderOnHoldForMonth,
   isOrderInProgressForMonth,
   isOrderCompletedForMonth,
   isOrderPendingForMonth,
+  isOrderListedOnAgentDashboardForMonth,
   monthKeyFromDateRange,
 } from '@/js/orderStatusUtils'
 import { getPercentageToGoalBadgeClass } from '@/js/percentageToGoalStyle'
@@ -524,13 +525,17 @@ const estimatedRevenueTotal = computed(() => {
   
   const nonTestOrders = ordersToCalculate.filter(order => {
     if (isTestCase(order) || isGoodCallCase(order)) return false;
-    return isOrderInProgressForMonth(order, currentMonthKey.value);
+    return isOrderListedOnAgentDashboardForMonth(order, currentMonthKey.value);
   });
   
   const groups = groupOrderCampaignsForMonthView(nonTestOrders, currentDateRange.value);
   return groups.reduce(
-    (total, { representative }) =>
-      total + ordersDashboardRevenueGoalEurosForMonth(representative, currentMonthKey.value),
+    (total, { orders, representative }) =>
+      total + estimatedRevenueEurosForCampaignGroup(
+        orders,
+        representative,
+        currentMonthKey.value
+      ),
     0
   );
 });
@@ -541,16 +546,20 @@ const estimatedRevenueBreakdown = computed(() => {
   if (!ordersToCalculate || ordersToCalculate.length === 0) return [];
 
   const groups = groupOrderCampaignsForMonthView(ordersToCalculate, currentDateRange.value);
-  const rows = groups.map(({ representative: order }) => {
+  const rows = groups.map(({ orders, representative: order }) => {
     const monthlyGoal = Number(order?.monthlyGoal ?? order?.totalQuantity) || 0;
     const pricePerUnit = Number(order?.pricePerUnit) || 0;
-    const revenue = ordersDashboardRevenueGoalEurosForMonth(order, currentMonthKey.value);
+    const revenue = estimatedRevenueEurosForCampaignGroup(
+      orders,
+      order,
+      currentMonthKey.value
+    );
 
     let excludedReason = null;
     if (isTestCase(order)) excludedReason = 'Test case';
     else if (isGoodCallCase(order)) excludedReason = 'Good call case';
     else {
-      if (!isOrderInProgressForMonth(order, currentMonthKey.value)) {
+      if (!isOrderListedOnAgentDashboardForMonth(order, currentMonthKey.value)) {
         excludedReason = `Status: ${getOrderStatusForMonth(order, currentMonthKey.value)}`;
       }
     }

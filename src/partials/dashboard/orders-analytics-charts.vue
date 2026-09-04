@@ -231,6 +231,7 @@ import {
   computeOrderRevenueForMonth,
   logMatchesOrderForMonthRevenue,
   ordersDashboardRevenueGoalEurosForMonth,
+  estimatedRevenueEurosForCampaignGroup,
   groupOrderCampaignsForMonthView,
 } from '@/js/statsUtils'
 import {
@@ -689,7 +690,11 @@ const revenueByCaseRows = computed(() => {
         (sum, order) => sum + computeOrderRevenue(order, props.dailyLogs),
         0
       ),
-      estimatedRevenue: estimatedRevenueForOrder(representative),
+      estimatedRevenue: estimatedRevenueEurosForCampaignGroup(
+        orders,
+        representative,
+        props.currentDateRange
+      ),
     }))
     .map((row) => ({
       ...row,

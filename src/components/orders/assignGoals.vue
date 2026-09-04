@@ -578,6 +578,7 @@ import {
   getAssignableGoalCap,
   getCompletedUnitsBeforeMonthKey,
   getCampaignRemainingUnits,
+  groupOrderCampaignsForMonthView,
 } from '@/js/statsUtils';
 import DateHeader from '@/components/DateHeader.vue';
 import OrderForm from '@/components/orders/OrderForm.vue';
@@ -600,6 +601,7 @@ import {
   isOrderPendingForMonth,
   buildMonthlyOrderStatusUpdate,
   monthKeyFromDateRange,
+  isOrderListedOnAgentDashboardForMonth,
 } from '@/js/orderStatusUtils'
 
 const store = useStore()
@@ -1547,23 +1549,32 @@ function overlapsMonth(order, from, to) {
   return startStr <= toStr && endStr >= fromStr;
 }
 
-function agentMonthlyStats(agentId, from, to, allOrders) {
-  let revenue = 0;
-  let ordersCount = 0;
+function agentIsAssignedToOrder(order, agentId) {
+  const aid = String(agentId)
+  return (order?.assignedCallers || []).some((x) => String(x?._id ?? x?.id ?? x) === aid)
+}
 
-  for (const o of allOrders) {
-    if (!overlapsMonth(o, from, to)) continue;
-
-    const assigned = (o.assignedCallers ?? []).map(x => String(x));
-    if (!assigned.includes(String(agentId))) continue;
-
-    const price = Number(o.pricePerUnit) || 0;
-    const goal  = Number((o.agentGoals ?? {})[agentId]) || 0;
-
-    revenue += price * goal;
-    ordersCount += 1;
-  }
-  return { revenue, orders: ordersCount };
+/** Assigned cases for an agent in the viewed month (pending + in-progress), one row per campaign. */
+function getAgentMonthGoalOrders(agentId, from, to) {
+  const aid = String(agentId)
+  const monthKey = currentMonthKey.value
+  const overlapping = (orders.value || []).filter((o) => {
+    if (!overlapsMonth(o, from, to)) return false
+    if (!agentIsAssignedToOrder(o, aid)) return false
+    if (monthKey && !isOrderListedOnAgentDashboardForMonth(o, monthKey)) return false
+    return true
+  })
+  const groups = groupOrderCampaignsForMonthView(overlapping, currentDateRange.value)
+  return groups.map(({ representative: o }) => {
+    const goal = Number(o?.agentGoals?.[aid]) || 0
+    const price = Number(o?.pricePerUnit) || 0
+    return {
+      orderId: String(o?._id ?? o?.id ?? ''),
+      caseName: o?.caseName || o?.case?.name || '—',
+      goal,
+      pricePerUnit: price,
+    }
+  }).filter((row) => row.orderId)
 }
 
 function isOrderOnHold(order) {
@@ -1748,13 +1759,9 @@ const selectOrder = async (order, event) => {
 
     console.log('Calculating goals for order:', item._id, 'from', from, 'to', to);
 
-    const agentStats = await fetchAgentRevenueAggregates(from, to);
-    console.log('Agent stats:', agentStats);
-
     selectedOrder.value.agentSummary = [];
 
     const orderId   = String(selectedOrder.value._id);
-    const price     = Number(selectedOrder.value.pricePerUnit) || 0;
     const goalsObj  = selectedOrder.value.agentGoals || {};
     const ratesObj  = selectedOrder.value.agentRates || {};
     const pricesObj = selectedOrder.value.agentPrices || {};
@@ -1764,6 +1771,9 @@ const selectOrder = async (order, event) => {
     const assignedIds = [...new Set(
       (selectedOrder.value.assignedCallers || []).map(x => String(x?._id ?? x?.id ?? x))
     )];
+    const agentsById = new Map(
+      (gcAgents.value || []).map((a) => [String(a._id ?? a.id), a])
+    );
 
     console.log('[AssignGoals] Incoming agent data sources', {
       goalsObj,
@@ -1773,24 +1783,24 @@ const selectOrder = async (order, event) => {
       assignedIds,
     });
 
-    // build a fast lookup from agentStats
-    const statsAgents = agentStats?.agents || [];
-    const byId = new Map(statsAgents.map(a => [ String(a.agentId), a ]));
-
     // Determine this month key (YYYY-MM) for monthly revenue goals
     const baseDateStr = toDateOnly(baseDate) || ''
-    const currentMonthKey = baseDateStr ? baseDateStr.slice(0, 7) : ''
+    const currentMonthKeyForGoals = baseDateStr ? baseDateStr.slice(0, 7) : ''
     const monthlyGoals = selectedOrder.value.monthlyRevenueGoals || {}
-    const caseMonthlyGoalRevenue = Number(monthlyGoals[currentMonthKey]) || 0
+    const caseMonthlyGoalRevenue = Number(monthlyGoals[currentMonthKeyForGoals]) || 0
 
     const goalOrderId = orderId
     const goalCaseName = selectedOrder.value.caseName || selectedOrder.value.case?.name || ''
 
     // build agentSummary only for agents on this order
     const summaries = assignedIds.map(agentId => {
-      const bucket = byId.get(agentId);               // this agent's month bucket (may be undefined)
-      const name   = bucket?.agentName || t('assignGoals.unknownAgent');
-      const AgentOrders =  bucket?.orders || {};
+      const gcAgent = agentsById.get(String(agentId))
+      const name = gcAgent?.name || t('assignGoals.unknownAgent');
+      const AgentOrders = getAgentMonthGoalOrders(agentId, from, to);
+      const monthRevenue = AgentOrders.reduce(
+        (sum, o) => sum + (Number(o.goal) || 0) * (Number(o.pricePerUnit) || 0),
+        0
+      );
 
       const goalForThisOrder = Number(goalsObj[agentId]) || 0;
       const rateFromMap = Number(ratesObj[agentId]) || 0;
@@ -1806,14 +1816,6 @@ const selectOrder = async (order, event) => {
         rateFromPrices,
         chosenRate: rateForThisOrder,
       });
-
-      // prefer the order entry from bucket.orders if present
-      const orderEntry = bucket?.orders?.find(o => String(o.orderId) === orderId);
-
-      // Revenue for this order/month (if provided), otherwise 0
-      const rawRevenue = Number(orderEntry?.revenue);
-      const hasRealRevenue = Number.isFinite(rawRevenue) && !Number.isNaN(rawRevenue);
-      const revenueForThisOrder = hasRealRevenue ? rawRevenue : 0;
 
       // Completed units: compute from dailyLogs for the current month + order + agent
       let completedUnitsForThisOrderInt = 0;
@@ -1858,18 +1860,15 @@ const selectOrder = async (order, event) => {
       }
 
       return {
-        AgentOrders: AgentOrders,
+        AgentOrders,
         id: agentId,
         name,
         goalForThisOrder,
         rateForThisOrder,
-        revenueForThisOrder,
-        revenueForThisOrderFormatted: currency(revenueForThisOrder),
         completedUnitsForThisOrder: completedUnitsForThisOrderInt,
-
-        // optional: include month totals from the stats bucket
-        monthRevenue: Number(bucket?.totals?.revenue ?? bucket?.totalRevenue) || 0,
-        monthOrders:  Number(bucket?.totals?.orders)  || (bucket?.orders?.length ?? 0),
+        monthRevenue,
+        monthRevenueFormatted: currency(monthRevenue),
+        monthOrders: AgentOrders.length,
       };
     });
 
