@@ -63,9 +63,14 @@ onMounted(async () => {
   const list = store.getters['users']
   if (!Array.isArray(list) || list.length === 0) {
     try {
-      await store.dispatch('fetchUsers', true) // your existing action
+      await store.dispatch('fetchUsers', true)
     } catch (e) {
       console.error('Failed to fetch users:', e)
+    }
+  }
+  if (!store.getters['gcAgents']?.length) {
+    try { await store.dispatch('fetchgcAgents', true) } catch (e) {
+      console.error('Failed to fetch gcAgents:', e)
     }
   }
 })
@@ -74,9 +79,18 @@ const users = computed(() => store.getters['users'] || [])
 
 // Navigate to edit page (your router expects ?activeAgent=<id>)
 function goToEditAgent(user) {
+  const userId = String(user?._id ?? user?.id ?? '')
+  const agents = store.getters['gcAgents'] || []
+  const linkedAgent =
+    agents.find((a) => String(a.linkedUserId ?? '') === userId) ||
+    agents.find((a) => String(a._id ?? a.id) === String(user?.linkedUserId ?? '')) ||
+    null
+  const query = {}
+  if (linkedAgent) query.selectedGcAgent = String(linkedAgent._id ?? linkedAgent.id)
+  if (userId) query.selectedUser = userId
   router.push({
     name: 'editGcAgent',
-    query: { selectedUser: user._id }
+    query,
   })
 }
 </script>

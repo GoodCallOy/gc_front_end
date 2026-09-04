@@ -165,9 +165,9 @@
           <div class="header-action-item">
             <v-select
               v-model="selectedAgentName"
-              :items="activeGcAgents"
-              item-title="name"
-              item-value="name"
+              :items="agentSelectItems"
+              item-title="title"
+              item-value="value"
               density="compact"
               hide-details
               :label="t('agentDashboard.casesFor')"
@@ -615,7 +615,7 @@ import { formatStatNumber, formatSlashPair, formatCurrencyEUR, roundTo2Decimals 
 import {
   areDailyLogsFrozenForLog,
   isOrderActiveForAgentDashboardForMonth,
-  isOrderVisibleToCallerForMonth,
+  isOrderListedOnAgentDashboardForMonth,
   monthKeyFromDateRange,
 } from '@/js/orderStatusUtils'
 const store = useStore()
@@ -651,6 +651,19 @@ const dailyLogs = computed(() => store.getters['dailyLogs'] || [])
 const gcAgents = computed(() => store.getters['gcAgents'])
 const activeGcAgents = computed(() =>
   (gcAgents.value || []).filter(agent => agent.active !== false)
+)
+const agentSelectItems = computed(() =>
+  (activeGcAgents.value || [])
+    .map((a) => {
+      const id = String(a._id ?? a.id ?? '')
+      const name = a.name || 'Unnamed'
+      const email = a.email || ''
+      return {
+        value: id,
+        title: email ? `${name} (${email})` : name,
+      }
+    })
+    .filter((o) => o.value)
 )
 const currentDate = computed(() => store.getters['currentDate'])
 const currentDateRange = computed(() => store.getters['currentDateRange'])
@@ -864,7 +877,7 @@ function toggleCaseExpand(orderId) {
 }
 
 function goToAgentReports(agentName, caseId) {
-  const name = agentName || selectedAgentName.value || selectedGcAgent.value?.name;
+  const name = agentName || selectedGcAgent.value?.name;
   const query = {};
   if (name) query.agent = name;
   if (caseId) query.case = caseId;
@@ -878,7 +891,7 @@ const viewReportCaseId = ref('');
 
 function onViewReportCaseSelect(caseId) {
   if (!caseId) return;
-  goToAgentReports(selectedAgentName.value || selectedGcAgent.value?.name, caseId);
+  goToAgentReports(selectedGcAgent.value?.name, caseId);
   viewReportCaseId.value = ''; // reset so dropdown shows placeholder again
 }
 
@@ -1928,18 +1941,24 @@ const currentUser = computed(() => {
 });
 
 const selectedGcAgent = computed(() => {
-  // First check if there's an agent query parameter (for admin viewing)
-  const agentFromQuery = route.query.agent;
-  
+  const agentFromQuery = route.query.agent
+  const agents = gcAgents.value || []
   if (agentFromQuery) {
-    // Find agent by name from query parameter
-    return (gcAgents.value || []).find(a =>
-      a.name === agentFromQuery
-    ) || null;
+    const raw = String(agentFromQuery)
+    const byId = agents.find((a) => String(a._id ?? a.id) === raw)
+    if (byId) return byId
+    const byName = agents.filter((a) => a.name === raw)
+    if (byName.length === 1) return byName[0]
+    if (byName.length > 1) {
+      const linked = resolveLinkedGcAgent(currentUser.value, byName)
+      if (linked) return linked
+      return byName.find((a) => a.active !== false) || byName[0]
+    }
+    return null
   }
-  
-  return resolveLinkedGcAgent(currentUser.value, gcAgents.value);
-});
+
+  return resolveLinkedGcAgent(currentUser.value, agents)
+})
 
 // Admin/manager agent selector (kept in sync with ?agent= query)
 const selectedAgentName = ref('')
@@ -1947,11 +1966,12 @@ const selectedAgentName = ref('')
 watch(
   () => route.query.agent,
   (newVal) => {
-    // Keep local select in sync with URL / selected agent
-    if (typeof newVal === 'string') {
+    const resolved = selectedGcAgent.value
+    const resolvedId = resolved ? String(resolved._id ?? resolved.id ?? '') : ''
+    if (resolvedId) {
+      selectedAgentName.value = resolvedId
+    } else if (typeof newVal === 'string') {
       selectedAgentName.value = newVal
-    } else if (selectedGcAgent.value?.name) {
-      selectedAgentName.value = selectedGcAgent.value.name
     } else {
       selectedAgentName.value = ''
     }
@@ -2569,13 +2589,7 @@ watch([orders, selectedGcAgent, currentDateRange], async ([allOrders, agent, dat
 function applyCallerOrderVisibility(agentOrders) {
   const monthKey = monthKeyFromDateRange(currentDateRange.value)
   if (!monthKey) return agentOrders
-  return agentOrders.filter((o) => {
-    if (!isOrderActiveForAgentDashboardForMonth(o, monthKey)) return false
-    if (currentUser.value?.role === 'caller') {
-      return isOrderVisibleToCallerForMonth(o, monthKey)
-    }
-    return true
-  })
+  return agentOrders.filter((o) => isOrderListedOnAgentDashboardForMonth(o, monthKey))
 }
 
 function getAgentOrdersForView(agentId, { includeTestCases = true } = {}) {

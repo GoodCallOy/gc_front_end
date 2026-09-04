@@ -442,7 +442,7 @@ function enrichAgentRow(agent, orders, dailyLogs, gcCases, dateRange, logStats =
       },
       viewAgent(agent) {
         // Match original AgentCard behavior
-        this.$router.push({ name: 'agentDashboard', query: { agent: agent.name } })
+        this.$router.push({ name: 'agentDashboard', query: { agent: String(agent._id ?? agent.id ?? agent.name) } })
       },
       editAgent(agent) {
         // Restore original behavior
@@ -492,10 +492,10 @@ function enrichAgentRow(agent, orders, dailyLogs, gcCases, dateRange, logStats =
           selectedGcAgentSent: selectedGcAgent || null,
         });
         console.log('editGCAgent() route payload:', payload);
-        if (!selectedUser) {
-          console.warn('editGCAgent(): No matching user found in user collection for agent', agent);
+        if (!selectedGcAgent) {
+          console.warn('editGCAgent(): No gcAgent id to edit', agent);
+          return;
         }
-        // Restore original behavior
         this.$router.push({ name: 'editGcAgent', query: payload });
       }
     },

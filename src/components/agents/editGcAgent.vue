@@ -3,26 +3,28 @@
     <h1 class="mb-3 mt-5">Edit GcAgent</h1>
 
     <v-form ref="formRef" @submit.prevent="submitForm">
-      <!-- Fallback: allow selecting a user when it wasn't provided via route -->
       <v-select
-        v-model="selectedUserSelectId"
-        :items="userOptions"
+        v-model="selectedAgentId"
+        :items="agentOptions"
         item-title="title"
         item-value="value"
-        label="Select user to edit"
-        clearable
-        class="mb-4"
-        @update:modelValue="onSelectUser"
+        label="GoodCall agent (inside the app)"
+        class="mb-1"
+        @update:modelValue="onSelectAgent"
       />
+      <div class="text-caption text-medium-emphasis mb-4">
+        The in-app GoodCall agent. Saving updates this profile only.
+      </div>
+
       <v-text-field
-        v-model="editUser.name"
+        v-model="form.name"
         label="Name"
         :rules="[v => !!v || 'Name is required']"
         required
       />
 
       <v-text-field
-        v-model="editUser.email"
+        v-model="form.email"
         label="Email"
         :rules="[
           v => !!v || 'Email is required',
@@ -32,7 +34,7 @@
       />
 
       <v-select
-        v-model="editUser.role"
+        v-model="form.role"
         :items="roles"
         label="Role"
         :rules="[v => !!v || 'Role is required']"
@@ -44,12 +46,16 @@
         :items="userOptions"
         item-title="title"
         item-value="value"
-        label="Link to user"
+        label="Google login email (outside)"
         clearable
+        class="mb-1"
       />
+      <div class="text-caption text-medium-emphasis mb-4">
+        Link the Google account they use to sign in. After login, they will see this GoodCall agent.
+      </div>
 
       <v-switch
-        v-model="editUser.active"
+        v-model="form.active"
         label="Active"
         color="primary"
         inset
@@ -75,237 +81,53 @@ import store from '@/store'
 
 const route = useRoute()
 const router = useRouter()
-
 const formRef = ref(null)
 
 const roles = ['admin', 'manager', 'caller']
 const DEFAULT_ROLE = 'caller'
 
+const agents = computed(() => store.getters['gcAgents'] || store.state.gcAgents || [])
+const users = computed(() => store.getters['users'] || store.state.users || [])
 
-const agents = computed(() => store.state.gcAgents || [])
-const users = computed(() => store.state.users || [])
-const userFromStore = computed(() => store.state.user || [])
-console.log('userFromStore:', userFromStore.value);
-console.log('users:', users.value);
-
-const selectedUserId = computed(() => {
-  const q = route.query.selectedUser
-  return Array.isArray(q) ? q[0] : (q ?? '')
-})
 const selectedGcAgentRouteId = computed(() => {
   const q = route.query.selectedGcAgent
-  return Array.isArray(q) ? q[0] : (q ?? '')
+  return String(Array.isArray(q) ? q[0] : (q ?? '')).trim()
 })
-const currentGcAgentId = ref('')
+const selectedUserRouteId = computed(() => {
+  const q = route.query.selectedUser
+  return String(Array.isArray(q) ? q[0] : (q ?? '')).trim()
+})
 
-// Local v-model backing the "Select user to edit" dropdown
-const selectedUserSelectId = ref('')
-// Local v-model for gcAgent.linkedUserId (User _id)
+const selectedAgentId = ref('')
 const linkedUserSelectId = ref(null)
 
-const selectedUser = computed(() => {
-  const id = selectedUserId.value
-  if (!id) return null
-  return users.value.find(u => String(u._id ?? u.id) === id) ?? null
-})
-
-console.log('selectedUserId:', selectedUserId.value);
-console.log('selectedUser:', selectedUser.value);
-
-const editUser = reactive({
-  id: '',
-  googleId: '',
+const form = reactive({
   name: '',
   email: '',
-  avatar: '',
-  access: '',
-  role: 'caller',
-  linkedUserId: '',
+  role: DEFAULT_ROLE,
   active: true,
 })
-
-const agent = reactive({
-  id: '',
-  name: '',
-  email: '',
-  avatar: '',
-  role: '',
-  linkedUserId: null,
-  active: true,})
-
-function loadFormData(source) {
-  console.log('Loading form data for user:', source)
-  editUser.id = source.id || source._id || ''
-  editUser.googleId = source.googleId || ''
-  editUser.name = source.name || ''
-  editUser.email = source.email || ''
-  editUser.avatar = source.avatar || ''
-  editUser.access = source.access || ''
-  editUser.role = source.role || 'caller'
-  editUser.active = typeof source.active === 'boolean' ? source.active : true
-  // keep as string for the input; send null when empty
-  editUser.linkedUserId = source.linkedUserId ? String(source.linkedUserId) : ''
-
-  // Pre-select linked gcAgent unless route explicitly pinned one.
-  if (!selectedGcAgentRouteId.value) {
-    selectedAgentId.value = source.linkedUserId ? String(source.linkedUserId) : null
-    currentGcAgentId.value = source.linkedUserId ? String(source.linkedUserId) : ''
-  }
-
-  // Keep the user selector in sync
-  const id = source.id || source._id || ''
-  selectedUserSelectId.value = id ? String(id) : ''
-}
-
-function firstNonEmpty(...values) {
-  for (const v of values) {
-    if (v === null || v === undefined) continue
-    if (typeof v === 'string') {
-      if (v.trim() !== '') return v
-      continue
-    }
-    return v
-  }
-  return undefined
-}
-
-function applyGcAgentAsAuthority(gcAgent, fallbackUser = null) {
-  if (!gcAgent) return
-  const gcAgentId = String(gcAgent?._id ?? gcAgent?.id ?? '')
-  const linkedUserId = String(gcAgent?.linkedUserId ?? '')
-
-  currentGcAgentId.value = gcAgentId
-  selectedAgentId.value = gcAgentId || null
-
-  // gcAgent is authoritative; user/default values are only fallback for missing/blank fields
-  editUser.name = firstNonEmpty(gcAgent?.name, fallbackUser?.name, editUser.name, '') || ''
-  editUser.email = firstNonEmpty(gcAgent?.email, fallbackUser?.email, editUser.email, '') || ''
-  editUser.role = firstNonEmpty(gcAgent?.role, fallbackUser?.role, editUser.role, DEFAULT_ROLE) || DEFAULT_ROLE
-  editUser.active = typeof gcAgent?.active === 'boolean'
-    ? gcAgent.active
-    : (typeof fallbackUser?.active === 'boolean' ? fallbackUser.active : true)
-
-  editUser.linkedUserId = linkedUserId || (fallbackUser?.linkedUserId ? String(fallbackUser.linkedUserId) : '')
-
-  // Keep user selector synced to linked auth user when known
-  if (linkedUserId) {
-    selectedUserSelectId.value = linkedUserId
-    linkedUserSelectId.value = linkedUserId
-  } else if (fallbackUser?._id || fallbackUser?.id) {
-    selectedUserSelectId.value = String(fallbackUser._id ?? fallbackUser.id)
-    linkedUserSelectId.value = null
-  } else {
-    linkedUserSelectId.value = null
-  }
-}
-
-function resolveGcAgentForEdit(fallbackUser = null) {
-  const allGcAgents = agents.value || []
-  const routeGcAgentId = String(selectedGcAgentRouteId.value ?? '').trim()
-
-  if (routeGcAgentId) {
-    return allGcAgents.find(a => String(a?._id ?? a?.id ?? '') === routeGcAgentId) || null
-  }
-
-  const userLinkedGcId = String(fallbackUser?.linkedUserId ?? '').trim()
-  if (userLinkedGcId) {
-    const byUserLink = allGcAgents.find(a => String(a?._id ?? a?.id ?? '') === userLinkedGcId)
-    if (byUserLink) return byUserLink
-  }
-
-  const userEmail = String(fallbackUser?.email ?? '').trim().toLowerCase()
-  if (userEmail) {
-    const byEmail = allGcAgents.find(a => String(a?.email ?? '').trim().toLowerCase() === userEmail)
-    if (byEmail) return byEmail
-  }
-
-  const userName = String(fallbackUser?.name ?? '').trim().toLowerCase()
-  if (userName) {
-    const byName = allGcAgents.find(a => String(a?.name ?? '').trim().toLowerCase() === userName)
-    if (byName) return byName
-  }
-
-  return null
-}
-
-const selectedAgentId = ref(null)
 
 const message = ref('')
 const alertType = ref('success')
 
-
-// Not used for loading currently; keep for future if needed
-const isEditMode = computed(() => !!(selectedUserId.value))
-
-// Users from store → options for "Link to Google User"
-onMounted(async () => {
-  console.log('editGcAgent load input:', {
-    routeQuery: route.query,
-    selectedUserId: selectedUserId.value,
-  })
-
-  if (!store.getters['users']?.length) {
-    try { await store.dispatch('fetchUsers') } catch {}
-  }
-  if (!store.getters['gcAgents']?.length) {
-    try { await store.dispatch('fetchgcAgents', true) } catch {}
-  }
-  if (selectedUser.value) loadFormData(selectedUser.value)
-  // Fallback: fetch the user by ID if not found in store
-  if (!selectedUser.value && selectedUserId.value) {
-    try {
-      const { data } = await axios.get(`${urls.backEndURL}/user/${selectedUserId.value}`, { withCredentials: true })
-      if (data) loadFormData(data)
-    } catch (e) {
-      console.warn('Failed to fetch user by id:', selectedUserId.value, e?.response?.status || e?.message)
-    }
-  }
-
-  const gcAgent = resolveGcAgentForEdit(selectedUser.value)
-  if (gcAgent) {
-    applyGcAgentAsAuthority(gcAgent, selectedUser.value)
-  }
-})
-
-// Ensure the form populates when navigating from other pages once users load
-watch(selectedUser, (u) => {
-  if (u && !currentGcAgentId.value) loadFormData(u)
-  const gcAgent = resolveGcAgentForEdit(u)
-  if (gcAgent) {
-    applyGcAgentAsAuthority(gcAgent, u)
-  }
-})
-
-// Keep the "Select user to edit" dropdown synced when route query changes externally
-watch(
-  selectedUserId,
-  (id) => {
-    selectedUserSelectId.value = id ? String(id) : ''
-  },
-  { immediate: true }
-)
-
-
 const agentOptions = computed(() =>
   (agents.value || [])
-    .map(a => {
+    .map((a) => {
       const id = String(a._id ?? a.id ?? '')
       const name = a.name || 'Unnamed'
       const email = a.email || ''
-      const active = a.active ? 'Active' : 'Inactive'
-      const role = a.role || ''
       return {
         value: id,
-        title: email ? `${name} (${email}, ${role}, ${active})` : `${name} (${role}, ${active})`,
+        title: email ? `${name} (${email})` : name,
       }
     })
-    .filter(o => o.value)
+    .filter((o) => o.value)
 )
 
-// All auth users → options for "Select user to edit" dropdown
 const userOptions = computed(() =>
   (users.value || [])
-    .map(u => {
+    .map((u) => {
       const id = String(u._id ?? u.id ?? '')
       const name = u.name || 'Unnamed'
       const email = u.email || ''
@@ -314,67 +136,132 @@ const userOptions = computed(() =>
         title: email ? `${name} (${email})` : name,
       }
     })
-    .filter(o => o.value)
+    .filter((o) => o.value)
 )
 
-function onSelectUser(id) {
-  // Update the route query so all existing logic (selectedUser, loadFormData, submit) continues to work
-  const nextQuery = { ...route.query }
-  if (id) {
-    nextQuery.selectedUser = String(id)
-  } else {
-    delete nextQuery.selectedUser
-  }
-  router.push({ query: nextQuery })
+function findAgentById(id) {
+  const wanted = String(id || '')
+  if (!wanted) return null
+  return (agents.value || []).find((a) => String(a._id ?? a.id) === wanted) || null
 }
 
-async function loadAgent(agentinfo) {
-  // try store first
-  
-  agent.value = {
-    id: agentinfo._id || agentinfo.id || '',
-    name: agentinfo.name || '',
-    email: agentinfo.email || '',
-    role: agentinfo.role || '',
-    active: typeof agentinfo.active === 'boolean' ? agentinfo.active : true,
-  }
+function findUserById(id) {
+  const wanted = String(id || '')
+  if (!wanted) return null
+  return (users.value || []).find((u) => String(u._id ?? u.id) === wanted) || null
 }
+
+/** Resolve which GcAgent to edit. Never treat a Gmail user's identity as the agent payload. */
+function resolveAgentToEdit() {
+  const fromRoute = findAgentById(selectedGcAgentRouteId.value)
+  if (fromRoute) return fromRoute
+
+  const userId = selectedUserRouteId.value
+  if (userId) {
+    const byLink = (agents.value || []).find(
+      (a) => String(a.linkedUserId ?? '') === userId
+    )
+    if (byLink) return byLink
+
+    const user = findUserById(userId)
+    const userLinkedAgentId = String(user?.linkedUserId ?? '').trim()
+    const fromUserPointer = findAgentById(userLinkedAgentId)
+    if (fromUserPointer) return fromUserPointer
+
+    const email = String(user?.email ?? '').trim().toLowerCase()
+    if (email) {
+      const byEmail = (agents.value || []).find(
+        (a) => String(a.email ?? '').trim().toLowerCase() === email
+      )
+      if (byEmail) return byEmail
+    }
+    const name = String(user?.name ?? '').trim().toLowerCase()
+    if (name) {
+      const byName = (agents.value || []).find(
+        (a) => String(a.name ?? '').trim().toLowerCase() === name
+      )
+      if (byName) return byName
+    }
+  }
+
+  return findAgentById(selectedAgentId.value)
+}
+
+function applyAgentToForm(agent) {
+  if (!agent) return
+  const agentId = String(agent._id ?? agent.id ?? '')
+  selectedAgentId.value = agentId
+  form.name = agent.name || ''
+  form.email = agent.email || ''
+  form.role = agent.role || DEFAULT_ROLE
+  form.active = typeof agent.active === 'boolean' ? agent.active : true
+  linkedUserSelectId.value = agent.linkedUserId ? String(agent.linkedUserId) : null
+}
+
+function syncRouteToAgent(agentId) {
+  const id = String(agentId || '')
+  const nextQuery = { ...route.query }
+  if (id) nextQuery.selectedGcAgent = id
+  else delete nextQuery.selectedGcAgent
+  // Keep selectedUser as the linked Gmail id for bookmarks, not as the record being edited.
+  const linked = String(linkedUserSelectId.value ?? '')
+  if (linked) nextQuery.selectedUser = linked
+  else delete nextQuery.selectedUser
+  router.replace({ query: nextQuery })
+}
+
+function onSelectAgent(id) {
+  const agent = findAgentById(id)
+  if (!agent) return
+  applyAgentToForm(agent)
+  syncRouteToAgent(String(agent._id ?? agent.id))
+}
+
+function loadFromRoute() {
+  const agent = resolveAgentToEdit()
+  if (agent) applyAgentToForm(agent)
+}
+
+onMounted(async () => {
+  if (!store.getters['users']?.length) {
+    try { await store.dispatch('fetchUsers') } catch {}
+  }
+  if (!store.getters['gcAgents']?.length) {
+    try { await store.dispatch('fetchgcAgents', true) } catch {}
+  }
+  loadFromRoute()
+})
+
+watch(selectedGcAgentRouteId, (id) => {
+  if (id && id !== selectedAgentId.value) {
+    const agent = findAgentById(id)
+    if (agent) applyAgentToForm(agent)
+  }
+})
 
 async function submitForm() {
-  // optional validate if using Vuetify form validation
   const valid = await formRef.value?.validate?.()
   if (valid === false) return
 
-  // Snapshot values from the form immediately so later refresh/hydration cannot overwrite
-  // what the user just selected before we send gcAgent updates.
-  const desiredActive = !!editUser.active
-  // IMPORTANT: for link/unlink, trust the dropdown state only.
-  // Do NOT fallback to route selectedUserId, otherwise clearing the field relinks on save.
-  const desiredLinkedUserId = String(linkedUserSelectId.value ?? '').trim() || null
-  const gcAgentIdToUpdate = String(currentGcAgentId.value || selectedGcAgentRouteId.value || '').trim()
-
+  const gcAgentIdToUpdate = String(selectedAgentId.value || '').trim()
   if (!gcAgentIdToUpdate) {
     alertType.value = 'error'
-    message.value = 'No gcAgent selected for update.'
+    message.value = 'Select an agent to edit before saving.'
     return
   }
 
-  // IMPORTANT: gcAgent endpoint expects gcAgent-shaped payload only.
-  // linkedUserId here must be a User _id (or null to unlink).
+  const desiredLinkedUserId = String(linkedUserSelectId.value ?? '').trim() || null
+
   const gcPayload = {
-    name: editUser.name,
-    email: editUser.email,
-    role: editUser.role || DEFAULT_ROLE,
-    active: desiredActive,
+    name: form.name,
+    email: form.email,
+    role: form.role || DEFAULT_ROLE,
+    active: !!form.active,
     linkedUserId: desiredLinkedUserId,
   }
-  console.log('Submitting gcAgent payload:', {
-    endpoint: `${urls.backEndURL}/gcAgents/${gcAgentIdToUpdate}`,
-    payload: gcPayload,
-  })
 
   try {
-    const { data } = await axios.put(
+    await axios.put(
       `${urls.backEndURL}/gcAgents/${gcAgentIdToUpdate}`,
       gcPayload,
       { withCredentials: true }
@@ -382,24 +269,12 @@ async function submitForm() {
     alertType.value = 'success'
     message.value = 'Agent updated.'
 
-    // Keep gcAgent.active and link state in sync.
-    // The agents list reads these from gcAgents, not users.
-    currentGcAgentId.value = String(data?._id ?? data?.id ?? gcAgentIdToUpdate)
-
-    try { await store.dispatch('fetchUsers') } catch {}
     try { await store.dispatch('fetchgcAgents', true) } catch {}
+    try { await store.dispatch('fetchUsers') } catch {}
 
-    const freshUser = desiredLinkedUserId
-      ? (store.getters['users'] || []).find(
-          u => String(u?._id ?? u?.id ?? '') === String(desiredLinkedUserId)
-        ) || null
-      : null
-    const freshGc = (agents.value || []).find(
-      a => String(a?._id ?? a?.id ?? '') === String(currentGcAgentId.value)
-    )
-    if (freshGc) {
-      applyGcAgentAsAuthority(freshGc, freshUser)
-    }
+    const freshGc = findAgentById(gcAgentIdToUpdate)
+    if (freshGc) applyAgentToForm(freshGc)
+    syncRouteToAgent(gcAgentIdToUpdate)
 
     const sessionUser = store.state.user?.user
     if (
@@ -410,7 +285,6 @@ async function submitForm() {
       try { await store.dispatch('fetchUser', true) } catch {}
     }
 
-    console.log('gcAgent updated:', data)
     setTimeout(() => (message.value = ''), 3000)
   } catch (err) {
     console.error('Save failed:', err.response?.data || err.message)
@@ -419,7 +293,6 @@ async function submitForm() {
   }
 }
 </script>
-
 
 <style scoped>
 .v-form { width: 400px; max-width: 100%; margin: 0 auto; }

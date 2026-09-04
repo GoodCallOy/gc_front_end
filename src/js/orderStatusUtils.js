@@ -62,11 +62,13 @@ export function isOrderCancelledForMonth(order, monthKey) {
   return getOrderStatusForMonth(order, monthKey) === 'cancelled'
 }
 
-const INACTIVE_ORDER_STATUSES = new Set(['pending', 'on-hold', 'completed', 'cancelled'])
+const STICKY_CLOSED_STATUSES = new Set(['completed', 'cancelled'])
 
 /**
- * True when the campaign was marked pending, paused, completed, or cancelled in an
- * earlier month and this month has no explicit status of its own.
+ * True when the campaign was completed or cancelled in an earlier month and this
+ * month has no explicit status of its own.
+ * On-hold / pending are per-month only — taking a campaign off hold must not
+ * keep hiding it in later months.
  */
 export function wasOrderInactiveBeforeMonth(order, monthKey) {
   if (!order || !monthKey) return false
@@ -75,7 +77,7 @@ export function wasOrderInactiveBeforeMonth(order, monthKey) {
   if (thisMonth != null && thisMonth !== '') return false
   return Object.entries(monthly).some(([key, status]) => {
     if (!(key < monthKey)) return false
-    return INACTIVE_ORDER_STATUSES.has(normalizeOrderStatus(status))
+    return STICKY_CLOSED_STATUSES.has(normalizeOrderStatus(status))
   })
 }
 
@@ -94,12 +96,24 @@ export function isOrderEligibleForAgentGoalsForMonth(order, monthKey) {
 }
 
 /**
+ * Cases the agent/admin should see on the agent dashboard for this month.
+ * Matches Assign Goals: in-progress or pending for the viewed month.
+ * On-hold this month stays hidden; an earlier pause does not stick.
+ */
+export function isOrderListedOnAgentDashboardForMonth(order, monthKey) {
+  const status = getOrderStatusForMonth(order, monthKey)
+  if (status !== 'in-progress' && status !== 'pending') return false
+  if (wasOrderInactiveBeforeMonth(order, monthKey)) return false
+  return true
+}
+
+/**
  * Agent dashboard / personal revenue: only in-progress work for the viewed month.
- * Pending, paused (on-hold), completed, and cancelled cases are excluded.
  */
 export function isOrderActiveForAgentDashboardForMonth(order, monthKey) {
+  if (!isOrderInProgressForMonth(order, monthKey)) return false
   if (wasOrderInactiveBeforeMonth(order, monthKey)) return false
-  return isOrderInProgressForMonth(order, monthKey)
+  return true
 }
 
 /** Callers see assigned orders except pending, cancelled, and campaigns already inactive in an earlier month. */

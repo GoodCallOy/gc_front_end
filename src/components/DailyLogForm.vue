@@ -128,7 +128,7 @@ import { resolveLinkedGcAgent } from '@/js/resolveLinkedGcAgent.js'
 import {
   areDailyLogsFrozenForLog,
   areDailyLogsFrozenForOrderMonth,
-  isOrderVisibleToCallerForMonth,
+  isOrderListedOnAgentDashboardForMonth,
   monthKeyFromDate,
 } from '@/js/orderStatusUtils'
 
@@ -236,13 +236,16 @@ export default {
 
       if (areDailyLogsFrozenForOrderMonth(order, monthKey)) return false
 
-      if (this.isCaller && !isOrderVisibleToCallerForMonth(order, monthKey)) return false
+      if (this.isCaller && !isOrderListedOnAgentDashboardForMonth(order, monthKey)) return false
       
       // Check if the selected agent is assigned to this order
-      const isAgentAssigned = this.form.agent && order.assignedCallers && 
+      const wantedAgent = String(this.form.agent || '')
+      const isAgentAssigned = wantedAgent && order.assignedCallers && 
         order.assignedCallers.some(caller => {
-          const callerId = typeof caller === 'string' ? caller : caller.id || caller._id;
-          return callerId === this.form.agent;
+          const callerId = String(
+            typeof caller === 'string' ? caller : (caller?._id ?? caller?.id ?? '')
+          )
+          return callerId === wantedAgent
         });
       
       return isAgentAssigned
