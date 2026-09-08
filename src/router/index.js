@@ -67,7 +67,7 @@ const routes = [
       { path: 'add-order', name: 'addOrderForm', component: addOrderForm },
       { path: 'edit-order/:id', name: 'editOrderForm', component: addOrderForm, props: true },
       { path: 'cases', name: 'cases', component: Cases },
-      { path: 'add-daily-log', name: 'addDailyLog', component: addDailyLog },
+      { path: 'add-daily-log', name: 'addDailyLog', component: addDailyLog, meta: { requiresAuth: true, roles: ['caller', 'admin', 'manager'] } },
       { path: 'add-agent-goals', name: 'addAgentGoals', component: AddAgentGoals },
       { path: 'add-agent-case-info', name: 'addAgentCaseInfo', component: addAgentCaseInfo },
       { path: 'order-progress-chart', name: 'OrderProgressTable', component: OrderProgressTable },

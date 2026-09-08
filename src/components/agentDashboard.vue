@@ -10,6 +10,15 @@
         <v-btn icon flat @click="getNextMonth">
           <v-icon>mdi-chevron-right</v-icon>
         </v-btn>
+        <v-btn
+          v-if="currentUser?.role === 'caller' && userOrders.length > 0"
+          color="primary"
+          class="ml-4"
+          prepend-icon="mdi-clock-plus"
+          @click="router.push({ name: 'addDailyLog' })"
+        >
+          {{ t('buttons.addDailyLog') }}
+        </v-btn>
       </div>
     </v-card>
 

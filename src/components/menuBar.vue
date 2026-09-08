@@ -1,9 +1,12 @@
 <script setup>
-import { ref, computed, watch, nextTick } from 'vue';
+import { ref, computed, watch, nextTick, onMounted } from 'vue';
 import { useStore } from 'vuex'
 import { useI18n } from 'vue-i18n';
 import { useRouter, useRoute } from 'vue-router';
 import axios from 'axios';
+import urls from '@/js/config.js'
+import { resolveLinkedGcAgent } from '@/js/resolveLinkedGcAgent.js'
+import { isOrderListedOnAgentDashboardForMonth, monthKeyFromDateRange } from '@/js/orderStatusUtils.js'
 
 const isDrawerOpen = ref(true);
 const isMobile = ref(false);
@@ -20,14 +23,74 @@ const BASE_URL =
 const store = useStore() // Access Vuex store
 const user = computed(() => store.state.user)
 const agents = computed(() => store.state.users)
+const gcAgents = computed(() => store.getters['gcAgents'] || store.state.gcAgents || [])
 
-// Check if caller is linked to an agent account
-const isCallerLinkedToAgent = computed(() => {
-  const currentUser = user.value?.user;
-  if (currentUser?.role !== 'caller') return true; // Not a caller, so no restriction
-  return !!currentUser?.linkedUserId; // Check if caller has linkedUserId
+const currentUser = computed(() => {
+  const fromStore = store.state.user?.user || null
+  if (fromStore) return fromStore
+  try {
+    return JSON.parse(localStorage.getItem('auth_user') || 'null')
+  } catch {
+    return null
+  }
 })
-import urls from '@/js/config.js'
+
+const isCaller = computed(() => currentUser.value?.role === 'caller')
+const orders = computed(() => store.getters['orders'] || store.state.orders || [])
+const dateRange = computed(() => store.getters['currentDateRange'] || store.state.dateRange)
+
+const linkedGcAgent = computed(() =>
+  resolveLinkedGcAgent(currentUser.value, gcAgents.value, { allowEmail: false })
+)
+
+function isAgentAssignedToOrder(order, agentId) {
+  const wanted = String(agentId || '')
+  if (!wanted) return false
+  return (order.assignedCallers || []).some((caller) => {
+    const callerId = caller?._id ?? caller?.id ?? caller
+    return String(callerId) === wanted
+  })
+}
+
+// Anyone can Google-login as role "caller". They only get Home / Charts /
+// Add Daily Log / weekly goal after they are linked by ID and assigned to a
+// case. Unassigned accounts stay at language + logout.
+const showCallerTools = computed(() => {
+  if (!isCaller.value) return false
+  const agentId = linkedGcAgent.value?._id ?? linkedGcAgent.value?.id
+  if (!agentId) return false
+
+  const assigned = (orders.value || []).filter((order) =>
+    isAgentAssignedToOrder(order, agentId)
+  )
+  if (!assigned.length) return false
+
+  const range = dateRange.value
+  let inView = assigned
+  if (Array.isArray(range) && range.length >= 2) {
+    const monthStart = new Date(range[0])
+    const monthEnd = new Date(range[1])
+    inView = assigned.filter((order) => {
+      if (!order.startDate || !order.deadline) return false
+      return new Date(order.startDate) <= monthEnd && new Date(order.deadline) >= monthStart
+    })
+  }
+
+  const monthKey = monthKeyFromDateRange(range)
+  if (monthKey) {
+    inView = inView.filter((o) => isOrderListedOnAgentDashboardForMonth(o, monthKey))
+  }
+  return inView.length > 0
+})
+
+onMounted(() => {
+  if (!(gcAgents.value || []).length) {
+    store.dispatch('fetchgcAgents').catch(() => {})
+  }
+  if (!(orders.value || []).length) {
+    store.dispatch('fetchOrders').catch(() => {})
+  }
+})
 
 const opened = ref([])
 
@@ -61,18 +124,6 @@ updateIsMobile();
 if (typeof window !== 'undefined') {
   window.addEventListener('resize', updateIsMobile);
 }
-
-const currentUser = computed(() => {
-  const fromStore = store.state.user?.user || null
-  if (fromStore) return fromStore
-
-  // fallback if store isn't hydrated yet
-  try {
-    return JSON.parse(localStorage.getItem('auth_user') || 'null')
-  } catch {
-    return null
-  }
-})
 
 // Home route detection
 const isHomeRoute = computed(() => {
@@ -179,6 +230,7 @@ async function logout() {
       
       <!-- Home Button -->
       <v-list-item
+        v-if="!isCaller || showCallerTools"
         class="mb-2"
         prepend-icon="mdi-home"
         :title="t('buttons.home')"
@@ -202,7 +254,7 @@ async function logout() {
         @click="navigateTo('canceledCalls')"
       />
       <v-list-item
-        v-if="(user?.user?.role === 'caller' && isCallerLinkedToAgent) || user?.user?.role === 'admin' || user?.user?.role === 'manager'"
+        v-if="showCallerTools || user?.user?.role === 'admin' || user?.user?.role === 'manager'"
         prepend-icon="mdi-chart-line"
         :title="t('buttons.reports')"
         :active="route.name === 'agentReport'"
@@ -257,14 +309,14 @@ async function logout() {
 
       <!-- Caller flat menu: Add daily log + Add weekly goal at top level (no Orders submenu) -->
       <v-list-item
-        v-if="user?.user?.role === 'caller' && isCallerLinkedToAgent"
-        prepend-icon="mdi-account-plus"
+        v-if="showCallerTools"
+        prepend-icon="mdi-clock-plus"
         :title="t('buttons.addDailyLog')"
         :active="route.name === 'addDailyLog'"
         @click="navigateTo('addDailyLog')"
       />
       <v-list-item
-        v-if="user?.user?.role === 'caller' && isCallerLinkedToAgent"
+        v-if="showCallerTools"
         prepend-icon="mdi-calendar-week"
         :title="t('agentWeeklyGoal.menuTitle')"
         :active="route.name === 'agentWeeklyGoal'"

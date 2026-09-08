@@ -2,8 +2,11 @@
  * Match a Google login (outside user) to a GoodCall agent (inside gcAgent).
  * Prefer the link stored on the agent (gcAgent.linkedUserId === user._id),
  * then a pointer on the user, then email.
+ *
+ * Pass { allowEmail: false } for menu/access checks so a random Google login
+ * cannot inherit another agent's cases just by sharing an email.
  */
-export function resolveLinkedGcAgent(user, gcAgents) {
+export function resolveLinkedGcAgent(user, gcAgents, { allowEmail = true } = {}) {
   if (!user) return null
   const agents = Array.isArray(gcAgents) ? gcAgents : []
   const uid = String(user._id ?? user.id ?? '')
@@ -20,7 +23,7 @@ export function resolveLinkedGcAgent(user, gcAgents) {
     if (a) return a
   }
 
-  if (email) {
+  if (allowEmail && email) {
     const byEmail = agents.find(
       (x) => String(x.email ?? '').trim().toLowerCase() === email
     )
