@@ -2,6 +2,7 @@ import axios from 'axios';
 import urls from './config.js';
 import { toLocalYmdNumber, parseWeekDateLocal } from './dateUtils';
 import { monthKeyFromDateRange, monthKeyFromDate } from './orderStatusUtils';
+import { roundTo2Decimals } from './formatNumbers';
 
 export function normalizeEntityId(value) {
   if (value == null || value === '') return ''
@@ -543,10 +544,11 @@ export function getCampaignRemainingUnits(order, dailyLogs, campaignGoal, monthl
  */
 export function getAssignableGoalCap(order, dailyLogs, campaignGoal) {
   const monthlyCap = Number(order?.monthlyGoal ?? order?.totalQuantity ?? 0) || 0
-  if (!orderSpansMultipleMonths(order)) {
+  if (!orderSpansMultipleMonths(order) && !order?.isMultiMonth) {
     return monthlyCap
   }
   const goal = Number(campaignGoal) || 0
+  if (goal <= 0) return monthlyCap
   const remaining = getCampaignRemainingUnits(
     order,
     dailyLogs,
@@ -557,4 +559,26 @@ export function getAssignableGoalCap(order, dailyLogs, campaignGoal) {
     return Math.min(monthlyCap, remaining)
   }
   return remaining
+}
+
+/**
+ * Personal unit goal for the viewed month. Multi-month campaigns often still store
+ * the original agentGoals; scale them down when assigned units exceed this month's cap
+ * (remaining campaign / monthly goal).
+ */
+export function getScaledAgentGoalForMonth(order, agentId, dailyLogs = []) {
+  const stored = Number(order?.agentGoals?.[String(agentId)]) || 0
+  if (stored <= 0) return 0
+  if (!orderSpansMultipleMonths(order) && !order?.isMultiMonth) return stored
+  const campaignGoal = Number(order?.campaignGoal ?? order?.campaign_goal) || 0
+  const cap = getAssignableGoalCap(order, dailyLogs, campaignGoal)
+  const totalAssigned = Object.values(order?.agentGoals || {}).reduce(
+    (sum, v) => sum + (Number(v) || 0),
+    0
+  )
+  if (!(Number.isFinite(cap) && cap >= 0)) return stored
+  if (totalAssigned > cap && totalAssigned > 0) {
+    return roundTo2Decimals(stored * (cap / totalAssigned))
+  }
+  return stored
 }

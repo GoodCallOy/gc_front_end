@@ -1,5 +1,6 @@
 import { roundTo2Decimals } from '@/js/formatNumbers';
 import { isOrderEligibleForAgentGoalsForMonth, monthKeyFromDateRange } from '@/js/orderStatusUtils';
+import { getScaledAgentGoalForMonth } from '@/js/statsUtils';
 
 function isTestCase(order) {
   if (!order) return false;
@@ -79,7 +80,7 @@ export function computeAgentMyProgressPercent(agent, orders, statsLogs, dateRang
   const stats = statsLogs;
   const percentages = inRange.map((order) => {
     const orderId = String(order._id ?? order.id ?? '');
-    const myGoal = Number(order?.agentGoals?.[agentId] ?? 0);
+    const myGoal = getScaledAgentGoalForMonth(order, agentId, statsLogs);
 
     const myAgentOrderLogsRaw = stats.filter((log) => {
       const logOrderId = String(log?.order?._id ?? log?.order ?? log?.orderId ?? '');

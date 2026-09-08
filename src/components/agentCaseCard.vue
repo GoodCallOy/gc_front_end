@@ -68,6 +68,7 @@
   // Import utilities
   import { adjustColorOpacity } from '../utils/Utils'
   import { formatSlashPair, formatCurrencyEUR, formatStatNumber } from '@/js/formatNumbers'
+  import { getScaledAgentGoalForMonth } from '@/js/statsUtils'
   
   export default {
     name: 'agentCaseCard',
@@ -163,15 +164,8 @@
       // agent's specific goal for this case (from agentGoals)
       const myGoal = computed(() => {
         const agentId = myAgentId.value;
-        if (!agentId || !props.order?.agentGoals) {
-          return 0;
-        }
-        
-        // Get the agent's specific goal for this case
-        const agentGoal = props.order.agentGoals[agentId];
-        
-        
-        return Number(agentGoal ?? 0);
+        if (!agentId) return 0;
+        return getScaledAgentGoalForMonth(props.order, agentId, props.dailyLogs);
       });
 
       // Total project goal (for reference)

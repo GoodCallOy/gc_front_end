@@ -142,6 +142,7 @@ import { goToNextMonth, goToPreviousMonth, formattedDateRange, isCurrentMonth } 
 import { formatStatNumber } from '@/js/formatNumbers';
 import { getPercentageToGoalVuetifyColor } from '@/js/percentageToGoalStyle';
 import { isOrderEligibleForAgentGoalsForMonth, monthKeyFromDateRange } from '@/js/orderStatusUtils';
+import { getScaledAgentGoalForMonth } from '@/js/statsUtils';
 import DateHeader from '@/components/DateHeader.vue';
 import AgentPersonalRevenueStatsStack from '@/components/AgentPersonalRevenueStatsStack.vue';
 
@@ -189,11 +190,11 @@ function getAgentMonthOrders(agent, orders, dateRange) {
   );
 }
 
-function computeAgentMonthlyGoalEuros(agent, orders, dateRange) {
+function computeAgentMonthlyGoalEuros(agent, orders, dailyLogs, dateRange) {
   const aid = String(agent?._id ?? agent?.id ?? '');
   if (!aid) return 0;
   return getAgentMonthOrders(agent, orders, dateRange).reduce((sum, order) => {
-    const goal = Number(order?.agentGoals?.[aid] ?? 0);
+    const goal = getScaledAgentGoalForMonth(order, aid, dailyLogs);
     const price = Number(order?.pricePerUnit ?? 0);
     return sum + goal * price;
   }, 0);
@@ -232,7 +233,7 @@ function sumAgentUnitsOnOrderInRange(agent, order, dailyLogs, from, to) {
 }
 
 function computeAgentRevenueKpi(agent, orders, dailyLogs, dateRange) {
-  const goal = computeAgentMonthlyGoalEuros(agent, orders, dateRange);
+  const goal = computeAgentMonthlyGoalEuros(agent, orders, dailyLogs, dateRange);
   if (goal <= 0) return { goal: 0, current: 0 };
   const { from, to } = monthBoundsFromRange(dateRange);
   let current = 0;
@@ -262,7 +263,7 @@ function buildAgentCasesForAgent(agent, orders, dailyLogs, gcCases, dateRange) {
       return true;
     })
     .map((order) => {
-      const goal = Number(order?.agentGoals?.[aid] ?? 0);
+      const goal = getScaledAgentGoalForMonth(order, aid, dailyLogs);
       const completed = sumAgentUnitsOnOrderInRange(agent, order, dailyLogs, from, to);
       const progressPercent = goal > 0 ? Math.min(100, (completed / goal) * 100) : 0;
       const fullCaseName = order.caseName || order.caseId || '—';

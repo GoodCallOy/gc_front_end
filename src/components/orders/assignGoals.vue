@@ -579,6 +579,7 @@ import {
   getCompletedUnitsBeforeMonthKey,
   getCampaignRemainingUnits,
   groupOrderCampaignsForMonthView,
+  getScaledAgentGoalForMonth,
 } from '@/js/statsUtils';
 import DateHeader from '@/components/DateHeader.vue';
 import OrderForm from '@/components/orders/OrderForm.vue';
@@ -1566,7 +1567,7 @@ function getAgentMonthGoalOrders(agentId, from, to) {
   })
   const groups = groupOrderCampaignsForMonthView(overlapping, currentDateRange.value)
   return groups.map(({ representative: o }) => {
-    const goal = Number(o?.agentGoals?.[aid]) || 0
+    const goal = getScaledAgentGoalForMonth(o, aid, dailyLogs.value || [])
     const price = Number(o?.pricePerUnit) || 0
     return {
       orderId: String(o?._id ?? o?.id ?? ''),

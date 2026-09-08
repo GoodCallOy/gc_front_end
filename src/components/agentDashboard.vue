@@ -604,7 +604,7 @@ import { useStore } from 'vuex'
 import { useI18n } from 'vue-i18n';
 import { useRouter, useRoute } from 'vue-router';
 import { goToNextMonth, goToPreviousMonth, formattedDateRange, isCurrentMonth, getMonthWeeks } from '@/js/dateUtils';
-import { fetchAgentgoalsByAgentAndMonth, orderSpansMultipleMonths, calculateMonthlyProgress } from '@/js/statsUtils';
+import { fetchAgentgoalsByAgentAndMonth, orderSpansMultipleMonths, calculateMonthlyProgress, groupOrderCampaignsForMonthView, getScaledAgentGoalForMonth } from '@/js/statsUtils';
 import agentCaseCard from './agentCaseCard.vue'
 import AgentDashboardTeamStatsCard from './agentDashboardTeamStatsCard.vue'
 import AgentDashboardPersonalStatsCard from './agentDashboardPersonalStatsCard.vue'
@@ -1721,7 +1721,7 @@ const casesTableRows = computed(() => {
 
   return orders.map((order) => {
     const orderId = String(order._id ?? order.id ?? '');
-    const myGoal = Number(order?.agentGoals?.[agentId] ?? 0);
+    const myGoal = getScaledAgentGoalForMonth(order, agentId, dailyLogs.value || []);
     const pricePerUnit = Number(order?.pricePerUnit ?? 0);
     const rawAgentRates = order?.agentRates || order?.agentPrices || {};
     const agentRate = Number(rawAgentRates[agentId]) || 0;
@@ -2592,6 +2592,13 @@ function applyCallerOrderVisibility(agentOrders) {
   return agentOrders.filter((o) => isOrderListedOnAgentDashboardForMonth(o, monthKey))
 }
 
+function dedupeOrdersForMonthView(agentOrders) {
+  if (!currentDateRange.value || currentDateRange.value.length < 2) return agentOrders
+  return groupOrderCampaignsForMonthView(agentOrders, currentDateRange.value)
+    .map(({ representative }) => representative)
+    .filter(Boolean)
+}
+
 function getAgentOrdersForView(agentId, { includeTestCases = true } = {}) {
   const wanted = String(agentId || '')
   if (!wanted) return []
@@ -2613,7 +2620,7 @@ function getAgentOrdersForView(agentId, { includeTestCases = true } = {}) {
     })
   }
 
-  return applyCallerOrderVisibility(agentOrders)
+  return applyCallerOrderVisibility(dedupeOrdersForMonthView(agentOrders))
 }
 
 function findOrdersForUser(allOrdersArray, agentId) {
@@ -2630,7 +2637,7 @@ function findOrdersForUser(allOrdersArray, agentId) {
 
   // Early return if no date range
   if (!currentDateRange.value || currentDateRange.value.length < 2) {
-    return applyCallerOrderVisibility(agentOrders);
+    return dedupeOrdersForMonthView(applyCallerOrderVisibility(agentOrders));
   }
   
   // Pre-calculate date boundaries once
@@ -2647,7 +2654,7 @@ function findOrdersForUser(allOrdersArray, agentId) {
     return orderStart <= monthEnd && orderEnd >= monthStart;
   });
 
-  return applyCallerOrderVisibility(inMonth);
+  return dedupeOrdersForMonthView(applyCallerOrderVisibility(inMonth));
 }
 
 
