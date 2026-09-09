@@ -112,8 +112,14 @@ import {
 import { Bar, Doughnut } from 'vue-chartjs'
 import ChartDataLabels from 'chartjs-plugin-datalabels'
 import { goToNextMonth, goToPreviousMonth, formattedDateRange, getMonthWeeks } from '@/js/dateUtils'
-import { fetchAgentgoalsByAgentAndMonth, getOrderMonthGoalUnits, getStoredAgentGoal } from '@/js/statsUtils'
+import { fetchAgentgoalsByAgentAndMonth, getOrderMonthGoalUnits, getScaledAgentGoalForMonth } from '@/js/statsUtils'
 import { isAgentAssignedToOrder } from '@/js/orderAuthority.js'
+import {
+  monthKeyFromDateRange,
+  isOrderOnHoldForMonth,
+  isOrderCancelledForMonth,
+  wasOrderInactiveBeforeMonth,
+} from '@/js/orderStatusUtils'
 import { resolveLinkedGcAgent } from '@/js/resolveLinkedGcAgent.js'
 import { formatStatNumber } from '@/js/formatNumbers'
 
@@ -154,8 +160,22 @@ const selectedGcAgent = computed(() => {
   return agents[0] || null
 })
 
-// Case selection - orders assigned to the selected agent that overlap the current month (no fallback to current user for admins)
+const dailyLogs = computed(() => store.getters['dailyLogs'] || [])
 const selectedCaseId = ref('')
+
+function isReportEligibleOrder(order) {
+  if (!order) return false
+  const caseType = String(order.caseType || '').toLowerCase()
+  const caseName = String(order.caseName || '').toLowerCase()
+  if (caseType.includes('test') || caseName.includes('test')) return false
+  if (caseName === 'case good call' || caseName === 'good call') return false
+  if (order.isTest === true || order.test === true) return false
+  const monthKey = monthKeyFromDateRange(currentDateRange.value)
+  if (isOrderOnHoldForMonth(order, monthKey)) return false
+  if (isOrderCancelledForMonth(order, monthKey)) return false
+  if (wasOrderInactiveBeforeMonth(order, monthKey)) return false
+  return true
+}
 const caseOptions = computed(() => {
   let agent = selectedGcAgent.value
   if (!agent && !isAdminOrManager.value) {
@@ -173,6 +193,7 @@ const caseOptions = computed(() => {
 
   const agentOrders = (orders.value || []).filter((o) => {
     if (!isAgentAssignedToOrder(o, agentId)) return false
+    if (!isReportEligibleOrder(o)) return false
     const orderStart = new Date(o?.startDate || 0)
     const orderEnd = new Date(o?.deadline || 0)
     return orderStart <= monthEnd && orderEnd >= monthStart
@@ -229,11 +250,11 @@ const donutChartData = computed(() => {
       'rgba(121, 85, 72, 0.8)',
     ]
 
-    const casesWithGoal = cases.filter((o) => (getStoredAgentGoal(o, agentId) || 0) > 0)
+    const casesWithGoal = cases.filter((o) => (getScaledAgentGoalForMonth(o, agentId, dailyLogs.value) || 0) > 0)
     if (!casesWithGoal.length) return emptyDonutData
 
     const labels = casesWithGoal.map((o) => o.caseName || o.caseId || 'Unknown')
-    const data = casesWithGoal.map((o) => getStoredAgentGoal(o, agentId) || 0)
+    const data = casesWithGoal.map((o) => getScaledAgentGoalForMonth(o, agentId, dailyLogs.value) || 0)
     const backgroundColor = casesWithGoal.map((_, i) => DONUT_COLORS[i % DONUT_COLORS.length])
 
     return {
@@ -372,7 +393,7 @@ async function loadReportData() {
 
     // Agent's assigned orders (for team goals)
     let agentOrders = (orders.value || []).filter(
-      (o) => isAgentAssignedToOrder(o, agentId)
+      (o) => isAgentAssignedToOrder(o, agentId) && isReportEligibleOrder(o)
     )
 
     // Filter by selected case
@@ -439,7 +460,7 @@ async function loadReportData() {
     // If no weekly goals, use monthly agentGoals from orders as fallback (divided by weeks)
     if (weeklyGoals.length === 0) {
       for (const order of agentOrders) {
-        const myGoal = getStoredAgentGoal(order, agentId)
+        const myGoal = getScaledAgentGoalForMonth(order, agentId, allLogs)
         const perWeek = myGoal / numWeeks
         for (const [, bucket] of weekBuckets) {
           bucket.agentGoal += perWeek

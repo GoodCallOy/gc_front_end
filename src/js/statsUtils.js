@@ -371,8 +371,10 @@ export function populateCasesSortedByAgent(agentStats, selectedAgent) {
     return monthlyGoal * pricePerUnit
   }
 
-  /** Revenue goal (€) for a specific calendar month — uses monthlyRevenueGoals when set. */
+  /** Revenue goal (€) for a specific calendar month — Assign Goals units × price wins. */
   export function ordersDashboardRevenueGoalEurosForMonth(order, dateRangeOrMonthKey) {
+    const fromUnits = ordersDashboardRevenueGoalEuros(order)
+    if (fromUnits > 0) return fromUnits
     const monthKey =
       typeof dateRangeOrMonthKey === 'string'
         ? String(dateRangeOrMonthKey).slice(0, 7)
@@ -382,7 +384,7 @@ export function populateCasesSortedByAgent(agentStats, selectedAgent) {
       const fromMap = Number(monthlyGoals[monthKey])
       if (Number.isFinite(fromMap) && fromMap >= 0) return fromMap
     }
-    return ordersDashboardRevenueGoalEuros(order)
+    return fromUnits
   }
 
   /** Sum of personal unit goals × price for one order row. */

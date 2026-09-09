@@ -262,7 +262,7 @@ import DashboardCard01 from '@/partials/dashboard/caseCard2.vue'
 import OrdersAnalyticsCharts from '@/partials/dashboard/orders-analytics-charts.vue'
 import OrdersTableInsights from '@/partials/dashboard/orders-table-insights.vue'
 import DateHeader from '@/components/DateHeader.vue'
-import { orderSpansMultipleMonths, calculateMonthlyProgress, computeOrderQuantityForMonth, computeOrderRevenueForMonth, groupOrderCampaignsForMonthView, ordersDashboardRevenueGoalEurosForMonth, estimatedRevenueEurosForCampaignGroup, getOrderMonthGoalUnits } from '@/js/statsUtils'
+import { orderSpansMultipleMonths, calculateMonthlyProgress, computeOrderQuantityForMonth, computeOrderRevenueForMonth, groupOrderCampaignsForMonthView, estimatedRevenueEurosForCampaignGroup, getOrderMonthGoalUnits } from '@/js/statsUtils'
 import { getCampaignGoalUnits, assignedCallerIds } from '@/js/orderAuthority.js'
 import {
   getOrderStatusForMonth,
@@ -270,7 +270,9 @@ import {
   isOrderInProgressForMonth,
   isOrderCompletedForMonth,
   isOrderPendingForMonth,
+  isOrderCancelledForMonth,
   isOrderListedOnAgentDashboardForMonth,
+  wasOrderInactiveBeforeMonth,
   monthKeyFromDateRange,
 } from '@/js/orderStatusUtils'
 import { getPercentageToGoalBadgeClass } from '@/js/percentageToGoalStyle'
@@ -517,6 +519,15 @@ function isGoodCallCase(order) {
   return caseName === 'case good call' || caseName === 'good call';
 }
 
+function isInsightEligibleOrder(order) {
+  if (!order || isTestCase(order) || isGoodCallCase(order)) return false
+  const monthKey = currentMonthKey.value
+  if (isOrderOnHold(order)) return false
+  if (isOrderCancelledForMonth(order, monthKey)) return false
+  if (wasOrderInactiveBeforeMonth(order, monthKey)) return false
+  return true
+}
+
 // Calculate estimated revenue total from filtered orders (one goal per campaign per month)
 const estimatedRevenueTotal = computed(() => {
   const ordersToCalculate = selectedCaseType.value ? filteredOrdersByCaseType.value : filteredOrders.value;
@@ -606,6 +617,9 @@ const currentRevenueTotal = computed(() => {
     if (!order || isTestCase(order) || isGoodCallCase(order) || isOrderOnHold(order)) {
       return total;
     }
+    const monthKey = currentMonthKey.value
+    if (isOrderCancelledForMonth(order, monthKey)) return total
+    if (wasOrderInactiveBeforeMonth(order, monthKey)) return total
     return total + computeOrderRevenueForMonth(order, dailyLogs.value, currentDateRange.value);
   }, 0);
 });
@@ -849,19 +863,32 @@ function computeCampaignQuantityCompleted(order) {
 }
 
 const tableInsightRows = computed(() => {
-  return enrichedOrders.value.map((order) => {
-    const monthlyGoal = getOrderMonthGoalUnits(order)
+  const eligible = (enrichedOrders.value || []).filter(isInsightEligibleOrder)
+  if (!eligible.length) return []
+  const groups = groupOrderCampaignsForMonthView(eligible, currentDateRange.value)
+  return groups.map(({ orders, representative }) => {
+    const monthlyGoal = Math.max(0, ...orders.map((o) => getOrderMonthGoalUnits(o)))
+    const qtyThisMonth = orders.reduce((sum, o) => sum + computeOrderQuantity(o), 0)
+    const currentRevenue = orders.reduce((sum, o) => sum + computeOrderRevenue(o), 0)
+    const estimatedRevenue = estimatedRevenueEurosForCampaignGroup(
+      orders,
+      representative,
+      currentMonthKey.value
+    )
+    const pct = monthlyGoal > 0 ? (qtyThisMonth / monthlyGoal) * 100 : 0
+    const pctToGoal = Number.isFinite(pct) ? Math.round(pct) : 0
+    const callerIds = [...new Set(orders.flatMap((o) => assignedCallerIds(o)))]
     return {
-      id: order._id,
-      caseName: order.caseName || '—',
-      caseType: order.caseType || 'Unspecified',
-      estimatedRevenue: Number(order?.estimatedRevenue) || 0,
-      currentRevenue: computeOrderRevenue(order),
-      pctToGoal: computePercentageToGoal(order),
-      qtyCompleted: computeCampaignQuantityCompleted(order),
-      campaignGoal: getDisplayGoal(order),
+      id: representative?._id,
+      caseName: representative?.caseName || '—',
+      caseType: representative?.caseType || 'Unspecified',
+      estimatedRevenue,
+      currentRevenue,
+      pctToGoal,
+      qtyCompleted: computeCampaignQuantityCompleted(representative),
+      campaignGoal: getDisplayGoal(representative),
       monthlyGoal,
-      callerIds: assignedCallerIds(order),
+      callerIds,
     }
   })
 })

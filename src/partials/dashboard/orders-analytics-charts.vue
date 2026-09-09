@@ -230,12 +230,13 @@ import {
   computeOrderQuantityForMonth,
   computeOrderRevenueForMonth,
   logMatchesOrderForMonthRevenue,
-  ordersDashboardRevenueGoalEurosForMonth,
   estimatedRevenueEurosForCampaignGroup,
   groupOrderCampaignsForMonthView,
 } from '@/js/statsUtils'
 import {
   isOrderOnHoldForMonth,
+  isOrderCancelledForMonth,
+  wasOrderInactiveBeforeMonth,
   monthKeyFromDateRange,
 } from '@/js/orderStatusUtils'
 
@@ -399,6 +400,10 @@ function isOrderOnHold(order) {
   return isOrderOnHoldForMonth(order, monthKeyFromDateRange(props.currentDateRange))
 }
 
+function chartMonthKey() {
+  return monthKeyFromDateRange(props.currentDateRange)
+}
+
 function eligibleOrder(order) {
   if (isTestCase(order) || isGoodCallCase(order)) return false
   return true
@@ -406,7 +411,10 @@ function eligibleOrder(order) {
 
 function revenueEligibleOrder(order) {
   if (!eligibleOrder(order)) return false
+  const monthKey = chartMonthKey()
   if (isOrderOnHold(order)) return false
+  if (isOrderCancelledForMonth(order, monthKey)) return false
+  if (wasOrderInactiveBeforeMonth(order, monthKey)) return false
   return true
 }
 
@@ -421,7 +429,7 @@ function computeOrderRevenue(order, dailyLogs) {
 }
 
 function estimatedRevenueForOrder(order) {
-  return ordersDashboardRevenueGoalEurosForMonth(order, props.currentDateRange)
+  return estimatedRevenueEurosForCampaignGroup([order], order, props.currentDateRange)
 }
 
 const eligibleOrders = computed(() => (props.orders || []).filter(eligibleOrder))
