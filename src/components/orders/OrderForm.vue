@@ -262,7 +262,7 @@ const isEditMode = computed(() => !!props.orderId)
 const actualOrderId = computed(() => props.orderId)
 
 const caseUnits = ['hours', 'interviews', 'meetings', 'a-leads']
-const orderStatuses = ['pending', 'in-progress', 'completed', 'cancelled', 'on-hold']
+const orderStatuses = ['in-progress', 'pending', 'completed', 'cancelled', 'on-hold']
 const caseTypes = computed(() => store.getters.caseTypes || [])
 const agentOptions = computed(() => (agents.value || []).map(a => ({ value: a._id, title: a.name })))
 const managerOptions = computed(() =>
@@ -308,10 +308,24 @@ function agentName(id) {
   return a ? a.name : id
 }
 
+function clearAgentGoalMaps() {
+  Object.keys(agentGoals).forEach((k) => { delete agentGoals[k] })
+  Object.keys(agentRates).forEach((k) => { delete agentRates[k] })
+}
+
+function goalsForAssignedCallers() {
+  const ids = form.assignedCallers || []
+  return Object.fromEntries(ids.map((id) => [id, Number(agentGoals[id]) || 0]))
+}
+
+function ratesForAssignedCallers() {
+  const ids = form.assignedCallers || []
+  return Object.fromEntries(ids.map((id) => [id, Number(agentRates[id]) || 0]))
+}
+
 function resetForm() {
   Object.assign(form, defaultFormState())
-  Object.keys(agentGoals).forEach(k => { agentGoals[k] = 0 })
-  Object.keys(agentRates).forEach(k => { agentRates[k] = 0 })
+  clearAgentGoalMaps()
 }
 
 function applySuggestedMonthlyGoal() {
@@ -368,12 +382,13 @@ function hydrateFromOrder(o) {
   }
 
   const assignedIds = [...new Set(
-    (o.assignedCallers || []).map(x => String(x?._id ?? x?.id ?? x))
+    (o.assignedCallers || []).map(x => String(x?.id ?? x?._id ?? x))
   )]
   form.assignedCallers = assignedIds
 
   const goals = o.agentGoals || {}
   const rates = o.agentRates || o.agentPrices || {}
+  clearAgentGoalMaps()
   assignedIds.forEach(id => {
     agentGoals[id] = Number(goals[id]) || 0
     agentRates[id] = Number(rates[id]) || 0
@@ -406,13 +421,23 @@ async function submitForm() {
   try {
     const selectedCase = (cases.value || []).find(c => (c._id ?? c.id) === form.caseId)
     const { totalQuantity, ...formRest } = form
+    const orderStatus = form.orderStatus || 'in-progress'
+    const monthlyOrderStatus = {}
+    for (const month of monthlyGoalMonths.value || []) {
+      const key = month.monthKey || `${month.year}-${String(month.month).padStart(2, '0')}`
+      if (key) monthlyOrderStatus[key] = orderStatus
+    }
+    if (!Object.keys(monthlyOrderStatus).length && form.startDate) {
+      monthlyOrderStatus[String(form.startDate).slice(0, 7)] = orderStatus
+    }
     const payload = {
       ...formRest,
+      orderStatus,
       monthlyGoal: totalQuantity,
       caseName: selectedCase ? selectedCase.name : '',
-      agentGoals: { ...agentGoals },
-      agentRates: { ...agentRates },
-      agentPrices: { ...agentRates },
+      agentGoals: goalsForAssignedCallers(),
+      agentRates: ratesForAssignedCallers(),
+      agentPrices: ratesForAssignedCallers(),
       estimatedRevenue: estimatedRevenue.value,
       assignedCallers: (form.assignedCallers || []).map(id => {
         const agent = (agents.value || []).find(a => (a._id ?? a.id) === id)
@@ -422,6 +447,9 @@ async function submitForm() {
         const agent = (agents.value || []).find(a => (a._id ?? a.id) === id)
         return { id, name: agent ? agent.name : '' }
       })
+    }
+    if (!isEditMode.value) {
+      payload.monthlyOrderStatus = monthlyOrderStatus
     }
 
     if (isEditMode.value) {

@@ -10,6 +10,45 @@ export function normalizeEntityId(value) {
   return String(value)
 }
 
+/** Prefer `id` when present so assignment subdocs do not use their own `_id`. */
+export function assignedCallerId(caller) {
+  if (caller == null || caller === '') return ''
+  if (typeof caller !== 'object') return String(caller)
+  if (caller.id != null && caller.id !== '') return String(caller.id)
+  return normalizeEntityId(caller)
+}
+
+export function assignedCallerIds(order) {
+  return [...new Set((order?.assignedCallers || []).map(assignedCallerId).filter(Boolean))]
+}
+
+export function getStoredAgentGoal(order, agentId) {
+  const aid = String(agentId ?? '')
+  if (!aid) return 0
+  const goals = order?.agentGoals
+  if (goals && typeof goals === 'object') {
+    const direct = Number(goals[aid] ?? goals.get?.(aid)) || 0
+    if (direct > 0) return direct
+    for (const [key, value] of Object.entries(goals)) {
+      if (String(key) === aid) return Number(value) || 0
+    }
+  }
+  const row = (order?.agentAssignments || []).find(
+    (a) => String(a?.id ?? a?._id ?? '') === aid
+  )
+  return Number(row?.goal) || 0
+}
+
+/** Sum of personal unit goals for callers actually on the order (ignore leftover keys). */
+export function getDistributedAssignedGoals(order) {
+  const goals = order?.agentGoals || {}
+  const ids = assignedCallerIds(order)
+  if (ids.length) {
+    return ids.reduce((sum, id) => sum + (Number(getStoredAgentGoal(order, id)) || 0), 0)
+  }
+  return Object.values(goals).reduce((sum, val) => sum + (Number(val) || 0), 0)
+}
+
 /** Match a daily log to an order for monthly revenue (order id, then case id, then case name). */
 export function logMatchesOrderForMonthRevenue(log, order) {
   if (!log || !order) return false
@@ -321,8 +360,7 @@ export function populateCasesSortedByAgent(agentStats, selectedAgent) {
   /** Sum of personal unit goals × price for one order row. */
   export function assignedAgentGoalEuros(order) {
     const price = Number(order?.pricePerUnit) || 0
-    const goals = order?.agentGoals || {}
-    return Object.values(goals).reduce((sum, g) => sum + (Number(g) || 0) * price, 0)
+    return getDistributedAssignedGoals(order) * price
   }
 
   /**
@@ -333,8 +371,10 @@ export function populateCasesSortedByAgent(agentStats, selectedAgent) {
     const byAgent = new Map()
     for (const order of orders || []) {
       const price = Number(order?.pricePerUnit) || 0
-      for (const [id, g] of Object.entries(order?.agentGoals || {})) {
-        const euros = (Number(g) || 0) * price
+      const ids = assignedCallerIds(order)
+      const keys = ids.length ? ids : Object.keys(order?.agentGoals || {})
+      for (const id of keys) {
+        const euros = (Number(getStoredAgentGoal(order, id)) || 0) * price
         const key = String(id)
         byAgent.set(key, Math.max(byAgent.get(key) || 0, euros))
       }
@@ -567,15 +607,12 @@ export function getAssignableGoalCap(order, dailyLogs, campaignGoal) {
  * (remaining campaign / monthly goal).
  */
 export function getScaledAgentGoalForMonth(order, agentId, dailyLogs = []) {
-  const stored = Number(order?.agentGoals?.[String(agentId)]) || 0
+  const stored = getStoredAgentGoal(order, agentId)
   if (stored <= 0) return 0
   if (!orderSpansMultipleMonths(order) && !order?.isMultiMonth) return stored
   const campaignGoal = Number(order?.campaignGoal ?? order?.campaign_goal) || 0
   const cap = getAssignableGoalCap(order, dailyLogs, campaignGoal)
-  const totalAssigned = Object.values(order?.agentGoals || {}).reduce(
-    (sum, v) => sum + (Number(v) || 0),
-    0
-  )
+  const totalAssigned = getDistributedAssignedGoals(order)
   if (!(Number.isFinite(cap) && cap >= 0)) return stored
   if (totalAssigned > cap && totalAssigned > 0) {
     return roundTo2Decimals(stored * (cap / totalAssigned))

@@ -259,13 +259,13 @@
                     hide-details
                     density="compact"
                     :disabled="statusUpdatingId === String(item._id)"
-                    @update:model-value="(v) => updateOrderStatus(item, v)"
                   >
                     <v-radio
                       v-for="status in ORDER_STATUS_OPTIONS"
                       :key="status"
                       :value="status"
                       density="compact"
+                      @click.stop="updateOrderStatus(item, status)"
                     >
                       <template #label>
                         <span class="text-caption text-medium-emphasis">{{ status }}</span>
@@ -580,6 +580,7 @@ import {
   getCampaignRemainingUnits,
   groupOrderCampaignsForMonthView,
   getScaledAgentGoalForMonth,
+  getDistributedAssignedGoals,
 } from '@/js/statsUtils';
 import DateHeader from '@/components/DateHeader.vue';
 import OrderForm from '@/components/orders/OrderForm.vue';
@@ -1478,7 +1479,7 @@ function closeAddCaseModal() {
 }
 
 const getDistributedGoals = (order) => {
-  return Object.values(order.agentGoals || {}).reduce((sum, val) => sum + val, 0)
+  return getDistributedAssignedGoals(order)
 }
 
 // Goals not yet assigned to any agent (available to give out when removing from others)

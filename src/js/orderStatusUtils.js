@@ -167,7 +167,7 @@ export function buildMonthlyOrderStatusForNextMonth(order, nextStart, sourceMont
   } else if (order?.orderStatus) {
     statuses[tgtKey] = normalizeOrderStatus(order.orderStatus)
   } else {
-    statuses[tgtKey] = 'pending'
+    statuses[tgtKey] = 'in-progress'
   }
   return statuses
 }
