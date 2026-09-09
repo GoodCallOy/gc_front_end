@@ -39,7 +39,7 @@
                <strong>Quantity:</strong> {{ formatStatNumber(getOrderMonthGoalUnits(order)) }}
             </v-col>
             <v-col cols="3">
-                <strong>Estimated Revenue:</strong> {{ formatCurrencyEUR(order.estimatedRevenue) }}
+                <strong>Estimated Revenue:</strong> {{ formatCurrencyEUR(displayEstimatedRevenue) }}
             </v-col>
             <v-col cols="3">
                 <strong>Callers:</strong> {{ getCallerNames(order, agents) }}
@@ -155,6 +155,7 @@
   import { formatStatNumber, formatCurrencyEUR } from '@/js/formatNumbers'
   import { areDailyLogsFrozenForLog, isOrderVisibleToCallerForMonth, monthKeyFromDateRange } from '@/js/orderStatusUtils'
   import { getOrderMonthGoalUnits, getStoredAgentGoal, assignedCallerIds } from '@/js/orderAuthority.js'
+  import { ordersDashboardRevenueGoalEuros } from '@/js/statsUtils'
 
 
   const route = useRoute()
@@ -296,6 +297,8 @@ const assignedAgentGoalRows = computed(() => {
     goal: getStoredAgentGoal(order.value, id),
   }))
 })
+
+const displayEstimatedRevenue = computed(() => ordersDashboardRevenueGoalEuros(order.value))
 
 // Agent goal for this case (for the selected agent)
 const caseGoal = computed(() => {

@@ -43,7 +43,7 @@
                <strong>{{ t('orderDetails.campaignGoal') }}:</strong> {{ formatStatNumber(displayCampaignGoal) }}
             </v-col>
             <v-col cols="3">
-                <strong>{{ t('orderDetails.estimatedRevenue') }}:</strong> {{ formatCurrencyEUR(order.estimatedRevenue) }}
+                <strong>{{ t('orderDetails.estimatedRevenue') }}:</strong> {{ formatCurrencyEUR(displayEstimatedRevenue) }}
             </v-col>
             <v-col cols="3">
                 <strong>{{ t('orderDetails.callers') }}:</strong> {{ getCallerNames(order, agents) }}
@@ -218,6 +218,7 @@
   import DateHeader from '@/components/DateHeader.vue'
   import { getOrderStatusForMonth, monthKeyFromDateRange, areDailyLogsFrozenForLog } from '@/js/orderStatusUtils'
   import { getCampaignGoalUnits, getStoredAgentGoal, assignedCallerIds } from '@/js/orderAuthority.js'
+  import { ordersDashboardRevenueGoalEuros } from '@/js/statsUtils'
 
 
   const route = useRoute()
@@ -243,6 +244,9 @@
   const gcCases = computed(() => store.getters['gcCases'])
   const displayCampaignGoal = computed(() => {
     return getCampaignGoalUnits(order.value, gcCases.value || [])
+  })
+  const displayEstimatedRevenue = computed(() => {
+    return ordersDashboardRevenueGoalEuros(order.value)
   })
   
   const goalTypes = ['hours', 'interviews', 'meetings']

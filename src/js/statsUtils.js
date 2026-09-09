@@ -362,13 +362,14 @@ export function populateCasesSortedByAgent(agentStats, selectedAgent) {
   }
 
   /**
-   * Estimated revenue (€) for an order — same formula as `ordersDashboard.vue`
-   * (`estimatedRevenueTotal` / breakdown): month goal units (Assign Goals) × pricePerUnit.
+   * Estimated revenue (€) for an order — Assign Goals month units × price,
+   * never less than assigned agent units × price.
    */
   export function ordersDashboardRevenueGoalEuros(order) {
-    const monthlyGoal = getOrderMonthGoalUnits(order)
     const pricePerUnit = Number(order?.pricePerUnit) || 0
-    return monthlyGoal * pricePerUnit
+    const fromMonthUnits = getOrderMonthGoalUnits(order) * pricePerUnit
+    const fromAssigned = getDistributedAssignedGoals(order) * pricePerUnit
+    return Math.max(fromMonthUnits, fromAssigned)
   }
 
   /** Revenue goal (€) for a specific calendar month — Assign Goals units × price wins. */

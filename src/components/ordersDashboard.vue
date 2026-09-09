@@ -179,7 +179,7 @@
               {{ formatSlashPair(computeOrderQuantity(item), getOrderMonthGoalUnits(item)) }}
             </template>
             <template #item.goal="{ item }">
-              {{ formatCurrency(store.getters.estimatedRevenueEurosForOrder(item)) }}
+              {{ formatCurrency(estimatedRevenueEurosForCampaignGroup([item], item, currentMonthKey)) }}
             </template>
             <template #item.revenue="{ item }">
               {{ formatCurrency(computeOrderRevenue(item)) }}
