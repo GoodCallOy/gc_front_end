@@ -19,24 +19,52 @@ export function assignedCallerId(caller) {
 }
 
 export function assignedCallerIds(order) {
-  return [...new Set((order?.assignedCallers || []).map(assignedCallerId).filter(Boolean))]
+  const fromCallers = [...new Set((order?.assignedCallers || []).map(assignedCallerId).filter(Boolean))]
+  if (fromCallers.length) return fromCallers
+  return [...new Set(
+    (order?.agentAssignments || []).map((a) => String(a?.id ?? a?._id ?? '')).filter(Boolean)
+  )]
+}
+
+export function recordToObject(value) {
+  if (!value) return {}
+  if (value instanceof Map) return Object.fromEntries(value)
+  if (typeof value === 'object') return value
+  return {}
 }
 
 export function getStoredAgentGoal(order, agentId) {
   const aid = String(agentId ?? '')
   if (!aid) return 0
-  const goals = order?.agentGoals
-  if (goals && typeof goals === 'object') {
-    const direct = Number(goals[aid] ?? goals.get?.(aid)) || 0
-    if (direct > 0) return direct
-    for (const [key, value] of Object.entries(goals)) {
-      if (String(key) === aid) return Number(value) || 0
-    }
+  const goals = recordToObject(order?.agentGoals)
+  const direct = Number(goals[aid] ?? order?.agentGoals?.get?.(aid)) || 0
+  if (direct > 0) return direct
+  for (const [key, value] of Object.entries(goals)) {
+    if (String(key) === aid) return Number(value) || 0
   }
   const row = (order?.agentAssignments || []).find(
     (a) => String(a?.id ?? a?._id ?? '') === aid
   )
   return Number(row?.goal) || 0
+}
+
+export function getStoredAgentRate(order, agentId) {
+  const aid = String(agentId ?? '')
+  if (!aid) return 0
+  const rates = recordToObject(order?.agentRates || order?.agentPrices || order?.agentsPrice)
+  const direct = Number(rates[aid]) || 0
+  if (direct > 0) return direct
+  const row = (order?.agentAssignments || []).find(
+    (a) => String(a?.id ?? a?._id ?? '') === aid
+  )
+  return Number(row?.rate) || 0
+}
+
+/** Month unit goal shown on Assign Goals / dashboard: stored monthly, else assigned units. */
+export function getOrderMonthGoalUnits(order) {
+  const stored = Number(order?.monthlyGoal ?? order?.totalQuantity) || 0
+  if (stored > 0) return stored
+  return getDistributedAssignedGoals(order)
 }
 
 /** Sum of personal unit goals for callers actually on the order (ignore leftover keys). */
@@ -335,10 +363,10 @@ export function populateCasesSortedByAgent(agentStats, selectedAgent) {
 
   /**
    * Estimated revenue (€) for an order — same formula as `ordersDashboard.vue`
-   * (`estimatedRevenueTotal` / breakdown): `(monthlyGoal ?? totalQuantity) * pricePerUnit`.
+   * (`estimatedRevenueTotal` / breakdown): month goal units (Assign Goals) × pricePerUnit.
    */
   export function ordersDashboardRevenueGoalEuros(order) {
-    const monthlyGoal = Number(order?.monthlyGoal ?? order?.totalQuantity) || 0
+    const monthlyGoal = getOrderMonthGoalUnits(order)
     const pricePerUnit = Number(order?.pricePerUnit) || 0
     return monthlyGoal * pricePerUnit
   }
@@ -404,12 +432,18 @@ export function populateCasesSortedByAgent(agentStats, selectedAgent) {
   export function pickRepresentativeOrderForMonthView(orders, viewMonthKey) {
     if (!Array.isArray(orders) || !orders.length) return null
     if (orders.length === 1) return orders[0]
-    const slice = orders.find((o) => monthKeyFromDate(o?.startDate) === viewMonthKey)
-    if (slice) return slice
-    const sorted = [...orders].sort(
+    const goalUnits = (o) => getOrderMonthGoalUnits(o)
+    const inMonth = orders.filter((o) => monthKeyFromDate(o?.startDate) === viewMonthKey)
+    const inMonthWithGoal = inMonth.filter((o) => goalUnits(o) > 0)
+    if (inMonthWithGoal.length) {
+      return [...inMonthWithGoal].sort((a, b) => goalUnits(b) - goalUnits(a))[0]
+    }
+    if (inMonth.length) return inMonth[0]
+    const withGoal = orders.filter((o) => goalUnits(o) > 0)
+    const pool = withGoal.length ? withGoal : orders
+    return [...pool].sort(
       (a, b) => new Date(b.startDate || 0).getTime() - new Date(a.startDate || 0).getTime()
-    )
-    return sorted[0]
+    )[0]
   }
 
   /** Group overlapping campaign orders for one month view. */
@@ -583,7 +617,7 @@ export function getCampaignRemainingUnits(order, dailyLogs, campaignGoal, monthl
  * Multi-month: min(monthly cap, campaign remaining after usage).
  */
 export function getAssignableGoalCap(order, dailyLogs, campaignGoal) {
-  const monthlyCap = Number(order?.monthlyGoal ?? order?.totalQuantity ?? 0) || 0
+  const monthlyCap = getOrderMonthGoalUnits(order)
   if (!orderSpansMultipleMonths(order) && !order?.isMultiMonth) {
     return monthlyCap
   }

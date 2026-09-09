@@ -117,7 +117,7 @@ import { useStore } from 'vuex'
 import DateHeader from '@/components/DateHeader.vue'
 import { goToNextMonth, goToPreviousMonth } from '@/js/dateUtils'
 import { useRouter } from 'vue-router'
-import { orderSpansMultipleMonths, calculateMonthlyProgress } from '@/js/statsUtils'
+import { orderSpansMultipleMonths, calculateMonthlyProgress, getOrderMonthGoalUnits } from '@/js/statsUtils'
 import { formatStatNumber, formatCurrencyEUR } from '@/js/formatNumbers'
 
 // Helper function to check if an order is a test case
@@ -285,7 +285,7 @@ const tableRowsFromOrders = computed(() => {
       })()
 
       // Month Goal and Revenue Goal from order
-      const monthGoal = Number(o.monthlyGoal ?? o.totalQuantity ?? 0)
+      const monthGoal = getOrderMonthGoalUnits(o)
       const revenueGoal = Number(o.estimatedRevenue || 0)
 
       // Check if order spans multiple months

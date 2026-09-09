@@ -176,7 +176,7 @@
               {{ getCallerNames(item) }}
             </template>
             <template #item.monthlyGoal="{ item }">
-              {{ formatSlashPair(computeOrderQuantity(item), item.monthlyGoal ?? item.totalQuantity ?? 0) }}
+              {{ formatSlashPair(computeOrderQuantity(item), getOrderMonthGoalUnits(item)) }}
             </template>
             <template #item.goal="{ item }">
               {{ formatCurrency(store.getters.estimatedRevenueEurosForOrder(item)) }}
@@ -262,7 +262,8 @@ import DashboardCard01 from '@/partials/dashboard/caseCard2.vue'
 import OrdersAnalyticsCharts from '@/partials/dashboard/orders-analytics-charts.vue'
 import OrdersTableInsights from '@/partials/dashboard/orders-table-insights.vue'
 import DateHeader from '@/components/DateHeader.vue'
-import { orderSpansMultipleMonths, calculateMonthlyProgress, computeOrderQuantityForMonth, computeOrderRevenueForMonth, groupOrderCampaignsForMonthView, ordersDashboardRevenueGoalEurosForMonth, estimatedRevenueEurosForCampaignGroup } from '@/js/statsUtils'
+import { orderSpansMultipleMonths, calculateMonthlyProgress, computeOrderQuantityForMonth, computeOrderRevenueForMonth, groupOrderCampaignsForMonthView, ordersDashboardRevenueGoalEurosForMonth, estimatedRevenueEurosForCampaignGroup, getOrderMonthGoalUnits } from '@/js/statsUtils'
+import { getCampaignGoalUnits, assignedCallerIds } from '@/js/orderAuthority.js'
 import {
   getOrderStatusForMonth,
   isOrderOnHoldForMonth,
@@ -547,12 +548,16 @@ const estimatedRevenueBreakdown = computed(() => {
 
   const groups = groupOrderCampaignsForMonthView(ordersToCalculate, currentDateRange.value);
   const rows = groups.map(({ orders, representative: order }) => {
-    const monthlyGoal = Number(order?.monthlyGoal ?? order?.totalQuantity) || 0;
     const pricePerUnit = Number(order?.pricePerUnit) || 0;
     const revenue = estimatedRevenueEurosForCampaignGroup(
       orders,
       order,
       currentMonthKey.value
+    );
+    const monthlyGoal = Math.max(
+      0,
+      ...orders.map((o) => getOrderMonthGoalUnits(o)),
+      pricePerUnit > 0 ? revenue / pricePerUnit : 0
     );
 
     let excludedReason = null;
@@ -681,7 +686,7 @@ function computeOrderRevenue(order) {
 }
 
 function computePercentageToGoal(order) {
-  const monthlyGoal = Number(order?.monthlyGoal ?? order?.totalQuantity) || 0
+  const monthlyGoal = getOrderMonthGoalUnits(order)
   if (!monthlyGoal) {
     return 0
   }
@@ -717,21 +722,14 @@ function getMonthlyPercentageToGoalClass(order, month) {
 }
 
 function getDisplayGoal(order) {
-  const fromOrder = order?.campaignGoal ?? order?.campaign_goal
-  if (fromOrder != null && fromOrder !== '') return Number(fromOrder) || 0
-  const caseId = order?.caseId?._id ?? order?.caseId?.id ?? order?.caseId
-  if (caseId && gcCases.value?.length) {
-    const c = gcCases.value.find(x => String(x._id ?? x.id) === String(caseId))
-    const fromCase = c?.campaignGoal ?? c?.campaign_goal
-    if (fromCase != null && fromCase !== '') return Number(fromCase) || 0
-  }
-  return Number(order?.monthlyGoal ?? order?.totalQuantity) || 0
+  return getCampaignGoalUnits(order, gcCases.value || [])
 }
 
 function getCallerNames(order) {
-  if (!order.assignedCallers || !Array.isArray(order.assignedCallers)) return ''
-  return order.assignedCallers
-    .map(id => gcAgents.value.find(agent => agent._id === id)?.name || t('ordersDashboard.unknown'))
+  const ids = assignedCallerIds(order)
+  if (!ids.length) return ''
+  return ids
+    .map((id) => gcAgents.value.find((agent) => String(agent._id ?? agent.id) === String(id))?.name || t('ordersDashboard.unknown'))
     .join(', ')
 }
 
@@ -852,7 +850,7 @@ function computeCampaignQuantityCompleted(order) {
 
 const tableInsightRows = computed(() => {
   return enrichedOrders.value.map((order) => {
-    const monthlyGoal = Number(order?.monthlyGoal ?? order?.totalQuantity) || 0
+    const monthlyGoal = getOrderMonthGoalUnits(order)
     return {
       id: order._id,
       caseName: order.caseName || '—',
@@ -863,7 +861,7 @@ const tableInsightRows = computed(() => {
       qtyCompleted: computeCampaignQuantityCompleted(order),
       campaignGoal: getDisplayGoal(order),
       monthlyGoal,
-      callerIds: Array.isArray(order.assignedCallers) ? [...order.assignedCallers] : [],
+      callerIds: assignedCallerIds(order),
     }
   })
 })

@@ -1,7 +1,7 @@
 import { createStore } from 'vuex'
 import axios from 'axios'
 import urls from './js/config.js'
-import { ordersDashboardRevenueGoalEuros } from './js/statsUtils'
+import { ordersDashboardRevenueGoalEuros, getOrderMonthGoalUnits } from './js/statsUtils'
 
 const CACHE_TIMEOUT = 10 * 60 * 1000 // 10 minutes
 
@@ -468,7 +468,7 @@ const store = createStore({
       state.orders = (orders || []).map((o) => {
         const normalized = {
           ...o,
-          monthlyGoal: o.monthlyGoal ?? o.totalQuantity,
+          monthlyGoal: getOrderMonthGoalUnits(o),
         }
         return {
           ...normalized,

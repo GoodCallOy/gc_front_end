@@ -198,6 +198,7 @@ import { useI18n } from 'vue-i18n'
 import axios from 'axios'
 import urls from '@/js/config.js'
 import { getOrderMonths, orderSpansMultipleMonths, calculateMonthlyProgress } from '@/js/statsUtils'
+import { getStoredAgentGoal, getStoredAgentRate, assignedCallerIds, getOrderMonthGoalUnits, getCampaignGoalUnits, buildAssignmentWriteFields } from '@/js/orderAuthority.js'
 import { formatSlashPair } from '@/js/formatNumbers'
 import { getRemainingMonthlyGoalForMultiMonthOrder } from '@/js/orderCopyUtils'
 
@@ -264,7 +265,18 @@ const actualOrderId = computed(() => props.orderId)
 const caseUnits = ['hours', 'interviews', 'meetings', 'a-leads']
 const orderStatuses = ['in-progress', 'pending', 'completed', 'cancelled', 'on-hold']
 const caseTypes = computed(() => store.getters.caseTypes || [])
-const agentOptions = computed(() => (agents.value || []).map(a => ({ value: a._id, title: a.name })))
+const agentOptions = computed(() => {
+  const opts = (agents.value || []).map(a => ({ value: String(a._id ?? a.id), title: a.name }))
+  const known = new Set(opts.map((o) => String(o.value)))
+  for (const id of form.assignedCallers || []) {
+    const sid = String(id)
+    if (sid && !known.has(sid)) {
+      opts.push({ value: sid, title: sid })
+      known.add(sid)
+    }
+  }
+  return opts
+})
 const managerOptions = computed(() =>
   (agents.value || []).filter(a => {
     const role = (a.role || '').toLowerCase()
@@ -313,16 +325,6 @@ function clearAgentGoalMaps() {
   Object.keys(agentRates).forEach((k) => { delete agentRates[k] })
 }
 
-function goalsForAssignedCallers() {
-  const ids = form.assignedCallers || []
-  return Object.fromEntries(ids.map((id) => [id, Number(agentGoals[id]) || 0]))
-}
-
-function ratesForAssignedCallers() {
-  const ids = form.assignedCallers || []
-  return Object.fromEntries(ids.map((id) => [id, Number(agentRates[id]) || 0]))
-}
-
 function resetForm() {
   Object.assign(form, defaultFormState())
   clearAgentGoalMaps()
@@ -346,8 +348,8 @@ function hydrateFromOrder(o) {
   form.caseId = o.caseId?._id ?? o.caseId?.id ?? o.caseId ?? ''
   form.caseUnit = o.caseUnit || ''
   form.pricePerUnit = o.pricePerUnit ?? ''
-  form.totalQuantity = o.monthlyGoal ?? o.totalQuantity ?? ''
-  form.campaignGoal = o.campaignGoal ?? o.campaign_goal ?? null
+  form.totalQuantity = getOrderMonthGoalUnits(o)
+  form.campaignGoal = getCampaignGoalUnits(o, cases.value || []) || null
   form.startDate = o.startDate ? String(o.startDate).split('T')[0] : ''
   form.deadline = o.deadline ? String(o.deadline).split('T')[0] : ''
   form.orderStatus = o.orderStatus || ''
@@ -368,7 +370,7 @@ function hydrateFromOrder(o) {
       dailyLogs.value,
       cases.value
     )
-    if (remainingMonthly != null) {
+    if (remainingMonthly != null && Number(remainingMonthly) > 0) {
       form.totalQuantity = remainingMonthly
     }
   }
@@ -381,17 +383,16 @@ function hydrateFromOrder(o) {
     form.managers = []
   }
 
-  const assignedIds = [...new Set(
-    (o.assignedCallers || []).map(x => String(x?.id ?? x?._id ?? x))
-  )]
+  const assignedIds = [...new Set([
+    ...assignedCallerIds(o),
+    ...(o.agentAssignments || []).map((a) => String(a?.id ?? a?._id ?? '')).filter(Boolean),
+  ])]
   form.assignedCallers = assignedIds
 
-  const goals = o.agentGoals || {}
-  const rates = o.agentRates || o.agentPrices || {}
   clearAgentGoalMaps()
   assignedIds.forEach(id => {
-    agentGoals[id] = Number(goals[id]) || 0
-    agentRates[id] = Number(rates[id]) || 0
+    agentGoals[id] = getStoredAgentGoal(o, id)
+    agentRates[id] = getStoredAgentRate(o, id)
   })
 }
 
@@ -430,19 +431,23 @@ async function submitForm() {
     if (!Object.keys(monthlyOrderStatus).length && form.startDate) {
       monthlyOrderStatus[String(form.startDate).slice(0, 7)] = orderStatus
     }
+    const assignedRows = (form.assignedCallers || []).map(id => {
+      const agent = (agents.value || []).find(a => (a._id ?? a.id) === id)
+      return {
+        id,
+        name: agent ? agent.name : '',
+        goal: Number(agentGoals[id]) || 0,
+        rate: Number(agentRates[id]) || 0,
+      }
+    })
     const payload = {
       ...formRest,
       orderStatus,
       monthlyGoal: totalQuantity,
       caseName: selectedCase ? selectedCase.name : '',
-      agentGoals: goalsForAssignedCallers(),
-      agentRates: ratesForAssignedCallers(),
-      agentPrices: ratesForAssignedCallers(),
+      ...buildAssignmentWriteFields(assignedRows),
       estimatedRevenue: estimatedRevenue.value,
-      assignedCallers: (form.assignedCallers || []).map(id => {
-        const agent = (agents.value || []).find(a => (a._id ?? a.id) === id)
-        return { id, name: agent ? agent.name : '' }
-      }),
+      assignedCallers: assignedRows.map(({ id, name }) => ({ id, name })),
       managers: (form.managers || []).map(id => {
         const agent = (agents.value || []).find(a => (a._id ?? a.id) === id)
         return { id, name: agent ? agent.name : '' }
@@ -482,7 +487,7 @@ watch(
   async ([orderId, initialOrder, suggestedMonthlyGoal, prefill]) => {
     if (orderId && initialOrder) {
       hydrateFromOrder(initialOrder)
-      if (suggestedMonthlyGoal != null && isEditMode.value) {
+      if (suggestedMonthlyGoal != null && isEditMode.value && Number(suggestedMonthlyGoal) > 0) {
         form.totalQuantity = Number(suggestedMonthlyGoal)
       }
     } else if (orderId) {
@@ -515,7 +520,7 @@ onMounted(async () => {
     ])
     if (props.orderId && props.initialOrder) {
       hydrateFromOrder(props.initialOrder)
-      if (props.suggestedMonthlyGoal != null && isEditMode.value) {
+      if (props.suggestedMonthlyGoal != null && isEditMode.value && Number(props.suggestedMonthlyGoal) > 0) {
         form.totalQuantity = Number(props.suggestedMonthlyGoal)
       }
     }

@@ -217,6 +217,7 @@
   import { formatSlashPair, formatStatNumber, formatCurrencyEUR } from '@/js/formatNumbers'
   import DateHeader from '@/components/DateHeader.vue'
   import { getOrderStatusForMonth, monthKeyFromDateRange, areDailyLogsFrozenForLog } from '@/js/orderStatusUtils'
+  import { getCampaignGoalUnits, getStoredAgentGoal, assignedCallerIds } from '@/js/orderAuthority.js'
 
 
   const route = useRoute()
@@ -241,17 +242,7 @@
   const orders = computed(() => store.getters['orders'])
   const gcCases = computed(() => store.getters['gcCases'])
   const displayCampaignGoal = computed(() => {
-    const ord = order.value
-    if (!ord) return 0
-    const fromOrder = ord.campaignGoal ?? ord.campaign_goal
-    if (fromOrder != null && fromOrder !== '') return Number(fromOrder) || 0
-    const caseId = ord.caseId?._id ?? ord.caseId?.id ?? ord.caseId
-    if (caseId && gcCases.value?.length) {
-      const c = gcCases.value.find(x => String(x._id ?? x.id) === String(caseId))
-      const fromCase = c?.campaignGoal ?? c?.campaign_goal
-      if (fromCase != null && fromCase !== '') return Number(fromCase) || 0
-    }
-    return Number(ord.monthlyGoal ?? ord.totalQuantity) || 0
+    return getCampaignGoalUnits(order.value, gcCases.value || [])
   })
   
   const goalTypes = ['hours', 'interviews', 'meetings']
@@ -263,7 +254,9 @@
     const ord = order.value;
     const stats = caseStats.value;
     const dateRange = currentDateRange.value;
-    if (!ord?.assignedCallers?.length) return [];
+    if (!ord) return [];
+    const callerIds = assignedCallerIds(ord);
+    if (!callerIds.length) return [];
     const currentCaseName = ord.caseName;
     if (!currentCaseName) return [];
     let monthStart, monthEnd;
@@ -272,11 +265,9 @@
       monthEnd = new Date(dateRange[1]);
       monthEnd.setHours(23, 59, 59, 999);
     }
-    const agentGoals = ord.agentGoals || {};
-    return ord.assignedCallers.map(rawId => {
-      const agentId = String(rawId?._id ?? rawId ?? '');
-      const name = agentName(rawId);
-      const target = Number(agentGoals[agentId] ?? agentGoals[rawId] ?? 0) || 0;
+    return callerIds.map(agentId => {
+      const name = agentName(agentId);
+      const target = getStoredAgentGoal(ord, agentId);
       let achieved = 0;
       if (stats && Array.isArray(stats) && monthStart && monthEnd) {
         achieved = stats

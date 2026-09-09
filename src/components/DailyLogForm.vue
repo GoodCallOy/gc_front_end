@@ -131,6 +131,7 @@ import {
   isOrderListedOnAgentDashboardForMonth,
   monthKeyFromDate,
 } from '@/js/orderStatusUtils'
+import { isAgentAssignedToOrder } from '@/js/orderAuthority.js'
 
 
 export default {
@@ -240,13 +241,7 @@ export default {
       
       // Check if the selected agent is assigned to this order
       const wantedAgent = String(this.form.agent || '')
-      const isAgentAssigned = wantedAgent && order.assignedCallers && 
-        order.assignedCallers.some(caller => {
-          const callerId = String(
-            typeof caller === 'string' ? caller : (caller?._id ?? caller?.id ?? '')
-          )
-          return callerId === wantedAgent
-        });
+      const isAgentAssigned = wantedAgent && isAgentAssignedToOrder(order, wantedAgent)
       
       return isAgentAssigned
     })

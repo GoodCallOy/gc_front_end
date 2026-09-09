@@ -36,7 +36,7 @@
                <strong>Deadline:</strong> {{ formatDate(order.deadline) }}
             </v-col>
             <v-col cols="3">
-               <strong>Quantity:</strong> {{ formatStatNumber(order.monthlyGoal ?? order.totalQuantity) }}
+               <strong>Quantity:</strong> {{ formatStatNumber(getOrderMonthGoalUnits(order)) }}
             </v-col>
             <v-col cols="3">
                 <strong>Estimated Revenue:</strong> {{ formatCurrencyEUR(order.estimatedRevenue) }}
@@ -47,11 +47,11 @@
         </v-row>
         <v-row>
             <v-col cols="12">
-                <div v-if="order.agentGoals">
+                <div v-if="assignedAgentGoalRows.length">
                     <strong>Agent Goals:</strong>
                     <ul>
-                        <li v-for="id in order.assignedCallers" :key="id">
-                        {{ agentName(id) }}: {{ formatStatNumber(order.agentGoals[id] || 0) }}
+                        <li v-for="row in assignedAgentGoalRows" :key="row.id">
+                        {{ agentName(row.id) }}: {{ formatStatNumber(row.goal) }}
                         </li>
                     </ul>
                 </div>
@@ -154,6 +154,7 @@
   import urls from '@/js/config.js'
   import { formatStatNumber, formatCurrencyEUR } from '@/js/formatNumbers'
   import { areDailyLogsFrozenForLog, isOrderVisibleToCallerForMonth, monthKeyFromDateRange } from '@/js/orderStatusUtils'
+  import { getOrderMonthGoalUnits, getStoredAgentGoal, assignedCallerIds } from '@/js/orderAuthority.js'
 
 
   const route = useRoute()
@@ -288,15 +289,21 @@
   return { totalUnits, revenue };
 });
 
+const assignedAgentGoalRows = computed(() => {
+  if (!order.value) return []
+  return assignedCallerIds(order.value).map((id) => ({
+    id,
+    goal: getStoredAgentGoal(order.value, id),
+  }))
+})
+
 // Agent goal for this case (for the selected agent)
 const caseGoal = computed(() => {
-  if (!order.value || !order.value.agentGoals) {
-    return 0;
-  }
-  const agentIdStr = String(selectedAgentId.value || '');
-  if (!agentIdStr) return 0;
-  return Number(order.value.agentGoals[agentIdStr] ?? 0);
-});
+  if (!order.value) return 0
+  const agentIdStr = String(selectedAgentId.value || '')
+  if (!agentIdStr) return 0
+  return getStoredAgentGoal(order.value, agentIdStr)
+})
 
 // Headers for weekly totals table
 const weeklyHeaders = computed(() => [
@@ -535,7 +542,7 @@ const weeklyTotals = computed(() => {
 
     // Agent's goal for this case (for selected agent)
     const agentIdForGoal = String(selectedAgentId.value || '');
-    const myGoal = Number(order.value?.agentGoals?.[agentIdForGoal] ?? 0);
+    const myGoal = getStoredAgentGoal(order.value, agentIdForGoal);
     const goalReached = myGoal > 0
       ? Number(((totals.quantityCompleted / myGoal) * 100).toFixed(2))
       : 0;

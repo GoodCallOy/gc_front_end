@@ -82,6 +82,7 @@ import axios from 'axios';
 import urls from '@/js/config.js';
 import { getMonthKey, getMonthWeeks } from '@/js/dateUtils';
 import { resolveLinkedGcAgent } from '@/js/resolveLinkedGcAgent.js';
+import { isAgentAssignedToOrder } from '@/js/orderAuthority.js';
 
 const { t } = useI18n();
 const route = useRoute();
@@ -172,7 +173,7 @@ const assignedCasesList = computed(() => {
   const monthStart = new Date(y, m - 1, 1);
   const monthEnd = new Date(y, m, 0, 23, 59, 59, 999);
   return orders.value.filter(order => {
-    if (!(order.assignedCallers || []).some(x => String(x?._id ?? x?.id ?? x) === agentId)) return false;
+    if (!isAgentAssignedToOrder(order, agentId)) return false;
     const orderStart = new Date(order.startDate || 0);
     const orderEnd = new Date(order.deadline || 0);
     return orderStart <= monthEnd && orderEnd >= monthStart;

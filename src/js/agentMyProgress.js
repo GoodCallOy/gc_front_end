@@ -1,6 +1,7 @@
 import { roundTo2Decimals } from '@/js/formatNumbers';
 import { isOrderEligibleForAgentGoalsForMonth, monthKeyFromDateRange } from '@/js/orderStatusUtils';
 import { getScaledAgentGoalForMonth } from '@/js/statsUtils';
+import { isAgentAssignedToOrder, getStoredAgentGoal } from '@/js/orderAuthority.js';
 
 function isTestCase(order) {
   if (!order) return false;
@@ -10,15 +11,6 @@ function isTestCase(order) {
   if (caseName.includes('test')) return true;
   if (order.isTest === true || order.test === true) return true;
   return false;
-}
-
-function isAgentAssignedToOrder(order, agentId) {
-  if (!order?.assignedCallers || !Array.isArray(order.assignedCallers)) return false;
-  const aid = String(agentId);
-  return order.assignedCallers.some((caller) => {
-    const callerId = caller?._id ?? caller?.id ?? caller;
-    return String(callerId) === aid;
-  });
 }
 
 /**
@@ -59,7 +51,7 @@ export function computeAgentMyProgressPercent(agent, orders, statsLogs, dateRang
   const userOrders = (orders || []).filter(
     (o) =>
       isAgentAssignedToOrder(o, agentId) &&
-      Number(o?.agentGoals?.[agentId] ?? 0) > 0 &&
+      getStoredAgentGoal(o, agentId) > 0 &&
       !isTestCase(o)
   );
 

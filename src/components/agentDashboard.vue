@@ -613,7 +613,8 @@ import { useStore } from 'vuex'
 import { useI18n } from 'vue-i18n';
 import { useRouter, useRoute } from 'vue-router';
 import { goToNextMonth, goToPreviousMonth, formattedDateRange, isCurrentMonth, getMonthWeeks } from '@/js/dateUtils';
-import { fetchAgentgoalsByAgentAndMonth, orderSpansMultipleMonths, calculateMonthlyProgress, groupOrderCampaignsForMonthView, getScaledAgentGoalForMonth } from '@/js/statsUtils';
+import { fetchAgentgoalsByAgentAndMonth, orderSpansMultipleMonths, calculateMonthlyProgress, groupOrderCampaignsForMonthView, getScaledAgentGoalForMonth, getOrderMonthGoalUnits } from '@/js/statsUtils';
+import { getStoredAgentRate, isAgentAssignedToOrder, assignedCallerIds } from '@/js/orderAuthority.js'
 import agentCaseCard from './agentCaseCard.vue'
 import AgentDashboardTeamStatsCard from './agentDashboardTeamStatsCard.vue'
 import AgentDashboardPersonalStatsCard from './agentDashboardPersonalStatsCard.vue'
@@ -754,7 +755,7 @@ function getTotalCompletedUpToMonth(monthlyBreakdown, upToMonthKey) {
 }
 
 function getCaseDisplayGoal(item) {
-  return Number(item?.monthlyGoal ?? item?.totalQuantity ?? item?.teamGoal ?? 0) || 0
+  return getOrderMonthGoalUnits(item) || Number(item?.teamGoal ?? 0) || 0
 }
 
 function getCaseMonthlyRevenueGoal(item, month) {
@@ -778,14 +779,10 @@ function getCaseMonthlyAgentALeads(item, month) {
   if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime())) return []
   end.setHours(23, 59, 59, 999)
 
-  const rawAssigned = Array.isArray(item?.assignedCallers) ? item.assignedCallers : []
   const assignedById = new Map()
-  rawAssigned.forEach((caller) => {
-    const id = String(caller?._id ?? caller?.id ?? caller ?? '')
-    if (!id) return
-    const agent = (gcAgents.value || []).find((a) => String(a?._id ?? a?.id ?? '') === id)
-    const name = agent?.name || String(caller?.name ?? caller ?? '')
-    assignedById.set(id, { agentId: id, name, aLeads: 0 })
+  assignedCallerIds(item).forEach((id) => {
+    const agent = (gcAgents.value || []).find((a) => String(a?._id ?? a?.id ?? '') === String(id))
+    assignedById.set(id, { agentId: id, name: agent?.name || id, aLeads: 0 })
   })
 
   const isALeadsCase = /a[\s-]*leads?/i.test(String(item?.caseUnit ?? item?.caseName ?? ''))
@@ -1080,8 +1077,7 @@ const revenueGenerated = computed(() => {
     const logRevenue = canonicalUnits * pricePerUnit;
     totalRevenue += logRevenue;
 
-    const rawAgentRates = logCase.agentRates || logCase.agentPrices || {};
-    const agentRate = Number(rawAgentRates[agentId]) || 0;
+    const agentRate = getStoredAgentRate(logCase, agentId);
     const logMyRateRevenue = agentRate > 0 ? canonicalUnits * agentRate : 0;
     totalMyRateRevenue += logMyRateRevenue;
 
@@ -1732,8 +1728,7 @@ const casesTableRows = computed(() => {
     const orderId = String(order._id ?? order.id ?? '');
     const myGoal = getScaledAgentGoalForMonth(order, agentId, dailyLogs.value || []);
     const pricePerUnit = Number(order?.pricePerUnit ?? 0);
-    const rawAgentRates = order?.agentRates || order?.agentPrices || {};
-    const agentRate = Number(rawAgentRates[agentId]) || 0;
+    const agentRate = getStoredAgentRate(order, agentId);
 
     // All logs for this agent & order within the current date range
     const myAgentOrderLogsRaw = stats.filter((log) => {
@@ -1766,7 +1761,7 @@ const casesTableRows = computed(() => {
     );
 
     // Team goal: use the order's total quantity (project goal)
-    const teamGoal = Number(order?.monthlyGoal ?? order?.totalQuantity ?? 0);
+    const teamGoal = getOrderMonthGoalUnits(order);
 
     // Team units: all agents' quantityCompleted for this order in the same date range,
     // with basic de-duplication to avoid double-counting identical logs.
@@ -1816,7 +1811,7 @@ const casesTableRows = computed(() => {
       myAgentUnits,
       teamGoal,
       teamUnits,
-      totalQuantity: Number(order?.monthlyGoal ?? order?.totalQuantity ?? 0),
+      totalQuantity: getOrderMonthGoalUnits(order),
       isMultiMonth,
       monthlyBreakdown,
       myRevenueGoal,
@@ -2007,16 +2002,6 @@ watch(casesTableRows, (rows) => {
   )
   expandedCaseRows.value = next
 })
-
-// Helper: check if agent is assigned to order (handles both object and string ID formats)
-function isAgentAssignedToOrder(order, agentId) {
-  if (!order?.assignedCallers || !Array.isArray(order.assignedCallers)) return false;
-  const aid = String(agentId);
-  return order.assignedCallers.some(caller => {
-    const callerId = caller?._id ?? caller?.id ?? caller;
-    return String(callerId) === aid;
-  });
-}
 
 // Function to fetch all case stats for the agent across all cases
 const fetchCaseStats = async () => {
@@ -2638,10 +2623,7 @@ function findOrdersForUser(allOrdersArray, agentId) {
   
   // Filter by agent first (most selective filter)
   const agentOrders = (allOrdersArray || []).filter(order =>
-    (order.assignedCallers || []).some(caller => {
-      const callerId = caller?._id ?? caller?.id ?? caller
-      return String(callerId) === wanted
-    })
+    isAgentAssignedToOrder(order, wanted)
   );
 
   // Early return if no date range

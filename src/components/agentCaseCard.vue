@@ -68,7 +68,7 @@
   // Import utilities
   import { adjustColorOpacity } from '../utils/Utils'
   import { formatSlashPair, formatCurrencyEUR, formatStatNumber } from '@/js/formatNumbers'
-  import { getScaledAgentGoalForMonth } from '@/js/statsUtils'
+  import { getScaledAgentGoalForMonth, getOrderMonthGoalUnits, getStoredAgentRate } from '@/js/statsUtils'
   
   export default {
     name: 'agentCaseCard',
@@ -170,7 +170,7 @@
 
       // Total project goal (for reference)
       const totalProjectGoal = computed(() => {
-        return Number(props.order?.monthlyGoal ?? props.order?.totalQuantity ?? 0);
+        return getOrderMonthGoalUnits(props.order);
       });
 
       const euro = new Intl.NumberFormat(undefined, { style: 'currency', currency: 'EUR' })
@@ -191,8 +191,7 @@
 
       // revenue completed for this agent on this order (from daily logs, using agent rate only)
       const totalAgentUnitsValue = computed(() => {
-        const rawAgentRates = props.order?.agentRates || props.order?.agentPrices || {}
-        const rateFromOrder = Number(rawAgentRates[myAgentId.value]) || 0
+        const rateFromOrder = getStoredAgentRate(props.order, myAgentId.value)
 
         const value = myAgentUnits.value * rateFromOrder
         console.log('Total agent units value (agent rate):', value)

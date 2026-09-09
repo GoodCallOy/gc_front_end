@@ -33,7 +33,7 @@
         </div>
       </div>
       <div>
-       <strong>{{ order.caseUnit }}:</strong> {{ formatSlashPair(totalUnits, order.monthlyGoal ?? order.totalQuantity) }}
+       <strong>{{ order.caseUnit }}:</strong> {{ formatSlashPair(totalUnits, monthGoalUnits) }}
       </div>
       <div>
         <strong>Start:</strong> {{ formatDate(order.startDate) }}
@@ -63,7 +63,7 @@
   // Import utilities
   import { adjustColorOpacity } from '../../utils/Utils'
   import { formatSlashPair, formatCurrencyEUR, formatStatNumber } from '@/js/formatNumbers'
-  import { ordersDashboardRevenueGoalEuros } from '@/js/statsUtils'
+  import { ordersDashboardRevenueGoalEuros, getOrderMonthGoalUnits } from '@/js/statsUtils'
   
   export default {
     name: 'DashboardCard01',
@@ -95,6 +95,8 @@
         if (Number.isFinite(v) && v >= 0) return v
         return ordersDashboardRevenueGoalEuros(props.order)
       })
+
+      const monthGoalUnits = computed(() => getOrderMonthGoalUnits(props.order))
 
       const totalAgentUnitsValue = computed(() => {
         if (
@@ -190,6 +192,7 @@
         formatCurrencyEUR,
         formatStatNumber,
         revenueGoalEuros,
+        monthGoalUnits,
         totalAgentUnitsValue,
         percentage,
         percentageClass,

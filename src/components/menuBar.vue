@@ -7,6 +7,7 @@ import axios from 'axios';
 import urls from '@/js/config.js'
 import { resolveLinkedGcAgent } from '@/js/resolveLinkedGcAgent.js'
 import { isOrderListedOnAgentDashboardForMonth, monthKeyFromDateRange } from '@/js/orderStatusUtils.js'
+import { isAgentAssignedToOrder } from '@/js/orderAuthority.js'
 
 const isDrawerOpen = ref(true);
 const isMobile = ref(false);
@@ -42,15 +43,6 @@ const dateRange = computed(() => store.getters['currentDateRange'] || store.stat
 const linkedGcAgent = computed(() =>
   resolveLinkedGcAgent(currentUser.value, gcAgents.value, { allowEmail: false })
 )
-
-function isAgentAssignedToOrder(order, agentId) {
-  const wanted = String(agentId || '')
-  if (!wanted) return false
-  return (order.assignedCallers || []).some((caller) => {
-    const callerId = caller?._id ?? caller?.id ?? caller
-    return String(callerId) === wanted
-  })
-}
 
 // Anyone can Google-login as role "caller". They only get Home / Charts /
 // Add Daily Log / weekly goal after they are linked by ID and assigned to a

@@ -4,6 +4,14 @@
  */
 
 import { orderSpansMultipleMonths, getCampaignRemainingUnits } from '@/js/statsUtils';
+import {
+  getCampaignGoalUnits,
+  getOrderMonthGoalUnits,
+  assignedCallerIds,
+  getStoredAgentGoal,
+  getStoredAgentRate,
+  buildAssignmentWriteFields,
+} from '@/js/orderAuthority.js';
 import { roundTo2Decimals } from '@/js/formatNumbers';
 import { buildMonthlyOrderStatusForNextMonth } from '@/js/orderStatusUtils';
 
@@ -24,27 +32,13 @@ export function toDateOnly(dateValue) {
 
 /** Full campaign unit goal from order, with optional gcCases fallback. */
 export function getOrderCampaignGoal(order, cases = []) {
-  const fromOrder = order?.campaignGoal ?? order?.campaign_goal;
-  if (fromOrder != null && fromOrder !== '') {
-    const n = Number(fromOrder);
-    if (n > 0) return n;
-  }
-  const caseId = order?.caseId?._id ?? order?.caseId?.id ?? order?.caseId;
-  if (caseId && cases?.length) {
-    const match = cases.find((c) => String(c._id ?? c.id) === String(caseId));
-    const fromCase = match?.campaignGoal ?? match?.campaign_goal;
-    if (fromCase != null && fromCase !== '') {
-      const n = Number(fromCase);
-      if (n > 0) return n;
-    }
-  }
-  return Number(order?.monthlyGoal ?? order?.totalQuantity) || 0;
+  return getCampaignGoalUnits(order, cases);
 }
 
 /** Campaign units still available for a multi-month order; null if not multi-month. */
 export function getRemainingMonthlyGoalForMultiMonthOrder(order, dailyLogs, cases = []) {
   const campaignGoal = getOrderCampaignGoal(order, cases);
-  const monthlyGoal = Number(order?.monthlyGoal ?? order?.totalQuantity) || 0;
+  const monthlyGoal = getOrderMonthGoalUnits(order);
   const isMultiMonth =
     Boolean(order?.isMultiMonth) ||
     orderSpansMultipleMonths(order) ||
@@ -59,12 +53,7 @@ export function getRemainingMonthlyGoalForMultiMonthOrder(order, dailyLogs, case
 
 /** Full campaign unit goal from order (not “remaining”). */
 export function getCampaignGoalFromOrder(order) {
-  const fromOrder = order?.campaignGoal ?? order?.campaign_goal;
-  if (fromOrder != null && fromOrder !== '') {
-    const n = Number(fromOrder);
-    if (n > 0) return n;
-  }
-  return Number(order?.monthlyGoal ?? order?.totalQuantity) || 0;
+  return getCampaignGoalUnits(order);
 }
 
 /**
@@ -108,11 +97,7 @@ export function resolveOrderCopyFields(
 }
 
 export function normalizeAssignedCallerIds(order) {
-  return [
-    ...new Set(
-      (order?.assignedCallers || []).map((x) => String(x?._id ?? x?.id ?? x)).filter(Boolean)
-    ),
-  ];
+  return assignedCallerIds(order);
 }
 
 export function normalizeManagerIds(order) {
@@ -127,19 +112,24 @@ export function normalizeManagerIds(order) {
 }
 
 export function copyAgentMaps(order, remainingUnits) {
-  const agentGoals = { ...(order?.agentGoals || {}) };
-  const rates = order?.agentRates || order?.agentPrices || {};
-  const agentRates = { ...rates };
-  const agentPrices = { ...(order?.agentPrices || order?.agentRates || {}) };
+  const ids = assignedCallerIds(order);
+  const agentGoals = {};
+  const agentRates = {};
+  const agentPrices = {};
+  ids.forEach((id) => {
+    const rate = getStoredAgentRate(order, id);
+    agentGoals[id] = getStoredAgentGoal(order, id);
+    agentRates[id] = rate;
+    agentPrices[id] = rate;
+  });
 
   const cap = Number(remainingUnits);
   if (Number.isFinite(cap) && cap >= 0) {
-    const totalAssigned = Object.values(agentGoals).reduce((s, v) => s + (Number(v) || 0), 0);
+    const totalAssigned = ids.reduce((s, id) => s + (Number(agentGoals[id]) || 0), 0);
     if (totalAssigned > cap && totalAssigned > 0) {
       const scale = cap / totalAssigned;
       const scaled = {};
       let running = 0;
-      const ids = Object.keys(agentGoals);
       ids.forEach((id, index) => {
         if (index === ids.length - 1) {
           scaled[id] = roundTo2Decimals(Math.max(0, cap - running));
@@ -188,7 +178,15 @@ export function buildOrderCopyPayload(order, copyFields, extra = {}) {
   const campaign = Number(campaignGoal) ?? monthly;
   const assignedIds = normalizeAssignedCallerIds(order);
   const managerIds = normalizeManagerIds(order);
-  const { agentGoals, agentRates, agentPrices } = copyAgentMaps(order, monthly);
+  const { agentGoals, agentRates } = copyAgentMaps(order, monthly);
+  const assignmentFields = buildAssignmentWriteFields(
+    assignedIds.map((id) => ({
+      id,
+      name: resolveAgentName(agents, id),
+      goal: Number(agentGoals[id]) || 0,
+      rate: Number(agentRates[id]) || 0,
+    }))
+  );
 
   return {
     caseId: order?.caseId || null,
@@ -215,9 +213,7 @@ export function buildOrderCopyPayload(order, copyFields, extra = {}) {
       extra.targetMonthStart ?? startDate,
       sourceMonthStart ?? order?.startDate
     ),
-    agentGoals,
-    agentRates,
-    agentPrices,
+    ...assignmentFields,
     assignedCallers: assignedIds.map((id) => ({
       id,
       name: resolveAgentName(agents, id),
@@ -239,6 +235,7 @@ export function buildOrderCopyPrefill(order, copyFields, extra = {}) {
   } = copyFields;
   const { sourceMonthStart } = extra;
   const assignedIds = normalizeAssignedCallerIds(order);
+  const monthly = Number(monthlyGoal) || 0;
   const { agentGoals, agentRates } = copyAgentMaps(order, monthly);
   const agentGoalsPrefill = {};
   const agentRatesPrefill = {};
@@ -248,7 +245,6 @@ export function buildOrderCopyPrefill(order, copyFields, extra = {}) {
   });
 
   const price = Number(order?.pricePerUnit) || 0;
-  const monthly = Number(monthlyGoal) || 0;
   const campaign = Number(campaignGoal) ?? monthly;
 
   return {

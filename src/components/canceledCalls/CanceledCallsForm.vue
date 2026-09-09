@@ -104,6 +104,7 @@ import { ref, computed, watch } from 'vue'
 import { useStore } from 'vuex'
 import axios from 'axios'
 import urls from '@/js/config.js'
+import { isAgentAssignedToOrder } from '@/js/orderAuthority.js'
 
 const props = defineProps({
   editItem: { type: Object, default: null },
@@ -130,7 +131,7 @@ const caseOptions = computed(() => {
   const range = currentDateRange.value
   let filtered = list.filter((o) => {
     if (!o.caseName) return false
-    const isAssigned = (o.assignedCallers || []).some((x) => String(x?._id ?? x?.id ?? x) === agentId)
+    const isAssigned = isAgentAssignedToOrder(o, agentId)
     if (!isAssigned) return false
     if (!range || !Array.isArray(range) || range.length < 2) return true
     const monthStart = new Date(range[0])

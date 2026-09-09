@@ -196,7 +196,7 @@
                 </div>
               </template>
               <template #item.monthlyGoal="{ item: rowItem }">
-                {{ rowItem.monthlyGoal ?? rowItem.totalQuantity ?? '—' }}
+                {{ getOrderMonthGoalUnits(rowItem) || '—' }}
               </template>
               <template #item.goalsDistributed="{ item: rowItem }">
                 {{ getDistributedGoals(rowItem) }}
@@ -581,7 +581,17 @@ import {
   groupOrderCampaignsForMonthView,
   getScaledAgentGoalForMonth,
   getDistributedAssignedGoals,
+  getOrderMonthGoalUnits,
 } from '@/js/statsUtils';
+import {
+  getStoredAgentGoal,
+  getStoredAgentRate,
+  isAgentAssignedToOrder,
+  getCampaignGoalUnits,
+  assignedCallerIds,
+  buildAssignmentWriteFields,
+  getOrderAssignmentSnapshot,
+} from '@/js/orderAuthority.js'
 import DateHeader from '@/components/DateHeader.vue';
 import OrderForm from '@/components/orders/OrderForm.vue';
 import axios from 'axios'
@@ -1044,13 +1054,11 @@ const hasGoalChanges = computed(() => {
   const ord = selectedOrder.value;
   if (!ord || !ord.agentSummary) return false;
 
-  const originalGoals = ord.agentGoals || {};
-  const originalRates = ord.agentRates || {};
   return ord.agentSummary.some(a => {
     const newGoal = Number(a.goalForThisOrder) || 0;
-    const oldGoal = Number(originalGoals[a.id]) || 0;
+    const oldGoal = Number(getStoredAgentGoal(ord, a.id)) || 0;
     const newRate = Number(a.rateForThisOrder) || 0;
-    const oldRate = Number(originalRates[a.id]) || 0;
+    const oldRate = Number(getStoredAgentRate(ord, a.id)) || 0;
     return newGoal !== oldGoal || newRate !== oldRate;
   });
 });
@@ -1089,7 +1097,7 @@ function resolveOrderForEdit(orderLike) {
     monthlyBreakdown,
   }
   const campaignGoal = getDisplayGoal(enriched)
-  const storedMonthly = Number(enriched.monthlyGoal ?? enriched.totalQuantity) || 0
+  const storedMonthly = getOrderMonthGoalUnits(enriched)
   const shouldSuggestRemaining =
     isMultiMonth || (campaignGoal > storedMonthly && campaignGoal > 0)
   const suggestedMonthlyGoal = shouldSuggestRemaining
@@ -1552,8 +1560,7 @@ function overlapsMonth(order, from, to) {
 }
 
 function agentIsAssignedToOrder(order, agentId) {
-  const aid = String(agentId)
-  return (order?.assignedCallers || []).some((x) => String(x?._id ?? x?.id ?? x) === aid)
+  return isAgentAssignedToOrder(order, agentId)
 }
 
 /** Assigned cases for an agent in the viewed month (pending + in-progress), one row per campaign. */
@@ -1629,21 +1636,7 @@ function getMonthlyPercentageToGoalClass(order, month) {
 }
 
 function getDisplayGoal(order) {
-  const fromOrder = order?.campaignGoal ?? order?.campaign_goal
-  if (fromOrder != null && fromOrder !== '') {
-    const n = Number(fromOrder)
-    if (n > 0) return n
-  }
-  const caseId = order?.caseId?._id ?? order?.caseId?.id ?? order?.caseId
-  if (caseId && cases.value?.length) {
-    const c = cases.value.find(x => String(x._id ?? x.id) === String(caseId))
-    const fromCase = c?.campaignGoal ?? c?.campaign_goal
-    if (fromCase != null && fromCase !== '') {
-      const n = Number(fromCase)
-      if (n > 0) return n
-    }
-  }
-  return Number(order?.monthlyGoal ?? order?.totalQuantity) || 0
+  return getCampaignGoalUnits(order, cases.value || [])
 }
 
 /** Sum quantityCompleted for calendar months strictly before beforeMonthKey (YYYY-MM). */
@@ -1764,25 +1757,14 @@ const selectOrder = async (order, event) => {
     selectedOrder.value.agentSummary = [];
 
     const orderId   = String(selectedOrder.value._id);
-    const goalsObj  = selectedOrder.value.agentGoals || {};
-    const ratesObj  = selectedOrder.value.agentRates || {};
-    const pricesObj = selectedOrder.value.agentPrices || {};
-    const assignments = Array.isArray(selectedOrder.value.agentAssignments)
-      ? selectedOrder.value.agentAssignments
-      : [];
-    const assignedIds = [...new Set(
-      (selectedOrder.value.assignedCallers || []).map(x => String(x?._id ?? x?.id ?? x))
-    )];
+    const assignedIds = assignedCallerIds(selectedOrder.value)
     const agentsById = new Map(
       (gcAgents.value || []).map((a) => [String(a._id ?? a.id), a])
     );
 
     console.log('[AssignGoals] Incoming agent data sources', {
-      goalsObj,
-      ratesObj,
-      pricesObj,
-      assignments,
       assignedIds,
+      snapshot: getOrderAssignmentSnapshot(selectedOrder.value),
     });
 
     // Determine this month key (YYYY-MM) for monthly revenue goals
@@ -1804,20 +1786,8 @@ const selectOrder = async (order, event) => {
         0
       );
 
-      const goalForThisOrder = Number(goalsObj[agentId]) || 0;
-      const rateFromMap = Number(ratesObj[agentId]) || 0;
-      const rateFromAssignments = Number(assignments.find(a => String(a.id) === agentId)?.rate) || 0;
-      const rateFromPrices = Number(pricesObj[agentId]) || 0;
-      const rateForThisOrder = rateFromMap || rateFromAssignments || rateFromPrices || 0;
-
-      console.log('[AssignGoals] Agent rate resolution', {
-        agentId,
-        name,
-        rateFromMap,
-        rateFromAssignments,
-        rateFromPrices,
-        chosenRate: rateForThisOrder,
-      });
+      const goalForThisOrder = getStoredAgentGoal(selectedOrder.value, agentId)
+      const rateForThisOrder = getStoredAgentRate(selectedOrder.value, agentId)
 
       // Completed units: compute from dailyLogs for the current month + order + agent
       let completedUnitsForThisOrderInt = 0;
@@ -1916,15 +1886,7 @@ const assignGoals = async () => {
     const summary = selectedOrder.value.agentSummary || [];
     const updatedOrder = {
       ...selectedOrder.value,
-      agentGoals: Object.fromEntries(summary.map(a => [a.id, Number(a.goalForThisOrder) || 0])),
-      agentRates: Object.fromEntries(summary.map(a => [a.id, Number(a.rateForThisOrder) || 0])),
-      agentPrices: Object.fromEntries(summary.map(a => [a.id, Number(a.rateForThisOrder) || 0])),
-      agentAssignments: summary.map(a => ({
-        id: a.id,
-        name: a.name,
-        goal: Number(a.goalForThisOrder) || 0,
-        rate: Number(a.rateForThisOrder) || 0,
-      })),
+      ...buildAssignmentWriteFields(summary),
     };
     // Send the update request
     console.log('Updating order with goals:', updatedOrder);

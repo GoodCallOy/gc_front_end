@@ -112,7 +112,8 @@ import {
 import { Bar, Doughnut } from 'vue-chartjs'
 import ChartDataLabels from 'chartjs-plugin-datalabels'
 import { goToNextMonth, goToPreviousMonth, formattedDateRange, getMonthWeeks } from '@/js/dateUtils'
-import { fetchAgentgoalsByAgentAndMonth } from '@/js/statsUtils'
+import { fetchAgentgoalsByAgentAndMonth, getOrderMonthGoalUnits, getStoredAgentGoal } from '@/js/statsUtils'
+import { isAgentAssignedToOrder } from '@/js/orderAuthority.js'
 import { resolveLinkedGcAgent } from '@/js/resolveLinkedGcAgent.js'
 import { formatStatNumber } from '@/js/formatNumbers'
 
@@ -171,7 +172,7 @@ const caseOptions = computed(() => {
   monthEnd.setHours(23, 59, 59, 999)
 
   const agentOrders = (orders.value || []).filter((o) => {
-    if (!(o.assignedCallers || []).some((x) => String(x?._id ?? x?.id ?? x) === agentId)) return false
+    if (!isAgentAssignedToOrder(o, agentId)) return false
     const orderStart = new Date(o?.startDate || 0)
     const orderEnd = new Date(o?.deadline || 0)
     return orderStart <= monthEnd && orderEnd >= monthStart
@@ -228,11 +229,11 @@ const donutChartData = computed(() => {
       'rgba(121, 85, 72, 0.8)',
     ]
 
-    const casesWithGoal = cases.filter((o) => (Number(o?.agentGoals?.[agentId] ?? 0) || 0) > 0)
+    const casesWithGoal = cases.filter((o) => (getStoredAgentGoal(o, agentId) || 0) > 0)
     if (!casesWithGoal.length) return emptyDonutData
 
     const labels = casesWithGoal.map((o) => o.caseName || o.caseId || 'Unknown')
-    const data = casesWithGoal.map((o) => Number(o?.agentGoals?.[agentId] ?? 0) || 0)
+    const data = casesWithGoal.map((o) => getStoredAgentGoal(o, agentId) || 0)
     const backgroundColor = casesWithGoal.map((_, i) => DONUT_COLORS[i % DONUT_COLORS.length])
 
     return {
@@ -371,10 +372,7 @@ async function loadReportData() {
 
     // Agent's assigned orders (for team goals)
     let agentOrders = (orders.value || []).filter(
-      (o) =>
-        (o.assignedCallers || []).some(
-          (x) => String(x?._id ?? x?.id ?? x) === agentId
-        )
+      (o) => isAgentAssignedToOrder(o, agentId)
     )
 
     // Filter by selected case
@@ -407,7 +405,7 @@ async function loadReportData() {
 
     // Team goal per week: sum of (totalQuantity/numWeeks) for orders agent is in
     for (const order of agentOrders) {
-      const teamQty = Number(order?.monthlyGoal ?? order?.totalQuantity ?? 0)
+      const teamQty = getOrderMonthGoalUnits(order)
       const perWeek = teamQty / numWeeks
       for (const [, bucket] of weekBuckets) {
         bucket.teamGoal += perWeek
@@ -441,7 +439,7 @@ async function loadReportData() {
     // If no weekly goals, use monthly agentGoals from orders as fallback (divided by weeks)
     if (weeklyGoals.length === 0) {
       for (const order of agentOrders) {
-        const myGoal = Number(order?.agentGoals?.[agentId] ?? 0)
+        const myGoal = getStoredAgentGoal(order, agentId)
         const perWeek = myGoal / numWeeks
         for (const [, bucket] of weekBuckets) {
           bucket.agentGoal += perWeek

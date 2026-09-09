@@ -38,6 +38,7 @@ import { ref, onMounted } from 'vue'
 import axios from 'axios'
 import urls from '@/js/config.js'
 import { formatSlashPair, formatStatNumber } from '@/js/formatNumbers'
+import { getOrderMonthGoalUnits } from '@/js/orderAuthority.js'
 
 const props = defineProps({
   orderId: {
@@ -59,7 +60,7 @@ onMounted(async () => {
   try {
     const res = await axios.get(`${urls.backEndURL}/orders/${props.orderId}/progress`)
     progressData.value = res.data.assignedCallers
-    totalQuantity.value = res.data.monthlyGoal ?? res.data.totalQuantity
+    totalQuantity.value = getOrderMonthGoalUnits(res.data)
   } catch (err) {
     console.error('Failed to load order progress:', err)
   }
