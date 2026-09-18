@@ -326,12 +326,11 @@ const tableRowsFromOrders = computed(() => {
 
       // Placeholders for now; will be computed from logs/orders per month later
       const goalMissing = Math.max(monthGoal - totalCompleted, 0)
-      // Fees/prices: invoice price from order.pricePerUnit, start fee from order
+      // Fees are shown in their own columns; revenue totals are call work only.
       const projectStartFee = Number(o.ProjectStartFee || o.projectStartFee || 0)
       const invoicePrice = Number(o.pricePerUnit || caseMeta.invoicePrice || 0)
       const projectManagementFee = Number(o.ProjectManagmentFee || o.projectManagementFee || 0)
-      // Total price = Start Fee + Management Fee + Revenue Goal (per spec)
-      const totalPrice = projectStartFee + projectManagementFee + revenueGoal
+      const totalPrice = revenueGoal
 
       rows.push({
         caseType,

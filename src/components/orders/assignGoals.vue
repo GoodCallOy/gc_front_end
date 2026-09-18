@@ -9,7 +9,7 @@
       @next="getNextMonth"
     />
 
-    <v-card elevation="1" class="mb-4">
+    <v-card elevation="1" class="mb-4 assign-goals-action-bar">
         <div class="d-flex align-center justify-space-around responsive-toolbar flex-wrap" style="gap: 12px;">
 
             <v-btn color="primary" @click="openAddAgentModal">
@@ -203,6 +203,15 @@
               </template>
               <template #item.campaignGoal="{ item: rowItem }">
                 {{ getCampaignGoalDisplay(rowItem) }}
+              </template>
+              <template #item.campaignEstimatedRevenue="{ item: rowItem }">
+                {{ formatCurrencyEUR(campaignEstimatedRevenueEuros(rowItem, cases || [])) }}
+              </template>
+              <template #item.fees="{ item: rowItem }">
+                {{ formatCurrencyEUR(getOrderFeeEuros(rowItem)) }}
+              </template>
+              <template #item.totalMonthRevenue="{ item: rowItem }">
+                {{ formatCurrencyEUR(campaignTotalRevenueWithFeesEuros(rowItem, cases || [])) }}
               </template>
               <template #item.goalsRemaining="{ item: rowItem }">
                 <span :class="{ 'text-primary font-weight-medium': getRemainingGoals(rowItem) > 0 }" :title="getRemainingGoals(rowItem) > 0 ? t('assignGoals.goalsRemainingTooltip') : ''">
@@ -591,6 +600,9 @@ import {
   assignedCallerIds,
   buildAssignmentWriteFields,
   getOrderAssignmentSnapshot,
+  campaignEstimatedRevenueEuros,
+  getOrderFeeEuros,
+  campaignTotalRevenueWithFeesEuros,
 } from '@/js/orderAuthority.js'
 import DateHeader from '@/components/DateHeader.vue';
 import OrderForm from '@/components/orders/OrderForm.vue';
@@ -1023,6 +1035,9 @@ const orderHeaders = computed(() => [
   { title: t('assignGoals.tableHeaders.caseName'), key: 'caseName', minWidth: '180px' },
   { title: t('assignGoals.tableHeaders.totalGoals'), key: 'monthlyGoal' },
   { title: t('assignGoals.tableHeaders.campaignGoal'), key: 'campaignGoal', sortable: false },
+  { title: t('assignGoals.tableHeaders.campaignEstimatedRevenue'), key: 'campaignEstimatedRevenue', sortable: false },
+  { title: t('assignGoals.tableHeaders.fees'), key: 'fees', sortable: false },
+  { title: t('assignGoals.tableHeaders.totalMonthRevenue'), key: 'totalMonthRevenue', sortable: false },
   { title: t('assignGoals.tableHeaders.goalsDistributed'), key: 'goalsDistributed', sortable: false },
   { title: t('assignGoals.tableHeaders.goalsRemaining'), key: 'goalsRemaining', sortable: false },
   { title: t('assignGoals.tableHeaders.priceUnit'), key: 'caseUnit' },
@@ -2030,12 +2045,18 @@ watch(currentDateRange, loadMonthWeeks, { deep: true })
     max-height: calc(100vh - 280px);
     overflow: auto;
   }
+  .assign-goals .assign-goals-action-bar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: rgb(var(--v-theme-surface));
+  }
   .assign-goals .assign-goals-agent-panel {
     display: flex;
     flex-direction: column;
     align-self: flex-start;
     position: sticky;
-    top: 12px;
+    top: 72px;
     max-height: calc(100vh - 280px);
     min-height: 320px;
   }

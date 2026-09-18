@@ -25,6 +25,7 @@ import {
   getStoredAgentGoal,
   getStoredAgentRate,
   getOrderMonthGoalUnits,
+  getDistributedAssignedGoals,
 } from '@/js/statsUtils.js'
 
 export function isAgentAssignedToOrder(order, agentId) {
@@ -50,6 +51,26 @@ export function getCampaignGoalUnits(order, cases = []) {
     }
   }
   return getOrderMonthGoalUnits(order)
+}
+
+/** Project start + management fees (€). */
+export function getOrderFeeEuros(order) {
+  const start = Number(order?.ProjectStartFee ?? order?.projectStartFee ?? 0)
+  const management = Number(order?.ProjectManagmentFee ?? order?.projectManagementFee ?? 0)
+  return (Number.isFinite(start) ? start : 0) + (Number.isFinite(management) ? management : 0)
+}
+
+/** Campaign call-work €: campaign units × price, never less than assigned units × price. */
+export function campaignEstimatedRevenueEuros(order, cases = []) {
+  const price = Number(order?.pricePerUnit) || 0
+  const campaignUnits = Number(getCampaignGoalUnits(order, cases)) || 0
+  const assignedUnits = Number(getDistributedAssignedGoals(order)) || 0
+  return Math.max(campaignUnits, assignedUnits) * price
+}
+
+/** Campaign estimated revenue plus fees. */
+export function campaignTotalRevenueWithFeesEuros(order, cases = []) {
+  return campaignEstimatedRevenueEuros(order, cases) + getOrderFeeEuros(order)
 }
 
 /** Snapshot Assign Goals uses when editing one campaign. */

@@ -63,16 +63,16 @@
         required
       />
 
-      <!-- Monthly revenue goals for multi-month orders -->
+      <!-- Monthly revenue goals: call work € (units × price), same for each month in range -->
       <div v-if="monthlyGoalMonths.length" class="mt-4">
         <div class="text-subtitle-2 mb-2">{{ t('assignGoals.formLabels.monthlyRevenueGoals') }}</div>
         <v-row>
           <v-col v-for="month in monthlyGoalMonths" :key="month.monthKey" cols="12" sm="6">
             <v-text-field
-              v-model.number="form.monthlyRevenueGoals[month.monthKey]"
+              :model-value="monthlyCallWorkEuros"
               :label="`${month.year}-${String(month.month).padStart(2, '0')}`"
               type="number"
-              min="0"
+              readonly
             />
           </v-col>
         </v-row>
@@ -199,7 +199,7 @@ import axios from 'axios'
 import urls from '@/js/config.js'
 import { getOrderMonths, orderSpansMultipleMonths, calculateMonthlyProgress } from '@/js/statsUtils'
 import { getStoredAgentGoal, getStoredAgentRate, assignedCallerIds, getOrderMonthGoalUnits, getCampaignGoalUnits, buildAssignmentWriteFields } from '@/js/orderAuthority.js'
-import { formatSlashPair } from '@/js/formatNumbers'
+import { formatSlashPair, roundTo2Decimals } from '@/js/formatNumbers'
 import { getRemainingMonthlyGoalForMultiMonthOrder } from '@/js/orderCopyUtils'
 
 const { t } = useI18n()
@@ -286,17 +286,46 @@ const managerOptions = computed(() =>
 const caseOptions = computed(() => (cases.value || []).map(c => ({ value: c._id, title: c.name })))
 const dailyLogs = computed(() => store.getters['dailyLogs'] || [])
 
+const assignedGoalsCount = computed(() =>
+  (form.assignedCallers || []).reduce((sum, id) => sum + (Number(agentGoals[id]) || 0), 0)
+)
+
+/** Campaign-lifetime call-work €: campaign units × price (falls back to monthly units). */
 const estimatedRevenue = computed(() => {
   const p = parseFloat(form.pricePerUnit)
-  const q = parseFloat(form.totalQuantity)
-  return isNaN(p) || isNaN(q) ? '' : (p * q).toFixed(2)
+  if (isNaN(p)) return ''
+  const campaign = parseFloat(form.campaignGoal)
+  const monthly = parseFloat(form.totalQuantity)
+  const units = (!isNaN(campaign) && campaign > 0) ? campaign : monthly
+  if (isNaN(units)) return ''
+  const n = Math.max(p * units, p * (Number(assignedGoalsCount.value) || 0))
+  if (!Number.isFinite(n) || n < 0) return ''
+  return roundTo2Decimals(n).toFixed(2)
 })
 
 watch(estimatedRevenue, (val) => { form.estimatedRevenue = val })
 
-const assignedGoalsCount = computed(() =>
-  (form.assignedCallers || []).reduce((sum, id) => sum + (Number(agentGoals[id]) || 0), 0)
-)
+/** Call-work € for a month: max(monthly units × price, assigned units × price). No fees. */
+const monthlyCallWorkEuros = computed(() => {
+  const p = parseFloat(form.pricePerUnit)
+  const q = parseFloat(form.totalQuantity)
+  if (isNaN(p) || isNaN(q)) return ''
+  const n = Math.max(p * q, p * (Number(assignedGoalsCount.value) || 0))
+  if (!Number.isFinite(n) || n < 0) return ''
+  return roundTo2Decimals(n).toFixed(2)
+})
+
+function syncMonthlyRevenueGoals() {
+  const months = monthlyGoalMonths.value || []
+  const euros = monthlyCallWorkEuros.value
+  const next = {}
+  for (const month of months) {
+    const key = month.monthKey
+    if (!key) continue
+    next[key] = euros === '' ? 0 : Number(euros) || 0
+  }
+  form.monthlyRevenueGoals = next
+}
 
 const monthlyGoalMonths = computed(() => {
   if (!form.startDate || !form.deadline) return []
@@ -306,6 +335,8 @@ const monthlyGoalMonths = computed(() => {
     return []
   }
 })
+
+watch([monthlyGoalMonths, monthlyCallWorkEuros], syncMonthlyRevenueGoals, { immediate: true })
 
 const isFormValid = computed(() => {
   const hasBasic = form.caseId && form.caseUnit && form.startDate && form.deadline &&
@@ -420,6 +451,7 @@ async function submitForm() {
   saveMessage.value = ''
 
   try {
+    syncMonthlyRevenueGoals()
     const selectedCase = (cases.value || []).find(c => (c._id ?? c.id) === form.caseId)
     const { totalQuantity, ...formRest } = form
     const orderStatus = form.orderStatus || 'in-progress'
