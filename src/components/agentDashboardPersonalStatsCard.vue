@@ -23,17 +23,90 @@
               }"
             />
           </div>
-          <div class="kpi-subtitle text-medium-emphasis">{{ card.subtitle }}</div>
+          <div v-if="card.breakdownKind" class="kpi-breakdown-slot">
+            <v-btn
+              variant="text"
+              density="compact"
+              size="x-small"
+              class="pa-0 mt-n1 text-none kpi-breakdown-btn"
+              @click="toggleBreakdown(idx)"
+            >
+              {{ openKpiBreakdownIndex === idx ? t('ordersDashboard.charts.hideBreakdown') : t('ordersDashboard.charts.showBreakdown') }}
+            </v-btn>
+          </div>
+          <div v-else class="kpi-subtitle text-medium-emphasis">{{ card.subtitle }}</div>
         </v-card-text>
       </v-card>
     </div>
+
+    <v-expand-transition>
+      <div v-if="openKpiBreakdownIndex != null" key="kpi-breakdown">
+        <v-card class="mt-3 revenue-summary breakdown-table-card" elevation="2" rounded="lg">
+          <v-card-text class="pa-3">
+            <div class="text-caption font-weight-bold mb-2">{{ activeBreakdownTitle }}</div>
+            <v-table v-if="activeBreakdownKind === 'estimated'" density="compact" class="text-caption">
+              <thead>
+                <tr>
+                  <th class="text-left">{{ t('ordersDashboard.charts.breakdownCaseType') }}</th>
+                  <th class="text-left">{{ t('ordersDashboard.charts.breakdownCase') }}</th>
+                  <th class="text-left">{{ t('ordersDashboard.charts.breakdownStatus') }}</th>
+                  <th class="text-right">{{ t('ordersDashboard.charts.breakdownGoal') }}</th>
+                  <th class="text-right">{{ t('ordersDashboard.charts.breakdownPerUnit') }}</th>
+                  <th class="text-right">{{ t('ordersDashboard.charts.breakdownRevenue') }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="(row, i) in monthlyGoalBreakdown"
+                  :key="row.orderId || i"
+                  :class="breakdownRowClass(row)"
+                  @click="selectOrder(row.orderId)"
+                >
+                  <td>{{ row.caseType }}</td>
+                  <td class="breakdown-case-link">{{ row.caseName }}</td>
+                  <td>{{ row.status }}</td>
+                  <td class="text-right">{{ formatUnitsByCaseUnit(row.monthlyGoal, row.caseUnit) }}</td>
+                  <td class="text-right">{{ Number(row.pricePerUnit || 0).toFixed(2) }}</td>
+                  <td class="text-right">{{ formatCurrencyEUR(row.revenue) }}</td>
+                </tr>
+              </tbody>
+            </v-table>
+            <v-table v-else-if="activeBreakdownKind === 'current'" density="compact" class="text-caption">
+              <thead>
+                <tr>
+                  <th class="text-left">{{ t('ordersDashboard.charts.breakdownCaseType') }}</th>
+                  <th class="text-left">{{ t('ordersDashboard.charts.breakdownCase') }}</th>
+                  <th class="text-right">{{ t('ordersDashboard.charts.breakdownQuantity') }}</th>
+                  <th class="text-right">{{ t('ordersDashboard.charts.breakdownPerUnit') }}</th>
+                  <th class="text-right">{{ t('ordersDashboard.charts.breakdownRevenue') }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="(row, i) in resultsNowBreakdown"
+                  :key="row.orderId || i"
+                  :class="breakdownRowClass(row)"
+                  @click="selectOrder(row.orderId)"
+                >
+                  <td>{{ row.caseType }}</td>
+                  <td class="breakdown-case-link">{{ row.caseName }}</td>
+                  <td class="text-right">{{ formatUnitsByCaseUnit(row.quantityCompleted, row.caseUnit) }}</td>
+                  <td class="text-right">{{ Number(row.pricePerUnit || 0).toFixed(2) }}</td>
+                  <td class="text-right">{{ formatCurrencyEUR(row.revenue) }}</td>
+                </tr>
+              </tbody>
+            </v-table>
+          </v-card-text>
+        </v-card>
+      </div>
+    </v-expand-transition>
   </div>
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { formatStatNumber, formatCurrencyEUR } from '@/js/formatNumbers';
+import { formatStatNumber, formatCurrencyEUR, formatUnitsByCaseUnit } from '@/js/formatNumbers';
 
 const props = defineProps({
   monthlyGoalEuros: {
@@ -56,9 +129,36 @@ const props = defineProps({
     type: [String, Number],
     required: true,
   },
+  monthlyGoalBreakdown: {
+    type: Array,
+    default: () => [],
+  },
+  resultsNowBreakdown: {
+    type: Array,
+    default: () => [],
+  },
 });
 
+const emit = defineEmits(['select-order']);
+
 const { t } = useI18n();
+const openKpiBreakdownIndex = ref(null);
+
+function toggleBreakdown(idx) {
+  openKpiBreakdownIndex.value = openKpiBreakdownIndex.value === idx ? null : idx;
+}
+
+function breakdownRowClass(row) {
+  return {
+    'breakdown-row-link': !!row?.orderId,
+    'bg-grey-lighten-4': row?.included === false,
+  };
+}
+
+function selectOrder(orderId) {
+  if (!orderId) return;
+  emit('select-order', orderId);
+}
 
 const kpiCards = computed(() => {
   const goal = Number(props.monthlyGoalEuros) || 0;
@@ -74,6 +174,7 @@ const kpiCards = computed(() => {
       progress: goal > 0 ? 100 : 0,
       barColor: '#90a4ae',
       subtitle: goal > 0 ? t('ordersDashboard.charts.kpiEstimatedHint') : '',
+      breakdownKind: 'estimated',
     },
     {
       title: t('agentDashboard.personalResultsNow'),
@@ -84,6 +185,7 @@ const kpiCards = computed(() => {
         goal > 0
           ? `${formatStatNumber(pctOfGoal)}% ${t('agentDashboard.ofMonthlyGoal')}`
           : '',
+      breakdownKind: 'current',
     },
     {
       title: t('agentDashboard.personalHoursWorked'),
@@ -107,6 +209,24 @@ const kpiCards = computed(() => {
       subtitle: '',
     },
   ];
+});
+
+const activeBreakdownCard = computed(() => {
+  const idx = openKpiBreakdownIndex.value;
+  if (idx == null || idx < 0) return null;
+  return kpiCards.value[idx] || null;
+});
+
+const activeBreakdownKind = computed(() => activeBreakdownCard.value?.breakdownKind || null);
+
+const activeBreakdownTitle = computed(() => {
+  if (activeBreakdownKind.value === 'estimated') {
+    return t('agentDashboard.breakdownTitleMonthlyGoal');
+  }
+  if (activeBreakdownKind.value === 'current') {
+    return t('agentDashboard.breakdownTitleResultsNow');
+  }
+  return '';
 });
 </script>
 
@@ -175,6 +295,17 @@ const kpiCards = computed(() => {
   overflow: hidden;
 }
 
+.kpi-breakdown-slot {
+  min-height: 1.2rem;
+}
+
+.kpi-breakdown-btn {
+  min-width: 0;
+  font-size: 0.65rem;
+  letter-spacing: normal;
+  height: auto !important;
+}
+
 .kpi-progress-track {
   height: 6px;
   border-radius: 999px;
@@ -186,5 +317,24 @@ const kpiCards = computed(() => {
   height: 100%;
   border-radius: 999px;
   transition: width 0.25s ease;
+}
+
+.revenue-summary.breakdown-table-card {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border: 1px solid #dee2e6;
+}
+
+.breakdown-row-link {
+  cursor: pointer;
+}
+
+.breakdown-row-link:hover td {
+  background-color: rgba(var(--v-theme-primary), 0.08);
+}
+
+.breakdown-case-link {
+  color: rgb(var(--v-theme-primary));
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 </style>

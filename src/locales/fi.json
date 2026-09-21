@@ -327,6 +327,8 @@
       "personalCallsMade": "Tehdyt soitot",
       "personalCallsMadeHint": "Lähtevät puhelut tässä kuussa",
       "ofMonthlyGoal": "kuukausitavoitteesta",
+      "breakdownTitleMonthlyGoal": "Kuukausitavoite tapauksittain",
+      "breakdownTitleResultsNow": "Tulos nyt tapauksittain",
       "totalRevenue": "Kokonaisliikevaihto",
       "myTotalRevenue": "Oma kokonaisliikevaihto",
       "revenueToGoal": "Liikevaihto tavoitteeseen",

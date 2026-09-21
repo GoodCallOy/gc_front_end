@@ -344,6 +344,8 @@
       "personalCallsMade": "Calls made",
       "personalCallsMadeHint": "Outgoing calls this month",
       "ofMonthlyGoal": "of monthly goal",
+      "breakdownTitleMonthlyGoal": "Monthly goal by case",
+      "breakdownTitleResultsNow": "Results now by case",
       "totalRevenue": "Total Revenue",
       "myTotalRevenue": "My Total Revenue",
       "revenueToGoal": "Revenue to Goal",

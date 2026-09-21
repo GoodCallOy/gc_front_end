@@ -139,7 +139,7 @@
 <script>
 import { mapGetters, mapMutations, mapActions } from 'vuex';
 import { goToNextMonth, goToPreviousMonth, formattedDateRange, isCurrentMonth } from '@/js/dateUtils';
-import { formatStatNumber } from '@/js/formatNumbers';
+import { formatUnitsByCaseUnit } from '@/js/formatNumbers';
 import { getPercentageToGoalVuetifyColor } from '@/js/percentageToGoalStyle';
 import { isOrderEligibleForAgentGoalsForMonth, monthKeyFromDateRange } from '@/js/orderStatusUtils';
 import { getScaledAgentGoalForMonth, getStoredAgentGoal } from '@/js/statsUtils';
@@ -250,17 +250,6 @@ function caseProgressLabelTextClass(percent) {
   return p > 2 ? 'text-white' : 'text-high-emphasis';
 }
 
-/** Only "hours" cases need decimals; every other unit type shows whole numbers. */
-function isHoursCaseUnit(unit) {
-  return /^\s*(hours?|hrs?|h)\s*$/i.test(String(unit || ''));
-}
-
-function formatUnitValue(value, isHours) {
-  const n = Number(value) || 0;
-  if (isHours) return formatStatNumber(n); // keep 2 decimals for hours
-  return new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(Math.round(n));
-}
-
 function buildAgentCasesForAgent(agent, orders, dailyLogs, gcCases, dateRange) {
   const aid = String(agent?._id ?? agent?.id ?? '');
   if (!aid) return [];
@@ -288,9 +277,9 @@ function buildAgentCasesForAgent(agent, orders, dailyLogs, gcCases, dateRange) {
       const displayName = hasNickname ? nick : fullCaseName;
 
       // Decimals only for hours-based cases; all other unit types show whole numbers.
-      const isHours = isHoursCaseUnit(order?.caseUnit ?? gc?.caseUnit);
-      const completedDisplay = formatUnitValue(completed, isHours);
-      const goalDisplay = formatUnitValue(goal, isHours);
+      const caseUnit = order?.caseUnit ?? gc?.caseUnit;
+      const completedDisplay = formatUnitsByCaseUnit(completed, caseUnit);
+      const goalDisplay = formatUnitsByCaseUnit(goal, caseUnit);
 
       return {
         fullCaseName,
@@ -299,7 +288,7 @@ function buildAgentCasesForAgent(agent, orders, dailyLogs, gcCases, dateRange) {
         orderKey: String(order?._id ?? order?.id ?? ''),
         completed,
         goal,
-        isHours,
+        caseUnit,
         completedDisplay,
         goalDisplay,
         progressPercent,
@@ -427,7 +416,6 @@ function enrichAgentRow(agent, orders, dailyLogs, gcCases, dateRange, logStats =
     },
 
     methods: {
-      formatStatNumber,
       ...mapMutations(['setCurrentPage', 'setDateRange']),
       ...mapActions(['fetchUsers', 'fetchgcAgents', 'fetchDailyLogs', 'fetchOrders', 'fetchGcCases', 'fetchCurrentDateRange']),
 
