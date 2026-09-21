@@ -228,6 +228,7 @@
         "campaignGoal": "Kampanjatavoite (nykyinen/yhteensä)",
         "campaignEstimatedRevenue": "Kampanjan arvioitu liikevaihto",
         "fees": "Maksut",
+        "monthlyRevenue": "Kuukauden liikevaihto",
         "totalMonthRevenue": "Kuukauden liikevaihto yhteensä",
         "goalsDistributed": "Jaetut tavoitteet",
         "goalsRemaining": "Jäljellä olevat tavoitteet",

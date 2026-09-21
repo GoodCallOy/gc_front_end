@@ -245,6 +245,7 @@
         "campaignGoal": "Campaign goal (current/total)",
         "campaignEstimatedRevenue": "Campaign Estimated Revenue",
         "fees": "Fees",
+        "monthlyRevenue": "Monthly Revenue",
         "totalMonthRevenue": "Total Month Revenue",
         "goalsDistributed": "Goals Distributed",
         "goalsRemaining": "Goals Remaining",
