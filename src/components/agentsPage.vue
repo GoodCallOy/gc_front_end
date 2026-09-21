@@ -60,10 +60,10 @@
                             :title="c.fullCaseName"
                           >
                             <span class="text-decoration-dotted text-high-emphasis">{{ c.displayName }}</span>
-                            — {{ formatStatNumber(c.completed) }}/{{ formatStatNumber(c.goal) }}
+                            — {{ c.completedDisplay }}/{{ c.goalDisplay }}
                           </div>
                           <div v-else class="text-truncate text-left">
-                            {{ c.displayName }} — {{ formatStatNumber(c.completed) }}/{{ formatStatNumber(c.goal) }}
+                            {{ c.displayName }} — {{ c.completedDisplay }}/{{ c.goalDisplay }}
                           </div>
                           <div class="case-progress-linear-wrap mt-1">
                             <v-progress-linear
@@ -250,6 +250,17 @@ function caseProgressLabelTextClass(percent) {
   return p > 2 ? 'text-white' : 'text-high-emphasis';
 }
 
+/** Only "hours" cases need decimals; every other unit type shows whole numbers. */
+function isHoursCaseUnit(unit) {
+  return /^\s*(hours?|hrs?|h)\s*$/i.test(String(unit || ''));
+}
+
+function formatUnitValue(value, isHours) {
+  const n = Number(value) || 0;
+  if (isHours) return formatStatNumber(n); // keep 2 decimals for hours
+  return new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(Math.round(n));
+}
+
 function buildAgentCasesForAgent(agent, orders, dailyLogs, gcCases, dateRange) {
   const aid = String(agent?._id ?? agent?.id ?? '');
   if (!aid) return [];
@@ -276,6 +287,11 @@ function buildAgentCasesForAgent(agent, orders, dailyLogs, gcCases, dateRange) {
       const hasNickname = nick.length > 0;
       const displayName = hasNickname ? nick : fullCaseName;
 
+      // Decimals only for hours-based cases; all other unit types show whole numbers.
+      const isHours = isHoursCaseUnit(order?.caseUnit ?? gc?.caseUnit);
+      const completedDisplay = formatUnitValue(completed, isHours);
+      const goalDisplay = formatUnitValue(goal, isHours);
+
       return {
         fullCaseName,
         displayName,
@@ -283,11 +299,14 @@ function buildAgentCasesForAgent(agent, orders, dailyLogs, gcCases, dateRange) {
         orderKey: String(order?._id ?? order?.id ?? ''),
         completed,
         goal,
+        isHours,
+        completedDisplay,
+        goalDisplay,
         progressPercent,
         progressPercentRounded: Math.round(progressPercent),
         progressColor: getPercentageToGoalVuetifyColor(progressPercent),
         progressLabelClass: caseProgressLabelTextClass(progressPercent),
-        tooltip: `${fullCaseName} — ${completed}/${goal}`,
+        tooltip: `${fullCaseName} — ${completedDisplay}/${goalDisplay}`,
       };
     });
 }
