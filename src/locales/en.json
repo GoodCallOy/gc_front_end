@@ -276,6 +276,7 @@
       },
       "formLabels": {
         "selectCase": "Select Case",
+        "campaignName": "Campaign name",
         "caseUnit": "Case Unit",
         "pricePerUnit": "Price per Unit (€)",
         "totalQuantity": "Monthly goal",
@@ -303,6 +304,7 @@
       },
       "currentVsGoalThisMonth": "Current/Goal this month",
       "validation": {
+        "campaignNameRequired": "Campaign name is required",
         "caseUnitRequired": "Case Unit is required",
         "pricePerUnitRequired": "Price per unit is required",
         "quantityRequired": "Monthly goal is required",

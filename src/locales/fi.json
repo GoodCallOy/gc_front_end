@@ -259,6 +259,7 @@
       },
       "formLabels": {
         "selectCase": "Valitse tapaus",
+        "campaignName": "Kampanjan nimi",
         "caseUnit": "Tapauksen yksikkö",
         "pricePerUnit": "Hinta per yksikkö (€)",
         "totalQuantity": "Kuukausitavoite",
@@ -286,6 +287,7 @@
       },
       "currentVsGoalThisMonth": "Nykyinen/tavoite tässä kuussa",
       "validation": {
+        "campaignNameRequired": "Kampanjan nimi on pakollinen",
         "caseUnitRequired": "Tapauksen yksikkö on pakollinen",
         "pricePerUnitRequired": "Hinta per yksikkö on pakollinen",
         "quantityRequired": "Kuukausitavoite on pakollinen",
