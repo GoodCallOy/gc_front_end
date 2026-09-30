@@ -210,6 +210,9 @@
               <template #item.fees="{ item: rowItem }">
                 {{ formatCurrencyEUR(getOrderFeeEuros(rowItem)) }}
               </template>
+              <template #item.monthlyRevenue="{ item: rowItem }">
+                {{ formatCurrencyEUR(getMonthlyRevenueEuros(rowItem)) }}
+              </template>
               <template #item.totalMonthRevenue="{ item: rowItem }">
                 {{ formatCurrencyEUR(campaignTotalRevenueWithFeesEuros(rowItem, cases || [])) }}
               </template>
@@ -1063,6 +1066,7 @@ const orderHeaders = computed(() => [
   { title: t('assignGoals.tableHeaders.campaignGoal'), key: 'campaignGoal', sortable: false },
   { title: t('assignGoals.tableHeaders.campaignEstimatedRevenue'), key: 'campaignEstimatedRevenue', sortable: false },
   { title: t('assignGoals.tableHeaders.fees'), key: 'fees', sortable: false },
+  { title: t('assignGoals.tableHeaders.monthlyRevenue'), key: 'monthlyRevenue', sortable: false },
   { title: t('assignGoals.tableHeaders.totalMonthRevenue'), key: 'totalMonthRevenue', sortable: false },
   { title: t('assignGoals.tableHeaders.goalsDistributed'), key: 'goalsDistributed', sortable: false },
   { title: t('assignGoals.tableHeaders.goalsRemaining'), key: 'goalsRemaining', sortable: false },
@@ -1778,6 +1782,16 @@ function getCampaignGoalDisplay(order) {
 
   const campaignGoal = getDisplayGoal(order)
   return `${current}/${campaignGoal}`
+}
+
+// Monthly revenue for the currently viewed month: month goal units × price.
+// For single-month campaigns this matches the campaign estimated revenue; for
+// multi-month campaigns it reflects only the current month's assigned goals.
+function getMonthlyRevenueEuros(order) {
+  const price = Number(order?.pricePerUnit) || 0
+  const monthUnits = Number(getOrderMonthGoalUnits(order)) || 0
+  const assignedUnits = Number(getDistributedGoals(order)) || 0
+  return Math.max(monthUnits, assignedUnits) * price
 }
 
 // assumes you have: agents (list of agent docs), allOrders (list of all orders), currency() formatter

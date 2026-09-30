@@ -60,10 +60,10 @@
                             :title="c.fullCaseName"
                           >
                             <span class="text-decoration-dotted text-high-emphasis">{{ c.displayName }}</span>
-                            — {{ formatStatNumber(c.completed) }}/{{ formatStatNumber(c.goal) }}
+                            — {{ c.completedDisplay }}/{{ c.goalDisplay }}
                           </div>
                           <div v-else class="text-truncate text-left">
-                            {{ c.displayName }} — {{ formatStatNumber(c.completed) }}/{{ formatStatNumber(c.goal) }}
+                            {{ c.displayName }} — {{ c.completedDisplay }}/{{ c.goalDisplay }}
                           </div>
                           <div class="case-progress-linear-wrap mt-1">
                             <v-progress-linear
@@ -139,7 +139,7 @@
 <script>
 import { mapGetters, mapMutations, mapActions } from 'vuex';
 import { goToNextMonth, goToPreviousMonth, formattedDateRange, isCurrentMonth } from '@/js/dateUtils';
-import { formatStatNumber } from '@/js/formatNumbers';
+import { formatUnitsByCaseUnit } from '@/js/formatNumbers';
 import { getPercentageToGoalVuetifyColor } from '@/js/percentageToGoalStyle';
 import { isOrderEligibleForAgentGoalsForMonth, monthKeyFromDateRange } from '@/js/orderStatusUtils';
 import { getScaledAgentGoalForMonth, getStoredAgentGoal } from '@/js/statsUtils';
@@ -276,6 +276,11 @@ function buildAgentCasesForAgent(agent, orders, dailyLogs, gcCases, dateRange) {
       const hasNickname = nick.length > 0;
       const displayName = hasNickname ? nick : fullCaseName;
 
+      // Decimals only for hours-based cases; all other unit types show whole numbers.
+      const caseUnit = order?.caseUnit ?? gc?.caseUnit;
+      const completedDisplay = formatUnitsByCaseUnit(completed, caseUnit);
+      const goalDisplay = formatUnitsByCaseUnit(goal, caseUnit);
+
       return {
         fullCaseName,
         displayName,
@@ -283,11 +288,14 @@ function buildAgentCasesForAgent(agent, orders, dailyLogs, gcCases, dateRange) {
         orderKey: String(order?._id ?? order?.id ?? ''),
         completed,
         goal,
+        caseUnit,
+        completedDisplay,
+        goalDisplay,
         progressPercent,
         progressPercentRounded: Math.round(progressPercent),
         progressColor: getPercentageToGoalVuetifyColor(progressPercent),
         progressLabelClass: caseProgressLabelTextClass(progressPercent),
-        tooltip: `${fullCaseName} — ${completed}/${goal}`,
+        tooltip: `${fullCaseName} — ${completedDisplay}/${goalDisplay}`,
       };
     });
 }
@@ -408,7 +416,6 @@ function enrichAgentRow(agent, orders, dailyLogs, gcCases, dateRange, logStats =
     },
 
     methods: {
-      formatStatNumber,
       ...mapMutations(['setCurrentPage', 'setDateRange']),
       ...mapActions(['fetchUsers', 'fetchgcAgents', 'fetchDailyLogs', 'fetchOrders', 'fetchGcCases', 'fetchCurrentDateRange']),
 

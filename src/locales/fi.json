@@ -228,6 +228,7 @@
         "campaignGoal": "Kampanjatavoite (nykyinen/yhteensä)",
         "campaignEstimatedRevenue": "Kampanjan arvioitu liikevaihto",
         "fees": "Maksut",
+        "monthlyRevenue": "Kuukauden liikevaihto",
         "totalMonthRevenue": "Kuukauden liikevaihto yhteensä",
         "goalsDistributed": "Jaetut tavoitteet",
         "goalsRemaining": "Jäljellä olevat tavoitteet",
@@ -259,6 +260,7 @@
       },
       "formLabels": {
         "selectCase": "Valitse tapaus",
+        "campaignName": "Kampanjan nimi",
         "caseUnit": "Tapauksen yksikkö",
         "pricePerUnit": "Hinta per yksikkö (€)",
         "totalQuantity": "Kuukausitavoite",
@@ -286,6 +288,7 @@
       },
       "currentVsGoalThisMonth": "Nykyinen/tavoite tässä kuussa",
       "validation": {
+        "campaignNameRequired": "Kampanjan nimi on pakollinen",
         "caseUnitRequired": "Tapauksen yksikkö on pakollinen",
         "pricePerUnitRequired": "Hinta per yksikkö on pakollinen",
         "quantityRequired": "Kuukausitavoite on pakollinen",
@@ -327,6 +330,8 @@
       "personalCallsMade": "Tehdyt soitot",
       "personalCallsMadeHint": "Lähtevät puhelut tässä kuussa",
       "ofMonthlyGoal": "kuukausitavoitteesta",
+      "breakdownTitleMonthlyGoal": "Kuukausitavoite tapauksittain",
+      "breakdownTitleResultsNow": "Tulos nyt tapauksittain",
       "totalRevenue": "Kokonaisliikevaihto",
       "myTotalRevenue": "Oma kokonaisliikevaihto",
       "revenueToGoal": "Liikevaihto tavoitteeseen",

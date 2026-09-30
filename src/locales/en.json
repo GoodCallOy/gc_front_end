@@ -245,6 +245,7 @@
         "campaignGoal": "Campaign goal (current/total)",
         "campaignEstimatedRevenue": "Campaign Estimated Revenue",
         "fees": "Fees",
+        "monthlyRevenue": "Monthly Revenue",
         "totalMonthRevenue": "Total Month Revenue",
         "goalsDistributed": "Goals Distributed",
         "goalsRemaining": "Goals Remaining",
@@ -276,6 +277,7 @@
       },
       "formLabels": {
         "selectCase": "Select Case",
+        "campaignName": "Campaign name",
         "caseUnit": "Case Unit",
         "pricePerUnit": "Price per Unit (€)",
         "totalQuantity": "Monthly goal",
@@ -303,6 +305,7 @@
       },
       "currentVsGoalThisMonth": "Current/Goal this month",
       "validation": {
+        "campaignNameRequired": "Campaign name is required",
         "caseUnitRequired": "Case Unit is required",
         "pricePerUnitRequired": "Price per unit is required",
         "quantityRequired": "Monthly goal is required",
@@ -344,6 +347,8 @@
       "personalCallsMade": "Calls made",
       "personalCallsMadeHint": "Outgoing calls this month",
       "ofMonthlyGoal": "of monthly goal",
+      "breakdownTitleMonthlyGoal": "Monthly goal by case",
+      "breakdownTitleResultsNow": "Results now by case",
       "totalRevenue": "Total Revenue",
       "myTotalRevenue": "My Total Revenue",
       "revenueToGoal": "Revenue to Goal",

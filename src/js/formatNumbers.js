@@ -23,6 +23,27 @@ export function formatSlashPair(a, b) {
   return `${formatStatNumber(a)} / ${formatStatNumber(b)}`;
 }
 
+/** True when a case unit represents hours (the only unit type that needs decimals). */
+export function isHoursCaseUnit(unit) {
+  return /^\s*(hours?|hrs?|h)\s*$/i.test(String(unit || ''));
+}
+
+/**
+ * Format a unit quantity based on its case unit:
+ * hours-based cases keep 2 decimals, every other unit type shows a whole number.
+ */
+export function formatUnitsByCaseUnit(value, caseUnit) {
+  if (isHoursCaseUnit(caseUnit)) return formatStatNumber(value);
+  const n = Number(value);
+  const safe = Number.isFinite(n) ? Math.round(n) : 0;
+  return new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(safe);
+}
+
+/** Slash pair ("completed / goal") formatted per case unit (decimals only for hours). */
+export function formatSlashPairByCaseUnit(a, b, caseUnit) {
+  return `${formatUnitsByCaseUnit(a, caseUnit)} / ${formatUnitsByCaseUnit(b, caseUnit)}`;
+}
+
 /** EUR with exactly two fraction digits */
 export function formatCurrencyEUR(value) {
   const n = Number(value);

@@ -39,6 +39,9 @@
             :hours-worked="hoursWorkedThisMonth"
             :outgoing-calls-made="outgoingCallsMadeThisMonth"
             :my-paycheck="casesTableTotals.myPaycheck"
+            :monthly-goal-breakdown="personalMonthlyGoalBreakdown"
+            :results-now-breakdown="personalResultsNowBreakdown"
+            @select-order="onPersonalBreakdownSelectOrder"
           />
         </v-col>
       </v-row>
@@ -240,13 +243,13 @@
                   {{ getCallerNames(item?.raw ?? item) }}
                 </template>
                 <template #item.myGoal="{ item }">
-                  {{ formatStatNumber((item?.raw ?? item)?.myGoal) }}
+                  {{ formatUnitsByCaseUnit((item?.raw ?? item)?.myGoal, (item?.raw ?? item)?.caseUnit) }}
                 </template>
                 <template #item.myUnits="{ item }">
-                  {{ formatSlashPair((item?.raw ?? item)?.myAgentUnits, (item?.raw ?? item)?.myGoal || 0) }}
+                  {{ formatSlashPairByCaseUnit((item?.raw ?? item)?.myAgentUnits, (item?.raw ?? item)?.myGoal || 0, (item?.raw ?? item)?.caseUnit) }}
                 </template>
                 <template #item.teamUnits="{ item }">
-                  {{ formatSlashPair((item?.raw ?? item)?.teamUnits, (item?.raw ?? item)?.teamGoal || 0) }}
+                  {{ formatSlashPairByCaseUnit((item?.raw ?? item)?.teamUnits, (item?.raw ?? item)?.teamGoal || 0, (item?.raw ?? item)?.caseUnit) }}
                 </template>
                 <template #item.myRevenueGoal="{ item }">
                   {{ formatCurrency((item?.raw ?? item)?.myRevenueGoal) }}
@@ -286,30 +289,30 @@
                               <tr v-for="month in (item?.raw ?? item)?.monthlyBreakdown" :key="month.monthKey">
                                 <td>{{ getMonthName(month.month) }} {{ month.year }}</td>
                                 <td>{{ formatDateDetailed(month.startDateStr) }} - {{ formatDateDetailed(month.endDateStr) }}</td>
-                                <td>{{ formatSlashPair(month.quantityCompleted, getCaseDisplayGoal(item?.raw ?? item)) }}</td>
+                                <td>{{ formatSlashPairByCaseUnit(month.quantityCompleted, getCaseDisplayGoal(item?.raw ?? item), (item?.raw ?? item)?.caseUnit) }}</td>
                                 <td>
                                   <div
                                     v-for="entry in getCaseMonthlyAgentALeads(item?.raw ?? item, month)"
                                     :key="entry.agentId || entry.name"
                                     class="text-caption"
                                   >
-                                    {{ entry.name }}: {{ formatStatNumber(entry.aLeads) }}
+                                    {{ entry.name }}: {{ formatUnitsByCaseUnit(entry.aLeads, '') }}
                                   </div>
                                   <span v-if="getCaseMonthlyAgentALeads(item?.raw ?? item, month).length === 0">—</span>
                                 </td>
                                 <td>{{ formatCurrency(month.revenue) }}</td>
                                 <td>{{ formatCurrency(getCaseMonthlyRevenueGoal(item?.raw ?? item, month)) }}</td>
                                 <td>{{ formatStatNumber(getCaseMonthlyPercentageToGoal(item?.raw ?? item, month)) }}%</td>
-                                <td>{{ formatStatNumber(Math.max(0, getCaseDisplayGoal(item?.raw ?? item) - getTotalCompletedUpToMonth((item?.raw ?? item)?.monthlyBreakdown, month.monthKey))) }}</td>
+                                <td>{{ formatUnitsByCaseUnit(Math.max(0, getCaseDisplayGoal(item?.raw ?? item) - getTotalCompletedUpToMonth((item?.raw ?? item)?.monthlyBreakdown, month.monthKey)), (item?.raw ?? item)?.caseUnit) }}</td>
                               </tr>
                               <tr class="font-weight-bold">
                                 <td colspan="2">{{ t('ordersDashboard.monthlyBreakdown.total') }}</td>
-                                <td>{{ formatSlashPair(getTotalQuantity((item?.raw ?? item)?.monthlyBreakdown), getCaseDisplayGoal(item?.raw ?? item)) }}</td>
+                                <td>{{ formatSlashPairByCaseUnit(getTotalQuantity((item?.raw ?? item)?.monthlyBreakdown), getCaseDisplayGoal(item?.raw ?? item), (item?.raw ?? item)?.caseUnit) }}</td>
                                 <td></td>
                                 <td>{{ formatCurrency(getTotalRevenue((item?.raw ?? item)?.monthlyBreakdown)) }}</td>
                                 <td></td>
                                 <td></td>
-                                <td>{{ formatStatNumber(Math.max(0, getCaseDisplayGoal(item?.raw ?? item) - getTotalQuantity((item?.raw ?? item)?.monthlyBreakdown))) }}</td>
+                                <td>{{ formatUnitsByCaseUnit(Math.max(0, getCaseDisplayGoal(item?.raw ?? item) - getTotalQuantity((item?.raw ?? item)?.monthlyBreakdown)), (item?.raw ?? item)?.caseUnit) }}</td>
                               </tr>
                             </tbody>
                           </v-table>
@@ -549,6 +552,9 @@
         :items-per-page="10"
         style="width: 100%"
       >
+        <template #item.goal="{ item }">
+          {{ formatUnitsByCaseUnit(item.goal, item.caseUnit) }}
+        </template>
         <template #item.goalReached="{ item }">
           {{ formatStatNumber(item.goalReached) }}%
         </template>
@@ -621,9 +627,10 @@ import AgentDashboardPersonalStatsCard from './agentDashboardPersonalStatsCard.v
 import axios from 'axios'
 import urls from '@/js/config.js'
 import { resolveLinkedGcAgent } from '@/js/resolveLinkedGcAgent.js'
-import { formatStatNumber, formatSlashPair, formatCurrencyEUR, roundTo2Decimals } from '@/js/formatNumbers'
+import { formatStatNumber, formatCurrencyEUR, roundTo2Decimals, formatUnitsByCaseUnit, formatSlashPairByCaseUnit, isHoursCaseUnit } from '@/js/formatNumbers'
 import {
   areDailyLogsFrozenForLog,
+  getOrderStatusForMonth,
   isOrderActiveForAgentDashboardForMonth,
   isOrderListedOnAgentDashboardForMonth,
   monthKeyFromDateRange,
@@ -868,6 +875,10 @@ function goToCaseDetails(row) {
       agentId: agentId ? String(agentId) : undefined,
     },
   });
+}
+
+function onPersonalBreakdownSelectOrder(orderId) {
+  goToCaseDetails({ _id: orderId });
 }
 
 function toggleCaseExpand(orderId) {
@@ -1253,7 +1264,8 @@ const weeklyTotals = computed(() => {
             answeredCalls: 0,
             completedCalls: 0,
             quantityCompleted: 0,
-            amountMade: 0
+            amountMade: 0,
+            hasHoursCase: false
           }
         };
       }
@@ -1272,6 +1284,9 @@ const weeklyTotals = computed(() => {
       const logCase = findOrderForLog(log, agentCases);
       const pricePerUnit = logCase?.pricePerUnit || 0;
       const logAmountMade = logQuantityCompleted * pricePerUnit;
+      if (isHoursCaseUnit(logCase?.caseUnit || log.caseUnit)) {
+        weeklyGroups[weekKey].totals.hasHoursCase = true;
+      }
       
       weeklyGroups[weekKey].totals.callTime += logCallTime;
       weeklyGroups[weekKey].totals.outgoingCalls += logOutgoingCalls;
@@ -1311,10 +1326,17 @@ const weeklyTotals = computed(() => {
       responseRate: formatNumber(avgResponseRate),
       completedCalls: group.totals.completedCalls,
       // Personal results: this agent's completed quantity
-      personalResults: formatStatNumber(roundTo2Decimals(group.totals.quantityCompleted)),
+      // (decimals only when the week includes an hours-based case)
+      personalResults: formatUnitsByCaseUnit(
+        roundTo2Decimals(group.totals.quantityCompleted),
+        group.totals.hasHoursCase ? 'hours' : ''
+      ),
       // Team results: currently same as personal (only this agent's logs are included here)
       // You can extend this later to include all agents if desired.
-      teamResults: formatStatNumber(roundTo2Decimals(group.totals.quantityCompleted)),
+      teamResults: formatUnitsByCaseUnit(
+        roundTo2Decimals(group.totals.quantityCompleted),
+        group.totals.hasHoursCase ? 'hours' : ''
+      ),
       amountMade: formatCurrencyEUR(group.totals.amountMade),
       originalDate: group.weekInfo.start,
     });
@@ -1391,11 +1413,11 @@ const individualLogs = computed(() => {
         answeredCalls,
         responseRate: formatNumber(responseRate),
         completedCalls: log.completed_calls || 0,
-        // Personal result for this log row
-        personalResults: formatStatNumber(quantityCompleted),
+        // Personal result for this log row (decimals only for hours-based cases)
+        personalResults: formatUnitsByCaseUnit(quantityCompleted, caseUnit),
         // Team result placeholder: currently same as personal
         // (this table is scoped to the current agent's logs only)
-        teamResults: formatStatNumber(quantityCompleted),
+        teamResults: formatUnitsByCaseUnit(quantityCompleted, caseUnit),
         comments: log.comments || '',
         amountMade: formatCurrencyEUR(quantityCompleted * pricePerUnit),
         originalLog: log,
@@ -1503,6 +1525,18 @@ const weeklyGoalsHeaders = computed(() => [
   { title: t('assignGoals.tableHeaders.delete'), key: 'delete', sortable: false, width: '60px' },
 ])
 
+// Resolve the case unit for a weekly goal by matching its order/case to the orders list.
+function resolveCaseUnitForWeeklyGoal(g) {
+  const orderId = String(g?.orderId ?? g?.order_id ?? '')
+  const caseName = String(g?.case ?? g?.caseName ?? g?.case_name ?? '')
+  const list = orders.value || []
+  const match = list.find((o) =>
+    (orderId && String(o?._id ?? o?.id ?? '') === orderId) ||
+    (caseName && String(o?.caseName ?? '') === caseName)
+  )
+  return match?.caseUnit ?? g?.caseUnit ?? ''
+}
+
 // Table rows: all weekly goals for this agent for the current month
 // (project, week start, goal, progress "results / goal") + _raw for edit/delete
 const weeklyGoalsTableRows = computed(() => {
@@ -1578,7 +1612,8 @@ const weeklyGoalsTableRows = computed(() => {
     }
 
     const goalValue = Number(g?.goal ?? 0)
-    const progress = `${completed} / ${goalValue}`
+    const caseUnit = resolveCaseUnitForWeeklyGoal(g)
+    const progress = formatSlashPairByCaseUnit(completed, goalValue, caseUnit)
     const goalReached = goalValue > 0
       ? Number(((completed / goalValue) * 100).toFixed(2))
       : 0
@@ -1590,6 +1625,7 @@ const weeklyGoalsTableRows = computed(() => {
       project: g?.case ?? g?.caseName ?? g?.case_name ?? '—',
       weekStart: weekStartFormatted,
       goal: goalValue,
+      caseUnit,
       completed,
       progress,
       goalReached,
@@ -1826,6 +1862,66 @@ const casesTableRows = computed(() => {
   });
 });
 
+const personalMonthlyGoalBreakdown = computed(() => {
+  const agent = selectedGcAgent.value;
+  const agentId = String(agent?._id ?? agent?.id ?? '');
+  if (!agentId) return [];
+
+  const monthKey = monthKeyFromDateRange(currentDateRange.value);
+  const byId = new Map(
+    (casesTableRows.value || []).map((row) => [String(row?._id ?? row?.id ?? ''), row])
+  );
+
+  const rows = getAgentAssignedOrdersInMonth(agentId).map((order) => {
+    const orderId = String(order?._id ?? order?.id ?? '');
+    const row = byId.get(orderId);
+    const pricePerUnit = Number(order?.pricePerUnit ?? row?.pricePerUnit) || 0;
+    const monthlyGoal =
+      Number(row?.myGoal) ||
+      Number(getScaledAgentGoalForMonth(order, agentId, dailyLogs.value || [])) ||
+      0;
+    const revenue = Number(row?.myRevenueGoal) || monthlyGoal * pricePerUnit;
+
+    let excludedReason = null;
+    if (isTestCase(order)) excludedReason = 'Test case';
+    else if (isGoodCallCase(order)) excludedReason = 'Good call case';
+    else if (monthKey && !isOrderListedOnAgentDashboardForMonth(order, monthKey)) {
+      excludedReason = `Status: ${getOrderStatusForMonth(order, monthKey)}`;
+    }
+
+    return {
+      orderId: order._id ?? order.id,
+      caseType: order.caseType || 'Unspecified',
+      caseName: order.caseName || '—',
+      status: monthKey ? getOrderStatusForMonth(order, monthKey) : '',
+      monthlyGoal,
+      pricePerUnit,
+      revenue,
+      caseUnit: order.caseUnit || row?.caseUnit || '',
+      included: !excludedReason,
+      excludedReason,
+    };
+  });
+
+  return sortPersonalBreakdownRows(rows);
+});
+
+const personalResultsNowBreakdown = computed(() => {
+  const rows = (casesTableRows.value || [])
+    .map((row) => ({
+      orderId: row._id ?? row.id,
+      caseType: row.caseType || 'Unspecified',
+      caseName: row.caseName || '—',
+      quantityCompleted: Number(row.myAgentUnits) || 0,
+      pricePerUnit: Number(row.pricePerUnit) || 0,
+      revenue: Number(row.currentRevenue) || 0,
+      caseUnit: row.caseUnit || '',
+    }))
+    .filter((row) => row.revenue > 0);
+
+  return sortPersonalBreakdownRows(rows);
+});
+
 // Team current revenue using the same approach as orders dashboard:
 // revenue from logs in selected month for in-progress, non-test, non-good-call orders.
 const teamCurrentRevenueDashboardStyle = computed(() => {
@@ -1910,6 +2006,7 @@ const casesTableTotals = computed(() => {
     acc.myPaycheck += Number(row?.myPaycheck) || 0;
     acc.teamCurrentRevenue += Number(row?.teamCurrentRevenue) || 0;
     acc.teamRevenueGoal += Number(row?.teamRevenueGoal) || 0;
+    if (isHoursCaseUnit(row?.caseUnit)) acc.hasHoursCase = true;
     return acc;
   }, {
     myGoal: 0,
@@ -1921,6 +2018,7 @@ const casesTableTotals = computed(() => {
     myPaycheck: 0,
     teamCurrentRevenue: 0,
     teamRevenueGoal: 0,
+    hasHoursCase: false,
   });
 });
 
@@ -1929,10 +2027,11 @@ const personalMonthlyGoalEuros = computed(() => casesTableTotals.value?.myRevenu
 
 const totalsRow = computed(() => {
   const totals = casesTableTotals.value;
+  const unit = totals.hasHoursCase ? 'hours' : '';
 
   return {
-    myUnits: formatSlashPair(totals.myUnits, totals.myGoal),
-    teamUnits: formatSlashPair(totals.teamUnits, totals.teamGoal),
+    myUnits: formatSlashPairByCaseUnit(totals.myUnits, totals.myGoal, unit),
+    teamUnits: formatSlashPairByCaseUnit(totals.teamUnits, totals.teamGoal, unit),
     currentRevenue: formatCurrency(totals.currentRevenue),
     myRevenueGoal: formatCurrency(totals.myRevenueGoal),
   };
@@ -2646,6 +2745,40 @@ function findOrdersForUser(allOrdersArray, agentId) {
   });
 
   return dedupeOrdersForMonthView(applyCallerOrderVisibility(inMonth));
+}
+
+/** Assigned overlapping orders for the viewed month, including excluded statuses. */
+function getAgentAssignedOrdersInMonth(agentId) {
+  const wanted = String(agentId || '');
+  if (!wanted) return [];
+
+  let agentOrders = (orders.value || []).filter((order) => isAgentAssignedToOrder(order, wanted));
+  if (currentDateRange.value?.length >= 2) {
+    const monthStart = new Date(currentDateRange.value[0]);
+    const monthEnd = new Date(currentDateRange.value[1]);
+    agentOrders = agentOrders.filter((order) => {
+      const orderStart = new Date(order.startDate);
+      const orderEnd = new Date(order.deadline);
+      return orderStart <= monthEnd && orderEnd >= monthStart;
+    });
+  }
+
+  return groupOrderCampaignsForMonthView(agentOrders, currentDateRange.value)
+    .map(({ representative }) => representative)
+    .filter(Boolean);
+}
+
+function sortPersonalBreakdownRows(rows) {
+  return [...rows].sort((a, b) => {
+    const typeA = a.caseType || 'Unspecified';
+    const typeB = b.caseType || 'Unspecified';
+    if (typeA !== typeB) {
+      if (typeA === 'Unspecified') return 1;
+      if (typeB === 'Unspecified') return -1;
+      return String(typeA).localeCompare(String(typeB));
+    }
+    return String(a.caseName).localeCompare(String(b.caseName));
+  });
 }
 
 

@@ -16,6 +16,14 @@
         clearable
       />
 
+      <v-text-field
+        v-model="form.caseName"
+        :label="t('assignGoals.formLabels.campaignName')"
+        :rules="[v => !!String(v || '').trim() || t('assignGoals.validation.campaignNameRequired')]"
+        required
+        clearable
+      />
+
       <v-select
         v-model="form.caseUnit"
         :items="caseUnits"
@@ -232,6 +240,7 @@ const defaultFormState = () => {
   const { startDate, deadline } = getCurrentMonthDateRange()
   return {
     caseId: '',
+    caseName: '',
     caseUnit: '',
     pricePerUnit: '',
     totalQuantity: '',
@@ -339,11 +348,36 @@ const monthlyGoalMonths = computed(() => {
 watch([monthlyGoalMonths, monthlyCallWorkEuros], syncMonthlyRevenueGoals, { immediate: true })
 
 const isFormValid = computed(() => {
-  const hasBasic = form.caseId && form.caseUnit && form.startDate && form.deadline &&
-    form.orderStatus && form.caseType && form.estimatedRevenue
+  const hasBasic = form.caseId && String(form.caseName || '').trim() && form.caseUnit &&
+    form.startDate && form.deadline && form.orderStatus && form.caseType && form.estimatedRevenue
   const hasPrice = form.pricePerUnit !== '' && !isNaN(form.pricePerUnit)
   const hasQuantity = form.totalQuantity !== '' && !isNaN(form.totalQuantity)
   return !!(hasBasic && hasPrice && hasQuantity)
+})
+
+function caseNameForId(caseId) {
+  const selected = (cases.value || []).find((c) => String(c._id ?? c.id) === String(caseId || ''))
+  return selected?.name ? String(selected.name) : ''
+}
+
+watch(
+  () => form.caseId,
+  (newId, oldId) => {
+    if (!newId) return
+    const nextName = caseNameForId(newId)
+    if (!nextName) return
+    const currentName = String(form.caseName || '').trim()
+    const previousCaseName = caseNameForId(oldId)
+    if (!currentName || (previousCaseName && currentName === previousCaseName)) {
+      form.caseName = nextName
+    }
+  }
+)
+
+watch(cases, () => {
+  if (String(form.caseName || '').trim() || !form.caseId) return
+  const name = caseNameForId(form.caseId)
+  if (name) form.caseName = name
 })
 
 function agentName(id) {
@@ -377,6 +411,7 @@ function applySuggestedMonthlyGoal() {
 function hydrateFromOrder(o) {
   if (!o) return
   form.caseId = o.caseId?._id ?? o.caseId?.id ?? o.caseId ?? ''
+  form.caseName = o.caseName || caseNameForId(form.caseId) || ''
   form.caseUnit = o.caseUnit || ''
   form.pricePerUnit = o.pricePerUnit ?? ''
   form.totalQuantity = getOrderMonthGoalUnits(o)
@@ -476,7 +511,7 @@ async function submitForm() {
       ...formRest,
       orderStatus,
       monthlyGoal: totalQuantity,
-      caseName: selectedCase ? selectedCase.name : '',
+      caseName: String(form.caseName || '').trim() || (selectedCase ? selectedCase.name : ''),
       ...buildAssignmentWriteFields(assignedRows),
       estimatedRevenue: estimatedRevenue.value,
       assignedCallers: assignedRows.map(({ id, name }) => ({ id, name })),
