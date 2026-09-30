@@ -812,18 +812,47 @@ function isNextMonthOf(a, b) {
   return (yb === ya && mb === ma + 1) || (yb === ya + 1 && ma === 12 && mb === 1);
 }
 
-function orderStartsInMonth(order, monthStartStr) {
-  const targetKey = String(monthStartStr || '').split('T')[0].slice(0, 7);
-  const orderKey = String(toDateOnly(order?.startDate) || '').slice(0, 7);
-  return Boolean(targetKey && orderKey && targetKey === orderKey);
+function monthEndFromStart(monthStartStr) {
+  const start = String(monthStartStr || '').split('T')[0];
+  const [year, month] = start.split('-').map(Number);
+  if (!year || !month) return start;
+  const lastDay = new Date(year, month, 0).getDate();
+  return `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
 }
 
-function isDuplicateCopyInTargetMonth(source, candidate, targetMonthStart) {
+function orderOverlapsDateRange(order, rangeStart, rangeEnd) {
+  const start = toDateOnly(order?.startDate);
+  const end = toDateOnly(order?.deadline);
+  if (!start || !end || !rangeStart || !rangeEnd) return false;
+  return start <= rangeEnd && end >= rangeStart;
+}
+
+function campaignCaseId(order) {
+  const c = order?.caseId;
+  if (c && typeof c === 'object') return String(c._id ?? c.id ?? '');
+  return String(c || '');
+}
+
+function isSameCampaign(a, b) {
   return (
-    String(candidate.caseId || '') === String(source.caseId || '') &&
-    String(candidate.caseUnit || '') === String(source.caseUnit || '') &&
-    Number(candidate.pricePerUnit || 0) === Number(source.pricePerUnit || 0) &&
-    orderStartsInMonth(candidate, targetMonthStart)
+    campaignCaseId(a) === campaignCaseId(b) &&
+    String(a?.caseUnit || '') === String(b?.caseUnit || '') &&
+    Number(a?.pricePerUnit || 0) === Number(b?.pricePerUnit || 0)
+  );
+}
+
+function isDuplicateCopyInTargetMonth(source, candidate, targetMonthStart, targetMonthEnd) {
+  if (!candidate || String(candidate._id) === String(source._id)) return false;
+  const monthEnd = targetMonthEnd || monthEndFromStart(targetMonthStart);
+  return isSameCampaign(source, candidate) && orderOverlapsDateRange(candidate, targetMonthStart, monthEnd);
+}
+
+/** True if this campaign already lives in the target month (multi-month parent or an existing copy). */
+function campaignAlreadyInTargetMonth(source, targetMonthStart, targetMonthEnd) {
+  const monthEnd = targetMonthEnd || monthEndFromStart(targetMonthStart);
+  if (orderOverlapsDateRange(source, targetMonthStart, monthEnd)) return true;
+  return (orders.value || []).some((p) =>
+    isDuplicateCopyInTargetMonth(source, p, targetMonthStart, monthEnd)
   );
 }
 
@@ -925,8 +954,8 @@ async function bulkCopyOrdersToNextMonth() {
     const createdKeys = new Set();
     
     // Helper to create a unique key for duplicate detection
-    const orderKey = (caseId, caseUnit, pricePerUnit) => 
-      `${String(caseId || '')}|${String(caseUnit || '')}|${Number(pricePerUnit || 0)}`;
+    const orderKey = (order) =>
+      `${campaignCaseId(order)}|${String(order?.caseUnit || '')}|${Number(order?.pricePerUnit || 0)}`;
 
     for (const o of sourceOrders) {
       if (isOrderCompletedForMonth(o, monthKeyFromDateRange(currentDateRange.value))) {
@@ -935,7 +964,7 @@ async function bulkCopyOrdersToNextMonth() {
         continue;
       }
 
-      const key = orderKey(o.caseId, o.caseUnit, o.pricePerUnit);
+      const key = orderKey(o);
       
       // Skip if we already created this in the current batch
       if (createdKeys.has(key)) {
@@ -943,14 +972,11 @@ async function bulkCopyOrdersToNextMonth() {
         skippedCount++;
         continue;
       }
-      
-      // Skip if an equivalent order already exists in the target month (from previous copies)
-      const duplicateExists = (orders.value || []).some((p) =>
-        isDuplicateCopyInTargetMonth(o, p, nextStart)
-      );
-      
-      if (duplicateExists) {
-        console.log(`📋 Bulk copy: Skipping "${o.caseName}" (already exists in next month)`);
+
+      // Skip if this campaign already continues into the target month
+      // (multi-month parent) or a matching copy is already there.
+      if (campaignAlreadyInTargetMonth(o, nextStart, nextEnd)) {
+        console.log(`📋 Bulk copy: Skipping "${o.caseName}" (already in next month)`);
         copiedToNextMonth[String(o._id)] = true;
         skippedCount++;
         continue;
@@ -1318,13 +1344,29 @@ function isOrderPending(order) {
   return isOrderPendingForMonth(order, currentMonthKey.value)
 }
 
+function nextMonthRange() {
+  const currentStart = currentDateRange.value?.[0]
+  if (!currentStart) return null
+  const [nextStart, nextEnd] = getNextMonthDateRange(currentStart)
+  return { nextStart, nextEnd }
+}
+
 function isOrderCopyDisabled(order) {
-  return isOrderCompleted(order)
+  if (isOrderCompleted(order)) return true
+  const range = nextMonthRange()
+  if (!range) return false
+  return campaignAlreadyInTargetMonth(order, range.nextStart, range.nextEnd)
 }
 
 function copyOrderDisabledTooltip(order) {
   if (isOrderCompleted(order)) {
     return t('assignGoals.copyCompletedDisabled')
+  }
+  if (orderSpansMultipleMonths(order) || order?.isMultiMonth) {
+    return t('assignGoals.copyMultiMonthDisabled')
+  }
+  if (isOrderCopyDisabled(order)) {
+    return t('assignGoals.copyAlreadyExistsNextMonth')
   }
   return t('assignGoals.tableHeaders.copy')
 }

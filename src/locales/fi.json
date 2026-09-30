@@ -239,6 +239,7 @@
       },
       "remainingInCampaign": "jäljellä kampanjassa",
       "copyMultiMonthDisabled": "Monikuukautisia kampanjoita ei voi kopioida seuraavaan kuukauteen",
+      "copyAlreadyExistsNextMonth": "Tämä kampanja on jo seuraavassa kuussa",
       "copyCompletedDisabled": "Valmiita tilauksia ei voi kopioida seuraavaan kuukauteen",
       "copiedToNextMonth": "Kopioitu seuraavaan kuukauteen",
       "assignGoalsFor": "Määritä tavoitteet",

@@ -78,10 +78,22 @@ export function resolveOrderCopyFields(
   );
 
   if (isMultiMonth) {
+    const originalDeadline = toDateOnly(order.deadline) || nextEnd;
+    // Campaign still runs through next month — caller should skip copying.
+    // If it ended this month, roll remaining units into a standard next-month order.
+    if (originalDeadline >= nextStart) {
+      return {
+        isMultiMonth: true,
+        startDate: nextStart,
+        deadline: originalDeadline,
+        monthlyGoal: remaining,
+        campaignGoal,
+      };
+    }
     return {
-      isMultiMonth: true,
+      isMultiMonth: false,
       startDate: nextStart,
-      deadline: toDateOnly(order.deadline) || nextEnd,
+      deadline: nextEnd,
       monthlyGoal: remaining,
       campaignGoal,
     };

@@ -256,6 +256,7 @@
       },
       "remainingInCampaign": "remaining in campaign",
       "copyMultiMonthDisabled": "Multi-month campaigns cannot be copied to the next month",
+      "copyAlreadyExistsNextMonth": "This campaign already exists in the next month",
       "copyCompletedDisabled": "Completed orders cannot be copied to the next month",
       "copiedToNextMonth": "Copied to next month",
       "assignGoalsFor": "Assign Goals for",
