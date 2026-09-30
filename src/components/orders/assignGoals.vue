@@ -618,6 +618,7 @@ import {
   buildOrderCopyPrefill,
   resolveOrderCopyFields,
   getRemainingMonthlyGoalForMultiMonthOrder,
+  isMultiMonthCampaign,
 } from '@/js/orderCopyUtils'
 import {
   ORDER_STATUS_OPTIONS,
@@ -976,10 +977,13 @@ async function bulkCopyOrdersToNextMonth() {
         continue;
       }
 
-      // Skip if this campaign already continues into the target month
-      // (multi-month parent) or a matching copy is already there.
-      if (campaignAlreadyInTargetMonth(o, nextStart, nextEnd)) {
-        console.log(`📋 Bulk copy: Skipping "${o.caseName}" (already in next month)`);
+      // Multi-month campaigns already appear in later months — never clone them.
+      // Also skip a monthly row if the same campaign already covers next month.
+      if (
+        isMultiMonthCampaign(o, cases.value || []) ||
+        campaignAlreadyInTargetMonth(o, nextStart, nextEnd)
+      ) {
+        console.log(`📋 Bulk copy: Skipping "${o.caseName}" (multi-month or already in next month)`);
         copiedToNextMonth[String(o._id)] = true;
         skippedCount++;
         continue;
@@ -992,6 +996,12 @@ async function bulkCopyOrdersToNextMonth() {
         getRemainingCampaignGoalForCopy,
         getDisplayGoal
       );
+      if (copyFields?.isMultiMonth) {
+        console.log(`📋 Bulk copy: Skipping "${o.caseName}" (would clone a multi-month campaign)`);
+        copiedToNextMonth[String(o._id)] = true;
+        skippedCount++;
+        continue;
+      }
       const payload = buildOrderCopyPayload(o, copyFields, {
         agents: gcAgents.value || [],
         sourceMonthStart: currentStart,
@@ -1357,6 +1367,7 @@ function nextMonthRange() {
 
 function isOrderCopyDisabled(order) {
   if (isOrderCompleted(order)) return true
+  if (isMultiMonthCampaign(order, cases.value || [])) return true
   const range = nextMonthRange()
   if (!range) return false
   return campaignAlreadyInTargetMonth(order, range.nextStart, range.nextEnd)

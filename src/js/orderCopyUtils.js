@@ -35,16 +35,19 @@ export function getOrderCampaignGoal(order, cases = []) {
   return getCampaignGoalUnits(order, cases);
 }
 
-/** Campaign units still available for a multi-month order; null if not multi-month. */
-export function getRemainingMonthlyGoalForMultiMonthOrder(order, dailyLogs, cases = []) {
-  const campaignGoal = getOrderCampaignGoal(order, cases);
-  const monthlyGoal = getOrderMonthGoalUnits(order);
-  const isMultiMonth =
-    Boolean(order?.isMultiMonth) ||
-    orderSpansMultipleMonths(order) ||
-    (campaignGoal > monthlyGoal && campaignGoal > 0);
+/** True if this order is a spanning campaign (do not copy; it already appears in later months). */
+export function isMultiMonthCampaign(order, cases = []) {
+  if (!order) return false;
+  if (order.isMultiMonth) return true;
+  if (orderSpansMultipleMonths(order)) return true;
+  const campaignGoal = Number(getCampaignGoalUnits(order, cases)) || 0;
+  const monthlyGoal = Number(getOrderMonthGoalUnits(order)) || 0;
+  return campaignGoal > monthlyGoal && campaignGoal > 0;
+}
 
-  if (!isMultiMonth) return null;
+export function getRemainingMonthlyGoalForMultiMonthOrder(order, dailyLogs, cases = []) {
+  if (!isMultiMonthCampaign(order, cases)) return null;
+  const campaignGoal = Number(getOrderCampaignGoal(order, cases)) || 0;
   if (campaignGoal <= 0) return 0;
   return roundTo2Decimals(
     getCampaignRemainingUnits(order, dailyLogs, campaignGoal, order?.monthlyBreakdown)
@@ -68,7 +71,7 @@ export function resolveOrderCopyFields(
   getRemainingCampaignGoal,
   getCampaignGoal
 ) {
-  const isMultiMonth = orderSpansMultipleMonths(order);
+  const isMultiMonth = isMultiMonthCampaign(order);
   const resolveGoal = typeof getCampaignGoal === 'function' ? getCampaignGoal : getCampaignGoalFromOrder;
   const campaignGoal = roundTo2Decimals(Number(resolveGoal(order)) || 0);
   const remaining = roundTo2Decimals(
