@@ -236,7 +236,7 @@ import {
 import {
   isOrderOnHoldForMonth,
   isOrderCancelledForMonth,
-  wasOrderInactiveBeforeMonth,
+  isCampaignClosedBeforeMonth,
   monthKeyFromDateRange,
 } from '@/js/orderStatusUtils'
 
@@ -414,7 +414,7 @@ function revenueEligibleOrder(order) {
   const monthKey = chartMonthKey()
   if (isOrderOnHold(order)) return false
   if (isOrderCancelledForMonth(order, monthKey)) return false
-  if (wasOrderInactiveBeforeMonth(order, monthKey)) return false
+  if (isCampaignClosedBeforeMonth(order, monthKey, props.orders || [])) return false
   return true
 }
 

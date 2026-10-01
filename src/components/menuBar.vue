@@ -70,7 +70,7 @@ const showCallerTools = computed(() => {
 
   const monthKey = monthKeyFromDateRange(range)
   if (monthKey) {
-    inView = inView.filter((o) => isOrderListedOnAgentDashboardForMonth(o, monthKey))
+    inView = inView.filter((o) => isOrderListedOnAgentDashboardForMonth(o, monthKey, orders.value))
   }
   return inView.length > 0
 })

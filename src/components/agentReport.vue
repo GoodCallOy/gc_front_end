@@ -118,7 +118,7 @@ import {
   monthKeyFromDateRange,
   isOrderOnHoldForMonth,
   isOrderCancelledForMonth,
-  wasOrderInactiveBeforeMonth,
+  isCampaignClosedBeforeMonth,
 } from '@/js/orderStatusUtils'
 import { resolveLinkedGcAgent } from '@/js/resolveLinkedGcAgent.js'
 import { formatStatNumber } from '@/js/formatNumbers'
@@ -173,7 +173,7 @@ function isReportEligibleOrder(order) {
   const monthKey = monthKeyFromDateRange(currentDateRange.value)
   if (isOrderOnHoldForMonth(order, monthKey)) return false
   if (isOrderCancelledForMonth(order, monthKey)) return false
-  if (wasOrderInactiveBeforeMonth(order, monthKey)) return false
+  if (isCampaignClosedBeforeMonth(order, monthKey, orders.value || [])) return false
   return true
 }
 const caseOptions = computed(() => {

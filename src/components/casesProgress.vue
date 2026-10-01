@@ -118,7 +118,7 @@ import DateHeader from '@/components/DateHeader.vue'
 import { goToNextMonth, goToPreviousMonth } from '@/js/dateUtils'
 import { useRouter } from 'vue-router'
 import { orderSpansMultipleMonths, calculateMonthlyProgress, getOrderMonthGoalUnits, ordersDashboardRevenueGoalEuros } from '@/js/statsUtils'
-import { formatStatNumber, formatCurrencyEUR } from '@/js/formatNumbers'
+import { monthKeyFromDateRange, isCampaignClosedBeforeMonth } from '@/js/orderStatusUtils'
 
 // Helper function to check if an order is a test case
 function isTestCase(order) {
@@ -211,7 +211,10 @@ const filteredOrders = computed(() => {
   return list.filter(order => {
     const orderStart = new Date(order.startDate)
     const orderEnd = new Date(order.deadline)
-    return orderStart <= monthEnd && orderEnd >= monthStart
+    if (!(orderStart <= monthEnd && orderEnd >= monthStart)) return false
+    const monthKey = monthKeyFromDateRange(range)
+    if (monthKey && isCampaignClosedBeforeMonth(order, monthKey, list)) return false
+    return true
   })
 })
 

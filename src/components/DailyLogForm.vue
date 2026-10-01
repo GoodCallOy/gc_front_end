@@ -129,6 +129,7 @@ import {
   areDailyLogsFrozenForLog,
   areDailyLogsFrozenForOrderMonth,
   isOrderListedOnAgentDashboardForMonth,
+  isCampaignClosedBeforeMonth,
   monthKeyFromDate,
 } from '@/js/orderStatusUtils'
 import { isAgentAssignedToOrder } from '@/js/orderAuthority.js'
@@ -235,9 +236,11 @@ export default {
       const isActiveThisMonth = orderStart <= monthEnd && orderEnd >= monthStart
       if (!isActiveThisMonth) return false
 
+      if (isCampaignClosedBeforeMonth(order, monthKey, this.orders)) return false
+
       if (areDailyLogsFrozenForOrderMonth(order, monthKey)) return false
 
-      if (this.isCaller && !isOrderListedOnAgentDashboardForMonth(order, monthKey)) return false
+      if (this.isCaller && !isOrderListedOnAgentDashboardForMonth(order, monthKey, this.orders)) return false
       
       // Check if the selected agent is assigned to this order
       const wantedAgent = String(this.form.agent || '')

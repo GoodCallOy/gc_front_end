@@ -187,7 +187,7 @@ function getAgentMonthOrders(agent, orders, dateRange) {
       isAgentAssignedToOrder(order, aid) &&
       orderOverlapsRange(order, from, to) &&
       getStoredAgentGoal(order, aid) > 0 &&
-      (!monthKey || isOrderEligibleForAgentGoalsForMonth(order, monthKey))
+      (!monthKey || isOrderEligibleForAgentGoalsForMonth(order, monthKey, orders))
   );
 }
 

@@ -88,9 +88,43 @@ export function wasOrderCompletedBeforeMonth(order, monthKey) {
     )
 }
 
+function campaignIdentityKey(order) {
+  const c = order?.caseId
+  const caseId = c && typeof c === 'object' ? String(c._id ?? c.id ?? '') : String(c || '')
+  return `${caseId}|${String(order?.caseUnit || '')}|${Number(order?.pricePerUnit || 0)}`
+}
+
+function monthHasStickyClosedStatus(order, monthKey) {
+  return Object.entries(getMonthlyOrderStatusMap(order)).some(
+    ([key, status]) => key < monthKey && STICKY_CLOSED_STATUSES.has(normalizeOrderStatus(status))
+  )
+}
+
+/**
+ * Hide in this month when the campaign was completed/cancelled earlier:
+ * the same order with no later status, or a bulk-copied later row of the same campaign.
+ * An explicit in-progress/pending/on-hold for this month still shows (reopen).
+ */
+export function isCampaignClosedBeforeMonth(order, monthKey, allOrders = []) {
+  if (!order || !monthKey) return false
+  if (wasOrderInactiveBeforeMonth(order, monthKey)) return true
+
+  const identity = campaignIdentityKey(order)
+  const siblingClosedEarlier = Boolean(identity && !identity.startsWith('|') && (allOrders || []).some((other) => {
+    if (!other || String(other._id ?? other.id) === String(order._id ?? order.id)) return false
+    if (campaignIdentityKey(other) !== identity) return false
+    return monthHasStickyClosedStatus(other, monthKey)
+  }))
+  if (siblingClosedEarlier) return true
+
+  const thisMonth = getMonthlyOrderStatusMap(order)[monthKey]
+  if (thisMonth != null && thisMonth !== '') return false
+  return monthHasStickyClosedStatus(order, monthKey)
+}
+
 /** Orders that contribute agent goal/revenue on the agents page for a month. */
-export function isOrderEligibleForAgentGoalsForMonth(order, monthKey) {
-  if (wasOrderInactiveBeforeMonth(order, monthKey)) return false
+export function isOrderEligibleForAgentGoalsForMonth(order, monthKey, allOrders = []) {
+  if (isCampaignClosedBeforeMonth(order, monthKey, allOrders)) return false
   const status = getOrderStatusForMonth(order, monthKey)
   return status === 'in-progress' || status === 'completed'
 }
@@ -100,25 +134,25 @@ export function isOrderEligibleForAgentGoalsForMonth(order, monthKey) {
  * Matches Assign Goals: in-progress or pending for the viewed month.
  * On-hold this month stays hidden; an earlier pause does not stick.
  */
-export function isOrderListedOnAgentDashboardForMonth(order, monthKey) {
+export function isOrderListedOnAgentDashboardForMonth(order, monthKey, allOrders = []) {
+  if (isCampaignClosedBeforeMonth(order, monthKey, allOrders)) return false
   const status = getOrderStatusForMonth(order, monthKey)
   if (status !== 'in-progress' && status !== 'pending') return false
-  if (wasOrderInactiveBeforeMonth(order, monthKey)) return false
   return true
 }
 
 /**
  * Agent dashboard / personal revenue: only in-progress work for the viewed month.
  */
-export function isOrderActiveForAgentDashboardForMonth(order, monthKey) {
+export function isOrderActiveForAgentDashboardForMonth(order, monthKey, allOrders = []) {
   if (!isOrderInProgressForMonth(order, monthKey)) return false
-  if (wasOrderInactiveBeforeMonth(order, monthKey)) return false
+  if (isCampaignClosedBeforeMonth(order, monthKey, allOrders)) return false
   return true
 }
 
 /** Callers see assigned orders except pending, cancelled, and campaigns already inactive in an earlier month. */
-export function isOrderVisibleToCallerForMonth(order, monthKey) {
-  if (wasOrderInactiveBeforeMonth(order, monthKey)) return false
+export function isOrderVisibleToCallerForMonth(order, monthKey, allOrders = []) {
+  if (isCampaignClosedBeforeMonth(order, monthKey, allOrders)) return false
   return !isOrderPendingForMonth(order, monthKey) && !isOrderCancelledForMonth(order, monthKey)
 }
 

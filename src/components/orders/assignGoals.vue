@@ -630,6 +630,7 @@ import {
   buildMonthlyOrderStatusUpdate,
   monthKeyFromDateRange,
   isOrderListedOnAgentDashboardForMonth,
+  isCampaignClosedBeforeMonth,
 } from '@/js/orderStatusUtils'
 
 const store = useStore()
@@ -1279,7 +1280,10 @@ const filteredSortedOrders = computed(() => {
       if (!start || !end) return false;
       // Order overlaps with the month range (any overlap counts)
       // String comparison works for YYYY-MM-DD format
-      return start <= rangeEnd && end >= rangeStart;
+      if (!(start <= rangeEnd && end >= rangeStart)) return false;
+      const monthKey = monthKeyFromDateRange(currentDateRange.value);
+      if (monthKey && isCampaignClosedBeforeMonth(order, monthKey, orders.value)) return false;
+      return true;
     })
     .map(order => {
       // Enrich with multi-month information (same as ordersDashboard)
@@ -1642,7 +1646,7 @@ function getAgentMonthGoalOrders(agentId, from, to) {
   const overlapping = (orders.value || []).filter((o) => {
     if (!overlapsMonth(o, from, to)) return false
     if (!agentIsAssignedToOrder(o, aid)) return false
-    if (monthKey && !isOrderListedOnAgentDashboardForMonth(o, monthKey)) return false
+    if (monthKey && !isOrderListedOnAgentDashboardForMonth(o, monthKey, orders.value || [])) return false
     return true
   })
   const groups = groupOrderCampaignsForMonthView(overlapping, currentDateRange.value)

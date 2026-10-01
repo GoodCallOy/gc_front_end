@@ -1885,7 +1885,7 @@ const personalMonthlyGoalBreakdown = computed(() => {
     let excludedReason = null;
     if (isTestCase(order)) excludedReason = 'Test case';
     else if (isGoodCallCase(order)) excludedReason = 'Good call case';
-    else if (monthKey && !isOrderListedOnAgentDashboardForMonth(order, monthKey)) {
+    else if (monthKey && !isOrderListedOnAgentDashboardForMonth(order, monthKey, orders.value || [])) {
       excludedReason = `Status: ${getOrderStatusForMonth(order, monthKey)}`;
     }
 
@@ -2682,7 +2682,7 @@ watch([orders, selectedGcAgent, currentDateRange], async ([allOrders, agent, dat
 function applyCallerOrderVisibility(agentOrders) {
   const monthKey = monthKeyFromDateRange(currentDateRange.value)
   if (!monthKey) return agentOrders
-  return agentOrders.filter((o) => isOrderListedOnAgentDashboardForMonth(o, monthKey))
+  return agentOrders.filter((o) => isOrderListedOnAgentDashboardForMonth(o, monthKey, orders.value || []))
 }
 
 function dedupeOrdersForMonthView(agentOrders) {

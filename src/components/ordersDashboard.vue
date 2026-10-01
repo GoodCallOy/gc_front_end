@@ -273,6 +273,7 @@ import {
   isOrderCancelledForMonth,
   isOrderListedOnAgentDashboardForMonth,
   wasOrderInactiveBeforeMonth,
+  isCampaignClosedBeforeMonth,
   monthKeyFromDateRange,
 } from '@/js/orderStatusUtils'
 import { getPercentageToGoalBadgeClass } from '@/js/percentageToGoalStyle'
@@ -337,7 +338,10 @@ const filteredOrders = computed(() => {
     const orderEnd = new Date(order.deadline);
     
     // Check if order overlaps with the selected month
-    return orderStart <= monthEnd && orderEnd >= monthStart;
+    if (!(orderStart <= monthEnd && orderEnd >= monthStart)) return false;
+    const monthKey = currentMonthKey.value;
+    if (monthKey && isCampaignClosedBeforeMonth(order, monthKey, orders.value)) return false;
+    return true;
   });
 });
 
@@ -537,7 +541,7 @@ const estimatedRevenueTotal = computed(() => {
   
   const nonTestOrders = ordersToCalculate.filter(order => {
     if (isTestCase(order) || isGoodCallCase(order)) return false;
-    return isOrderListedOnAgentDashboardForMonth(order, currentMonthKey.value);
+    return isOrderListedOnAgentDashboardForMonth(order, currentMonthKey.value, orders.value);
   });
   
   const groups = groupOrderCampaignsForMonthView(nonTestOrders, currentDateRange.value);
@@ -575,7 +579,7 @@ const estimatedRevenueBreakdown = computed(() => {
     if (isTestCase(order)) excludedReason = 'Test case';
     else if (isGoodCallCase(order)) excludedReason = 'Good call case';
     else {
-      if (!isOrderListedOnAgentDashboardForMonth(order, currentMonthKey.value)) {
+      if (!isOrderListedOnAgentDashboardForMonth(order, currentMonthKey.value, orders.value)) {
         excludedReason = `Status: ${getOrderStatusForMonth(order, currentMonthKey.value)}`;
       }
     }
