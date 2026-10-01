@@ -299,7 +299,7 @@ const assignedGoalsCount = computed(() =>
   (form.assignedCallers || []).reduce((sum, id) => sum + (Number(agentGoals[id]) || 0), 0)
 )
 
-/** Campaign-lifetime call-work €: campaign units × price (falls back to monthly units). */
+/** Campaign-lifetime call-work €: always campaign goal × price (falls back to monthly units). */
 const estimatedRevenue = computed(() => {
   const p = parseFloat(form.pricePerUnit)
   if (isNaN(p)) return ''
@@ -307,19 +307,19 @@ const estimatedRevenue = computed(() => {
   const monthly = parseFloat(form.totalQuantity)
   const units = (!isNaN(campaign) && campaign > 0) ? campaign : monthly
   if (isNaN(units)) return ''
-  const n = Math.max(p * units, p * (Number(assignedGoalsCount.value) || 0))
+  const n = p * units
   if (!Number.isFinite(n) || n < 0) return ''
   return roundTo2Decimals(n).toFixed(2)
 })
 
 watch(estimatedRevenue, (val) => { form.estimatedRevenue = val })
 
-/** Call-work € for a month: max(monthly units × price, assigned units × price). No fees. */
+/** Call-work € for a month: monthly goal units × price. No fees; not inflated by assigned goals. */
 const monthlyCallWorkEuros = computed(() => {
   const p = parseFloat(form.pricePerUnit)
   const q = parseFloat(form.totalQuantity)
   if (isNaN(p) || isNaN(q)) return ''
-  const n = Math.max(p * q, p * (Number(assignedGoalsCount.value) || 0))
+  const n = p * q
   if (!Number.isFinite(n) || n < 0) return ''
   return roundTo2Decimals(n).toFixed(2)
 })

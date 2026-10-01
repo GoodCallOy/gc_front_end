@@ -60,12 +60,11 @@ export function getOrderFeeEuros(order) {
   return (Number.isFinite(start) ? start : 0) + (Number.isFinite(management) ? management : 0)
 }
 
-/** Campaign call-work €: campaign units × price, never less than assigned units × price. */
+/** Campaign call-work €: always campaign goal units × price (not inflated by assigned goals). */
 export function campaignEstimatedRevenueEuros(order, cases = []) {
   const price = Number(order?.pricePerUnit) || 0
   const campaignUnits = Number(getCampaignGoalUnits(order, cases)) || 0
-  const assignedUnits = Number(getDistributedAssignedGoals(order)) || 0
-  return Math.max(campaignUnits, assignedUnits) * price
+  return campaignUnits * price
 }
 
 /** Campaign estimated revenue plus fees. */

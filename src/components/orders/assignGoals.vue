@@ -1796,13 +1796,11 @@ function getCampaignGoalDisplay(order) {
 }
 
 // Monthly revenue for the currently viewed month: month goal units × price.
-// For single-month campaigns this matches the campaign estimated revenue; for
-// multi-month campaigns it reflects only the current month's assigned goals.
+// Not inflated by assigned agent goals.
 function getMonthlyRevenueEuros(order) {
   const price = Number(order?.pricePerUnit) || 0
   const monthUnits = Number(getOrderMonthGoalUnits(order)) || 0
-  const assignedUnits = Number(getDistributedGoals(order)) || 0
-  return Math.max(monthUnits, assignedUnits) * price
+  return monthUnits * price
 }
 
 // assumes you have: agents (list of agent docs), allOrders (list of all orders), currency() formatter

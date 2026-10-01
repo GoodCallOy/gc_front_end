@@ -362,14 +362,12 @@ export function populateCasesSortedByAgent(agentStats, selectedAgent) {
   }
 
   /**
-   * Estimated revenue (€) for an order — Assign Goals month units × price,
-   * never less than assigned agent units × price.
+   * Estimated revenue (€) for an order — Assign Goals month units × price.
+   * Not inflated by assigned agent goals.
    */
   export function ordersDashboardRevenueGoalEuros(order) {
     const pricePerUnit = Number(order?.pricePerUnit) || 0
-    const fromMonthUnits = getOrderMonthGoalUnits(order) * pricePerUnit
-    const fromAssigned = getDistributedAssignedGoals(order) * pricePerUnit
-    return Math.max(fromMonthUnits, fromAssigned)
+    return getOrderMonthGoalUnits(order) * pricePerUnit
   }
 
   /** Revenue goal (€) for a specific calendar month — Assign Goals units × price wins. */
@@ -414,13 +412,11 @@ export function populateCasesSortedByAgent(agentStats, selectedAgent) {
   }
 
   /**
-   * Estimated € for a campaign in a month: case monthly goal, but never less than
-   * what is actually assigned to agents (Assign Goals totals).
+   * Estimated € for a campaign in a month: case monthly goal × price
+   * (not inflated by assigned agent goals).
    */
   export function estimatedRevenueEurosForCampaignGroup(orders, representative, dateRangeOrMonthKey) {
-    const caseGoal = ordersDashboardRevenueGoalEurosForMonth(representative, dateRangeOrMonthKey)
-    const assigned = assignedAgentGoalEurosForGroup(orders)
-    return Math.max(caseGoal, assigned)
+    return ordersDashboardRevenueGoalEurosForMonth(representative, dateRangeOrMonthKey)
   }
 
   /** Group key for the same campaign (case + unit + price). */
