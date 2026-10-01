@@ -748,7 +748,7 @@ const horizontalBarOptions = computed(() => ({
   indexAxis: 'y',
   responsive: true,
   maintainAspectRatio: false,
-  interaction: { mode: 'index', intersect: false },
+  interaction: { mode: 'nearest', intersect: true },
   layout: { padding: { right: 8 } },
   plugins: {
     legend: { display: true, position: 'top' },
@@ -769,16 +769,7 @@ const horizontalBarOptions = computed(() => ({
       font: { size: 11, weight: '700', family: "'Roboto', sans-serif" },
       values: revenueByCaseRows.value.map((row) => formatCurrencyEUR(row.estimatedRevenue)),
     },
-    tooltip: {
-      callbacks: {
-        label: (ctx) => `${ctx.dataset.label}: ${formatCurrencyEUR(ctx.raw || 0)}`,
-        footer: (items) => {
-          const idx = items?.[0]?.dataIndex
-          const row = Number.isInteger(idx) ? revenueByCaseRows.value[idx] : null
-          return row ? `${t('ordersDashboard.tableHeaders.revenueGoal')}: ${formatCurrencyEUR(row.estimatedRevenue)}` : ''
-        },
-      },
-    },
+    tooltip: { enabled: false },
   },
   scales: {
     x: {

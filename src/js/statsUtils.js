@@ -572,8 +572,30 @@ export function populateCasesSortedByAgent(agentStats, selectedAgent) {
         logCount: monthLogs.length
       };
     });
-    
-    return monthlyProgress;
+
+    const campaignGoalRaw = Number(order?.campaignGoal ?? order?.campaign_goal);
+    const campaignGoal =
+      Number.isFinite(campaignGoalRaw) && campaignGoalRaw > 0
+        ? campaignGoalRaw
+        : getOrderMonthGoalUnits(order);
+    let completedBefore = 0;
+    return monthlyProgress.map((month) => {
+      const qty = Number(month.quantityCompleted) || 0;
+      const leftover = Math.max(0, roundTo2Decimals((Number(campaignGoal) || 0) - completedBefore));
+      const remainingAfter = Math.max(0, roundTo2Decimals(leftover - qty));
+      const price = Number(order?.pricePerUnit) || 0;
+      const monthRevenueGoal = leftover * price;
+      const percentageToGoal =
+        leftover > 0 ? Math.round((qty / leftover) * 100) : 0;
+      completedBefore += qty;
+      return {
+        ...month,
+        monthGoalUnits: leftover,
+        remainingAfter,
+        monthRevenueGoal,
+        percentageToGoal,
+      };
+    });
   }
 
 /** Sum completed units across all months of a campaign (from breakdown or daily logs). */

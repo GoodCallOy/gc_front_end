@@ -289,7 +289,7 @@
                               <tr v-for="month in (item?.raw ?? item)?.monthlyBreakdown" :key="month.monthKey">
                                 <td>{{ getMonthName(month.month) }} {{ month.year }}</td>
                                 <td>{{ formatDateDetailed(month.startDateStr) }} - {{ formatDateDetailed(month.endDateStr) }}</td>
-                                <td>{{ formatSlashPairByCaseUnit(month.quantityCompleted, getCaseDisplayGoal(item?.raw ?? item), (item?.raw ?? item)?.caseUnit) }}</td>
+                                <td>{{ formatSlashPairByCaseUnit(month.quantityCompleted, month.monthGoalUnits ?? getCaseDisplayGoal(item?.raw ?? item), (item?.raw ?? item)?.caseUnit) }}</td>
                                 <td>
                                   <div
                                     v-for="entry in getCaseMonthlyAgentALeads(item?.raw ?? item, month)"
@@ -303,7 +303,7 @@
                                 <td>{{ formatCurrency(month.revenue) }}</td>
                                 <td>{{ formatCurrency(getCaseMonthlyRevenueGoal(item?.raw ?? item, month)) }}</td>
                                 <td>{{ formatStatNumber(getCaseMonthlyPercentageToGoal(item?.raw ?? item, month)) }}%</td>
-                                <td>{{ formatUnitsByCaseUnit(Math.max(0, getCaseDisplayGoal(item?.raw ?? item) - getTotalCompletedUpToMonth((item?.raw ?? item)?.monthlyBreakdown, month.monthKey)), (item?.raw ?? item)?.caseUnit) }}</td>
+                                <td>{{ formatUnitsByCaseUnit(month.remainingAfter ?? Math.max(0, getCaseDisplayGoal(item?.raw ?? item) - getTotalCompletedUpToMonth((item?.raw ?? item)?.monthlyBreakdown, month.monthKey)), (item?.raw ?? item)?.caseUnit) }}</td>
                               </tr>
                               <tr class="font-weight-bold">
                                 <td colspan="2">{{ t('ordersDashboard.monthlyBreakdown.total') }}</td>
@@ -766,12 +766,19 @@ function getCaseDisplayGoal(item) {
 }
 
 function getCaseMonthlyRevenueGoal(item, month) {
+  if (month?.monthRevenueGoal != null && month.monthRevenueGoal !== '') {
+    return Number(month.monthRevenueGoal) || 0
+  }
+  const leftover = Number(month?.monthGoalUnits)
+  const price = Number(item?.pricePerUnit) || 0
+  if (Number.isFinite(leftover)) return leftover * price
   const goals = item?.monthlyRevenueGoals || {}
   const raw = goals[month?.monthKey]
   return Number(raw) || 0
 }
 
 function getCaseMonthlyPercentageToGoal(item, month) {
+  if (Number.isFinite(Number(month?.percentageToGoal))) return Number(month.percentageToGoal)
   const goal = Number(getCaseMonthlyRevenueGoal(item, month) || 0)
   if (goal <= 0) return 0
   const revenue = Number(month?.revenue ?? 0)

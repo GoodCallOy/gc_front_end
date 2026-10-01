@@ -316,7 +316,7 @@
                         <tr v-for="month in item.monthlyBreakdown" :key="month.monthKey">
                           <td>{{ getMonthName(month.month) }} {{ month.year }}</td>
                           <td>{{ formatDateDetailed(month.startDateStr) }} - {{ formatDateDetailed(month.endDateStr) }}</td>
-                          <td>{{ formatSlashPair(month.quantityCompleted, getDisplayGoal(item)) }}</td>
+                          <td>{{ formatSlashPair(month.quantityCompleted, month.monthGoalUnits ?? getDisplayGoal(item)) }}</td>
                           <td>{{ formatCurrency(month.revenue) }}</td>
                           <td>{{ formatCurrency(getMonthlyRevenueGoal(item, month)) }}</td>
                           <td>
@@ -324,7 +324,7 @@
                               {{ formatStatNumber(getMonthlyPercentageToGoal(item, month)) }}%
                             </span>
                           </td>
-                          <td>{{ formatStatNumber(Math.max(0, getDisplayGoal(item) - getTotalCompletedUpToMonth(item.monthlyBreakdown, month.monthKey))) }}</td>
+                          <td>{{ formatStatNumber(month.remainingAfter ?? Math.max(0, getDisplayGoal(item) - getTotalCompletedUpToMonth(item.monthlyBreakdown, month.monthKey))) }}</td>
                         </tr>
                         <tr class="font-weight-bold">
                           <td colspan="2">{{ t('ordersDashboard.monthlyBreakdown.total') }}</td>
@@ -1693,12 +1693,19 @@ async function updateOrderStatus(order, newStatus) {
 }
 
 function getMonthlyRevenueGoal(order, month) {
+  if (month?.monthRevenueGoal != null && month.monthRevenueGoal !== '') {
+    return Number(month.monthRevenueGoal) || 0
+  }
+  const leftover = Number(month?.monthGoalUnits)
+  const price = Number(order?.pricePerUnit) || 0
+  if (Number.isFinite(leftover)) return leftover * price
   const goals = order?.monthlyRevenueGoals || {}
   const raw = goals[month.monthKey]
   return Number(raw) || 0
 }
 
 function getMonthlyPercentageToGoal(order, month) {
+  if (Number.isFinite(Number(month?.percentageToGoal))) return Number(month.percentageToGoal)
   const goal = getMonthlyRevenueGoal(order, month)
   if (!goal) return 0
   const revenue = Number(month?.revenue) || 0

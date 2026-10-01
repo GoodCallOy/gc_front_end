@@ -64,9 +64,9 @@
                     <tr v-for="month in item.monthlyBreakdown" :key="month.monthKey">
                       <td>{{ getMonthName(month.month) }} {{ month.year }}</td>
                       <td>{{ formatDate(month.startDateStr) }} - {{ formatDate(month.endDateStr) }}</td>
-                      <td>{{ formatStatNumber(month.quantityCompleted) }}</td>
+                      <td>{{ formatSlashPair(month.quantityCompleted, month.monthGoalUnits ?? item.monthGoal) }}</td>
                       <td>{{ formatCurrency(month.revenue) }}</td>
-                      <td>{{ formatStatNumber(Math.max(0, item.monthGoal - getTotalCompletedUpToMonth(item.monthlyBreakdown, month.monthKey))) }}</td>
+                      <td>{{ formatStatNumber(month.remainingAfter ?? Math.max(0, item.monthGoal - getTotalCompletedUpToMonth(item.monthlyBreakdown, month.monthKey))) }}</td>
                     </tr>
                     <tr class="font-weight-bold">
                       <td colspan="2">Total</td>
@@ -118,6 +118,7 @@ import DateHeader from '@/components/DateHeader.vue'
 import { goToNextMonth, goToPreviousMonth } from '@/js/dateUtils'
 import { useRouter } from 'vue-router'
 import { orderSpansMultipleMonths, calculateMonthlyProgress, getOrderMonthGoalUnits, ordersDashboardRevenueGoalEuros } from '@/js/statsUtils'
+import { formatStatNumber, formatCurrencyEUR, formatSlashPair } from '@/js/formatNumbers'
 import { monthKeyFromDateRange, isCampaignClosedBeforeMonth } from '@/js/orderStatusUtils'
 
 // Helper function to check if an order is a test case
