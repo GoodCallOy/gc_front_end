@@ -115,48 +115,49 @@
                 </div>
               </template>
               <template #item.copy="{ item: rowItem }">
-                <div class="d-flex align-center">
-                  <v-tooltip
-                    :text="copyOrderDisabledTooltip(rowItem)"
-                    location="top"
-                  >
-                    <template #activator="{ props: tipProps }">
-                      <v-btn
-                        v-bind="tipProps"
-                        icon
-                        variant="text"
-                        size="small"
-                        color="grey"
-                        class="mr-1"
-                        :disabled="isOrderCopyDisabled(rowItem)"
-                        @click.stop="copyOrder(rowItem)"
-                      >
-                        <v-icon>mdi-content-copy</v-icon>
-                      </v-btn>
-                    </template>
-                  </v-tooltip>
-                  <v-tooltip
-                    v-if="canCombineOrder(rowItem)"
-                    :text="t('assignGoals.tableHeaders.combine')"
-                    location="top"
-                  >
-                    <template #activator="{ props: combineTip }">
-                      <v-btn
-                        v-bind="combineTip"
-                        icon
-                        variant="text"
-                        size="small"
-                        color="primary"
-                        class="mr-1"
-                        :loading="combiningOrderId === String(rowItem._id)"
-                        :disabled="Boolean(combiningOrderId)"
-                        @click.stop="openCombineDialog(rowItem)"
-                      >
-                        <v-icon>mdi-call-merge</v-icon>
-                      </v-btn>
-                    </template>
-                  </v-tooltip>
-                </div>
+                <v-tooltip
+                  :text="copyOrderDisabledTooltip(rowItem)"
+                  location="top"
+                >
+                  <template #activator="{ props: tipProps }">
+                    <v-btn
+                      v-bind="tipProps"
+                      icon
+                      variant="text"
+                      size="small"
+                      color="grey"
+                      class="mr-2"
+                      :disabled="isOrderCopyDisabled(rowItem)"
+                      @click.stop="copyOrder(rowItem)"
+                    >
+                      <v-icon>mdi-content-copy</v-icon>
+                    </v-btn>
+                  </template>
+                </v-tooltip>
+              </template>
+              <template #item.combine="{ item: rowItem }">
+                <v-tooltip
+                  v-if="canCombineOrder(rowItem)"
+                  :text="t('assignGoals.tableHeaders.combine')"
+                  location="top"
+                >
+                  <template #activator="{ props: combineTip }">
+                    <v-btn
+                      v-bind="combineTip"
+                      icon
+                      variant="text"
+                      size="small"
+                      color="primary"
+                      class="mr-2"
+                      :title="t('assignGoals.tableHeaders.combine')"
+                      :loading="combiningOrderId === String(rowItem._id)"
+                      :disabled="Boolean(combiningOrderId)"
+                      @click.stop="openCombineDialog(rowItem)"
+                    >
+                      <v-icon>mdi-call-merge</v-icon>
+                    </v-btn>
+                  </template>
+                </v-tooltip>
               </template>
               <template #item.caseName="{ item: rowItem }">
                 <div class="case-cell-block" @click.stop>
@@ -1152,6 +1153,7 @@ const orderHeaders = computed(() => [
   { title: t('assignGoals.tableHeaders.priceUnit'), key: 'caseUnit' },
   { title: t('assignGoals.tableHeaders.edit'), key: 'edit', sortable: false },
   { title: t('assignGoals.tableHeaders.copy'), key: 'copy', sortable: false },
+  { title: t('assignGoals.tableHeaders.multiMonth'), key: 'combine', sortable: false },
   { title: t('assignGoals.tableHeaders.delete'), key: 'actions', sortable: false }
 ])
 
