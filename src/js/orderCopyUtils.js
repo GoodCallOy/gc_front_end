@@ -3,7 +3,7 @@
  * Keeps assign-goals bulk copy and modal copy aligned with OrderForm submit fields.
  */
 
-import { orderSpansMultipleMonths, getCampaignRemainingUnits } from '@/js/statsUtils';
+import { orderSpansMultipleMonths, getCampaignRemainingUnits, normalizeEntityId } from '@/js/statsUtils';
 import {
   getCampaignGoalUnits,
   getOrderMonthGoalUnits,
@@ -290,5 +290,182 @@ export function buildOrderCopyPrefill(order, copyFields, extra = {}) {
     assignedCallers: assignedIds,
     agentGoals: agentGoalsPrefill,
     agentRates: agentRatesPrefill,
+  };
+}
+
+function orderDocId(order) {
+  return String(order?._id ?? order?.id ?? '');
+}
+
+function sortOrdersByStartDate(orders) {
+  return [...(orders || [])].sort((a, b) => {
+    const da = toDateOnly(a?.startDate) || '';
+    const db = toDateOnly(b?.startDate) || '';
+    if (da !== db) return da.localeCompare(db);
+    return orderDocId(a).localeCompare(orderDocId(b));
+  });
+}
+
+function statusMapForOrder(order) {
+  const map = { ...(order?.monthlyOrderStatus || {}) };
+  const key = monthKeyFromDate(order?.startDate);
+  if (key && (map[key] == null || map[key] === '') && order?.orderStatus) {
+    map[key] = order.orderStatus;
+  }
+  return map;
+}
+
+/** Same campaign identity used to detect monthly copies of one spanning job. */
+export function campaignIdentityKey(order) {
+  const c = order?.caseId;
+  const caseId = c && typeof c === 'object' ? String(c._id ?? c.id ?? '') : String(c || '');
+  const unit = String(order?.caseUnit || '');
+  const price = Number(order?.pricePerUnit || 0);
+  if (caseId) return `${caseId}|${unit}|${price}`;
+  const name = String(order?.caseName || '').trim();
+  if (!name) return '';
+  return `${name}|${unit}|${price}`;
+}
+
+function uniqueOrdersById(orders) {
+  const seen = new Set();
+  const out = [];
+  for (const order of orders || []) {
+    const id = orderDocId(order);
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    out.push(order);
+  }
+  return out;
+}
+
+function coveredMonthKeys(order) {
+  const start = monthKeyFromDate(order?.startDate);
+  const end = monthKeyFromDate(order?.deadline);
+  const keys = new Set();
+  if (start) keys.add(start);
+  if (end) keys.add(end);
+  return keys;
+}
+
+/**
+ * Monthly copies of the same campaign that can be merged into one spanning order.
+ * Requires at least two documents covering more than one calendar month.
+ */
+export function findCombinableCampaignCopies(order, allOrders = []) {
+  if (!order) return [];
+  const key = campaignIdentityKey(order);
+  if (!key) return [];
+  const group = uniqueOrdersById(
+    (allOrders || []).filter((other) => campaignIdentityKey(other) === key)
+  );
+  if (group.length < 2) return [];
+  const months = new Set();
+  for (const item of group) {
+    for (const monthKey of coveredMonthKeys(item)) months.add(monthKey);
+  }
+  if (months.size < 2) return [];
+  return sortOrdersByStartDate(group);
+}
+
+export function canCombineIntoMultiMonth(order, allOrders = []) {
+  return findCombinableCampaignCopies(order, allOrders).length >= 2;
+}
+
+function resolveCombinedCampaignGoal(copies, cases = []) {
+  const chronological = sortOrdersByStartDate(copies);
+  for (const item of chronological) {
+    const stored = Number(item?.campaignGoal ?? item?.campaign_goal);
+    if (Number.isFinite(stored) && stored > 0) return roundTo2Decimals(stored);
+  }
+  const earliest = chronological[0];
+  return roundTo2Decimals(Number(getCampaignGoalUnits(earliest, cases)) || 0);
+}
+
+export function dailyLogsToRetarget(dailyLogs, absorbIds = []) {
+  const ids = new Set((absorbIds || []).map(String).filter(Boolean));
+  if (!ids.size) return [];
+  return (dailyLogs || []).filter((log) => {
+    const oid = normalizeEntityId(log?.order?._id ?? log?.order ?? log?.orderId);
+    return ids.has(oid);
+  });
+}
+
+export function buildDailyLogRetargetPayload(log, survivorId) {
+  let payload = {};
+  try {
+    payload = JSON.parse(JSON.stringify(log || {}));
+  } catch {
+    for (const [k, v] of Object.entries(log || {})) {
+      payload[k] = v;
+    }
+  }
+  delete payload._id;
+  delete payload.id;
+  delete payload.__v;
+  delete payload.createdAt;
+  delete payload.updatedAt;
+  payload.order = survivorId;
+  if (log?.orderId != null) payload.orderId = survivorId;
+  return payload;
+}
+
+function stripOrderUiFields(order) {
+  if (!order || typeof order !== 'object') return {};
+  const {
+    monthlyBreakdown,
+    agentSummary,
+    raw,
+    isMultiMonth,
+    ...rest
+  } = order;
+  return rest;
+}
+
+/**
+ * Keep the earliest copy, stretch it across all sibling months, and list copies to delete.
+ */
+export function buildCombinedMultiMonthPlan(copies, cases = []) {
+  const group = uniqueOrdersById(copies);
+  if (group.length < 2) return null;
+  const chronological = sortOrdersByStartDate(group);
+  const survivor = chronological[0];
+  const survivorId = orderDocId(survivor);
+  const startDates = chronological.map((o) => toDateOnly(o.startDate)).filter(Boolean);
+  const deadlines = chronological.map((o) => toDateOnly(o.deadline)).filter(Boolean);
+  if (!startDates.length || !deadlines.length) return null;
+  const startDate = startDates[0];
+  const deadline = [...deadlines].sort()[deadlines.length - 1];
+  const campaignGoal = resolveCombinedCampaignGoal(chronological, cases);
+  const monthlyGoal = getOrderMonthGoalUnits(survivor);
+  const price = Number(survivor?.pricePerUnit) || 0;
+  const monthlyRevenueGoals = {};
+  const monthlyOrderStatus = {};
+  for (const item of chronological) {
+    Object.assign(monthlyRevenueGoals, item?.monthlyRevenueGoals || {});
+    Object.assign(monthlyOrderStatus, statusMapForOrder(item));
+  }
+  const absorb = chronological.filter((o) => orderDocId(o) !== survivorId);
+  return {
+    survivor,
+    survivorId,
+    absorb,
+    absorbIds: absorb.map(orderDocId).filter(Boolean),
+    campaignName: survivor?.caseName || '',
+    startDate,
+    deadline,
+    campaignGoal,
+    copyCount: chronological.length,
+    payload: {
+      ...stripOrderUiFields(survivor),
+      startDate,
+      deadline,
+      campaignGoal,
+      monthlyGoal,
+      isMultiMonth: true,
+      estimatedRevenue: roundTo2Decimals(campaignGoal * price),
+      monthlyRevenueGoals,
+      monthlyOrderStatus,
+    },
   };
 }

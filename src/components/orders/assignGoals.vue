@@ -115,25 +115,48 @@
                 </div>
               </template>
               <template #item.copy="{ item: rowItem }">
-                <v-tooltip
-                  :text="copyOrderDisabledTooltip(rowItem)"
-                  location="top"
-                >
-                  <template #activator="{ props: tipProps }">
-                    <v-btn
-                      v-bind="tipProps"
-                      icon
-                      variant="text"
-                      size="small"
-                      color="grey"
-                      class="mr-2"
-                      :disabled="isOrderCopyDisabled(rowItem)"
-                      @click.stop="copyOrder(rowItem)"
-                    >
-                      <v-icon>mdi-content-copy</v-icon>
-                    </v-btn>
-                  </template>
-                </v-tooltip>
+                <div class="d-flex align-center">
+                  <v-tooltip
+                    :text="copyOrderDisabledTooltip(rowItem)"
+                    location="top"
+                  >
+                    <template #activator="{ props: tipProps }">
+                      <v-btn
+                        v-bind="tipProps"
+                        icon
+                        variant="text"
+                        size="small"
+                        color="grey"
+                        class="mr-1"
+                        :disabled="isOrderCopyDisabled(rowItem)"
+                        @click.stop="copyOrder(rowItem)"
+                      >
+                        <v-icon>mdi-content-copy</v-icon>
+                      </v-btn>
+                    </template>
+                  </v-tooltip>
+                  <v-tooltip
+                    v-if="canCombineOrder(rowItem)"
+                    :text="t('assignGoals.tableHeaders.combine')"
+                    location="top"
+                  >
+                    <template #activator="{ props: combineTip }">
+                      <v-btn
+                        v-bind="combineTip"
+                        icon
+                        variant="text"
+                        size="small"
+                        color="primary"
+                        class="mr-1"
+                        :loading="combiningOrderId === String(rowItem._id)"
+                        :disabled="Boolean(combiningOrderId)"
+                        @click.stop="openCombineDialog(rowItem)"
+                      >
+                        <v-icon>mdi-call-merge</v-icon>
+                      </v-btn>
+                    </template>
+                  </v-tooltip>
+                </div>
               </template>
               <template #item.caseName="{ item: rowItem }">
                 <div class="case-cell-block" @click.stop>
@@ -574,6 +597,40 @@
         </v-card-actions>
     </v-card>
     </v-dialog>
+
+    <v-dialog v-model="showCombineDialog" max-width="560">
+      <v-card>
+        <v-card-title>{{ t('assignGoals.combineTitle') }}</v-card-title>
+        <v-card-text>
+          <p class="mb-0">
+            {{ t('assignGoals.combineConfirm', {
+              count: combinePlan?.copyCount || 0,
+              name: combinePlan?.campaignName || '',
+              start: combinePlan?.startDate || '',
+              end: combinePlan?.deadline || '',
+              goal: combinePlan?.campaignGoal ?? 0,
+            }) }}
+          </p>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" :disabled="Boolean(combiningOrderId)" @click="closeCombineDialog">
+            {{ t('assignGoals.buttons.close') }}
+          </v-btn>
+          <v-btn
+            color="primary"
+            :loading="Boolean(combiningOrderId)"
+            @click="confirmCombineIntoMultiMonth"
+          >
+            {{ t('assignGoals.buttons.combineMonths') }}
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <v-snackbar v-model="combineSnackbar" :color="combineSnackbarColor" timeout="4000">
+      {{ combineSnackbarText }}
+    </v-snackbar>
 </template>
 
 
@@ -619,6 +676,11 @@ import {
   resolveOrderCopyFields,
   getRemainingMonthlyGoalForMultiMonthOrder,
   isMultiMonthCampaign,
+  canCombineIntoMultiMonth,
+  findCombinableCampaignCopies,
+  buildCombinedMultiMonthPlan,
+  dailyLogsToRetarget,
+  buildDailyLogRetargetPayload,
 } from '@/js/orderCopyUtils'
 import {
   ORDER_STATUS_OPTIONS,
@@ -703,6 +765,12 @@ const pendingCopySourceId = ref(null);
 const bulkCopying = ref(false);
 const selectedCopyOrderIds = ref(new Set());
 const expandedRows = ref(new Set());
+const combiningOrderId = ref('');
+const showCombineDialog = ref(false);
+const combinePlan = ref(null);
+const combineSnackbar = ref(false);
+const combineSnackbarText = ref('');
+const combineSnackbarColor = ref('success');
 
 function toggleExpand(id) {
   const key = String(id);
@@ -1959,6 +2027,71 @@ const selectOrder = async (order, event) => {
 };
 
 
+
+function canCombineOrder(order) {
+  return canCombineIntoMultiMonth(order, orders.value || [])
+}
+
+function openCombineDialog(order) {
+  const copies = findCombinableCampaignCopies(order, orders.value || [])
+  const plan = buildCombinedMultiMonthPlan(copies, cases.value || [])
+  if (!plan) {
+    combineSnackbarColor.value = 'error'
+    combineSnackbarText.value = t('assignGoals.combineNoSiblings')
+    combineSnackbar.value = true
+    return
+  }
+  combinePlan.value = { ...plan, clickedId: String(order?._id ?? order?.id ?? plan.survivorId) }
+  showCombineDialog.value = true
+}
+
+function closeCombineDialog() {
+  if (combiningOrderId.value) return
+  showCombineDialog.value = false
+  combinePlan.value = null
+}
+
+async function confirmCombineIntoMultiMonth() {
+  const plan = combinePlan.value
+  if (!plan?.survivorId) return
+  combiningOrderId.value = String(plan.clickedId || plan.survivorId)
+  try {
+    await axios.put(`${urls.backEndURL}/orders/${plan.survivorId}`, plan.payload)
+    const logs = dailyLogsToRetarget(dailyLogs.value || [], plan.absorbIds)
+    for (const log of logs) {
+      const logId = log?._id ?? log?.id
+      if (!logId) continue
+      await axios.put(
+        `${urls.backEndURL}/dailyLogs/${logId}`,
+        buildDailyLogRetargetPayload(log, plan.survivorId)
+      )
+    }
+    for (const id of plan.absorbIds) {
+      await axios.delete(`${urls.backEndURL}/orders/${id}`)
+    }
+    showCombineDialog.value = false
+    combinePlan.value = null
+    await fetchAllData()
+    recomputeCopiedFlags()
+    const merged = (orders.value || []).find((o) => String(o._id) === String(plan.survivorId))
+    if (merged) {
+      await selectOrder(merged, { item: merged })
+    } else if (selectedOrder.value && plan.absorbIds.includes(String(selectedOrder.value._id))) {
+      selectedOrder.value = null
+      selectedOrderId.value = null
+    }
+    combineSnackbarColor.value = 'success'
+    combineSnackbarText.value = t('assignGoals.combineSuccess', { name: plan.campaignName })
+    combineSnackbar.value = true
+  } catch (err) {
+    console.error('Failed to combine campaign copies:', err?.response?.data || err?.message || err)
+    combineSnackbarColor.value = 'error'
+    combineSnackbarText.value = t('assignGoals.combineFailed')
+    combineSnackbar.value = true
+  } finally {
+    combiningOrderId.value = ''
+  }
+}
 
 const deleteOrder = async (orderId) => {
   const confirmDelete = confirm(t('assignGoals.confirmDelete'))
