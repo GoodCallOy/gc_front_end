@@ -156,10 +156,32 @@ export function isOrderVisibleToCallerForMonth(order, monthKey, allOrders = []) 
   return !isOrderPendingForMonth(order, monthKey) && !isOrderCancelledForMonth(order, monthKey)
 }
 
-/** Completed and cancelled orders cannot receive new or edited daily logs for that month. */
+/**
+ * Completed campaigns stay open for late daily-log results in any month.
+ * Only cancelled orders freeze new or edited logs for that month.
+ */
 export function areDailyLogsFrozenForOrderMonth(order, monthKey) {
+  return isOrderCancelledForMonth(order, monthKey)
+}
+
+/** True when this campaign is completed for the log month, or was completed earlier. */
+export function isOrderCompletedForDailyLogs(order, monthKey) {
+  if (!order || !monthKey) return false
+  return isOrderCompletedForMonth(order, monthKey) || wasOrderCompletedBeforeMonth(order, monthKey)
+}
+
+/**
+ * Campaigns that can receive daily logs: in-progress, pending, and completed
+ * (including after the campaign closed or its dates ended). Cancelled stays out.
+ */
+export function isOrderEligibleForDailyLogsForMonth(order, monthKey, allOrders = []) {
+  if (!order) return false
+  if (monthKey && isOrderCancelledForMonth(order, monthKey)) return false
+  if (monthKey && isOrderCompletedForDailyLogs(order, monthKey)) return true
+  if (monthKey && isCampaignClosedBeforeMonth(order, monthKey, allOrders)) return false
+  if (!monthKey) return true
   const status = getOrderStatusForMonth(order, monthKey)
-  return status === 'completed' || status === 'cancelled'
+  return status === 'in-progress' || status === 'pending'
 }
 
 export function findOrderForDailyLog(orders, log) {

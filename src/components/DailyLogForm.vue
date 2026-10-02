@@ -128,8 +128,8 @@ import { resolveLinkedGcAgent } from '@/js/resolveLinkedGcAgent.js'
 import {
   areDailyLogsFrozenForLog,
   areDailyLogsFrozenForOrderMonth,
-  isOrderListedOnAgentDashboardForMonth,
-  isCampaignClosedBeforeMonth,
+  isOrderEligibleForDailyLogsForMonth,
+  isOrderCompletedForDailyLogs,
   monthKeyFromDate,
 } from '@/js/orderStatusUtils'
 import { isAgentAssignedToOrder } from '@/js/orderAuthority.js'
@@ -223,30 +223,26 @@ export default {
     const monthKey = this.logMonthKey
     
     return this.ordersWithCaseName.filter(order => {
-      // Check if order is active during the selected log month
-      if (!order.startDate || !order.deadline) return false
-      
-      const orderStart = new Date(order.startDate)
-      const orderEnd = new Date(order.deadline)
-      const [year, month] = monthKey.split('-').map(Number)
-      if (!year || !month) return false
-      const monthStart = new Date(year, month - 1, 1)
-      const monthEnd = new Date(year, month, 0, 23, 59, 59, 999)
-      
-      const isActiveThisMonth = orderStart <= monthEnd && orderEnd >= monthStart
-      if (!isActiveThisMonth) return false
-
-      if (isCampaignClosedBeforeMonth(order, monthKey, this.orders)) return false
-
-      if (areDailyLogsFrozenForOrderMonth(order, monthKey)) return false
-
-      if (this.isCaller && !isOrderListedOnAgentDashboardForMonth(order, monthKey, this.orders)) return false
-      
-      // Check if the selected agent is assigned to this order
       const wantedAgent = String(this.form.agent || '')
       const isAgentAssigned = wantedAgent && isAgentAssignedToOrder(order, wantedAgent)
-      
-      return isAgentAssigned
+      if (!isAgentAssigned) return false
+
+      const completedForLogs = isOrderCompletedForDailyLogs(order, monthKey)
+      if (!completedForLogs) {
+        if (!order.startDate || !order.deadline) return false
+
+        const orderStart = new Date(order.startDate)
+        const orderEnd = new Date(order.deadline)
+        const [year, month] = monthKey.split('-').map(Number)
+        if (!year || !month) return false
+        const monthStart = new Date(year, month - 1, 1)
+        const monthEnd = new Date(year, month, 0, 23, 59, 59, 999)
+
+        const isActiveThisMonth = orderStart <= monthEnd && orderEnd >= monthStart
+        if (!isActiveThisMonth) return false
+      }
+
+      return isOrderEligibleForDailyLogsForMonth(order, monthKey, this.orders)
     })
   },
   logMonthKey() {
@@ -266,7 +262,7 @@ export default {
     return areDailyLogsFrozenForOrderMonth(order, this.logMonthKey)
   },
   frozenMessage() {
-    return this.$t('dailyLogForm.frozenCompleted') || 'Daily logs are frozen for this case — the order is completed for this month.'
+    return this.$t('dailyLogForm.frozenCompleted') || 'Daily logs are frozen for this case — the order is cancelled for this month.'
   },
   selectedOrder() {
     if (!this.form.order) return null

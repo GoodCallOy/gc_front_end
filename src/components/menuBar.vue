@@ -6,7 +6,7 @@ import { useRouter, useRoute } from 'vue-router';
 import axios from 'axios';
 import urls from '@/js/config.js'
 import { resolveLinkedGcAgent } from '@/js/resolveLinkedGcAgent.js'
-import { isOrderListedOnAgentDashboardForMonth, monthKeyFromDateRange } from '@/js/orderStatusUtils.js'
+import { isOrderEligibleForDailyLogsForMonth, isOrderCompletedForDailyLogs, monthKeyFromDateRange } from '@/js/orderStatusUtils.js'
 import { isAgentAssignedToOrder } from '@/js/orderAuthority.js'
 
 const isDrawerOpen = ref(true);
@@ -58,19 +58,20 @@ const showCallerTools = computed(() => {
   if (!assigned.length) return false
 
   const range = dateRange.value
+  const monthKey = monthKeyFromDateRange(range)
   let inView = assigned
   if (Array.isArray(range) && range.length >= 2) {
     const monthStart = new Date(range[0])
     const monthEnd = new Date(range[1])
     inView = assigned.filter((order) => {
+      if (monthKey && isOrderCompletedForDailyLogs(order, monthKey)) return true
       if (!order.startDate || !order.deadline) return false
       return new Date(order.startDate) <= monthEnd && new Date(order.deadline) >= monthStart
     })
   }
 
-  const monthKey = monthKeyFromDateRange(range)
   if (monthKey) {
-    inView = inView.filter((o) => isOrderListedOnAgentDashboardForMonth(o, monthKey, orders.value))
+    inView = inView.filter((o) => isOrderEligibleForDailyLogsForMonth(o, monthKey, orders.value))
   }
   return inView.length > 0
 })

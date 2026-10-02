@@ -11,7 +11,7 @@
           <v-icon>mdi-chevron-right</v-icon>
         </v-btn>
         <v-btn
-          v-if="currentUser?.role === 'caller' && userOrders.length > 0"
+          v-if="currentUser?.role === 'caller' && canAddDailyLog"
           color="primary"
           class="ml-4"
           prepend-icon="mdi-clock-plus"
@@ -633,6 +633,7 @@ import {
   getOrderStatusForMonth,
   isOrderActiveForAgentDashboardForMonth,
   isOrderListedOnAgentDashboardForMonth,
+  isOrderEligibleForDailyLogsForMonth,
   monthKeyFromDateRange,
 } from '@/js/orderStatusUtils'
 const store = useStore()
@@ -2068,6 +2069,17 @@ const selectedGcAgent = computed(() => {
   }
 
   return resolveLinkedGcAgent(currentUser.value, agents)
+})
+
+const canAddDailyLog = computed(() => {
+  const agent = selectedGcAgent.value
+  const agentId = agent?._id ?? agent?.id
+  if (!agentId) return false
+  const monthKey = monthKeyFromDateRange(currentDateRange.value)
+  return (orders.value || []).some((order) =>
+    isAgentAssignedToOrder(order, agentId) &&
+    isOrderEligibleForDailyLogsForMonth(order, monthKey, orders.value || [])
+  )
 })
 
 // Admin/manager agent selector (kept in sync with ?agent= query)
