@@ -238,6 +238,15 @@
                     >
                       {{ t('ordersDashboard.multiMonth') }}
                     </v-chip>
+                    <v-chip
+                      v-if="isOrderCompletedForMonth(item?.raw ?? item, currentMonthKey)"
+                      size="x-small"
+                      color="success"
+                      variant="tonal"
+                      class="ml-1"
+                    >
+                      {{ t('ordersDashboard.completed') }}
+                    </v-chip>
                   </div>
                 </template>
                 <template #item.callers="{ item }">
@@ -635,6 +644,7 @@ import {
   isOrderActiveForAgentDashboardForMonth,
   isOrderListedOnAgentDashboardForMonth,
   isOrderEligibleForDailyLogsForMonth,
+  isOrderCompletedForMonth,
   monthKeyFromDateRange,
 } from '@/js/orderStatusUtils'
 const store = useStore()
@@ -686,6 +696,7 @@ const agentSelectItems = computed(() =>
 )
 const currentDate = computed(() => store.getters['currentDate'])
 const currentDateRange = computed(() => store.getters['currentDateRange'])
+const currentMonthKey = computed(() => monthKeyFromDateRange(currentDateRange.value))
 const canManageWeeklyNotes = computed(() => {
   const role = currentUser.value?.role
   return role === 'admin' || role === 'manager' || role === 'agent'

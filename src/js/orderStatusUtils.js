@@ -131,23 +131,22 @@ export function isOrderEligibleForAgentGoalsForMonth(order, monthKey, allOrders 
 
 /**
  * Cases the agent/admin should see on the agent dashboard for this month.
- * Matches Assign Goals: in-progress or pending for the viewed month.
- * On-hold this month stays hidden; an earlier pause does not stick.
+ * In-progress, pending, and completed for the viewed month.
+ * On-hold this month stays hidden. Completed/cancelled from an earlier month stay hidden.
  */
 export function isOrderListedOnAgentDashboardForMonth(order, monthKey, allOrders = []) {
   if (isCampaignClosedBeforeMonth(order, monthKey, allOrders)) return false
   const status = getOrderStatusForMonth(order, monthKey)
-  if (status !== 'in-progress' && status !== 'pending') return false
-  return true
+  return status === 'in-progress' || status === 'pending' || status === 'completed'
 }
 
 /**
- * Agent dashboard / personal revenue: only in-progress work for the viewed month.
+ * Agent dashboard / personal and team results: work that counts in the viewed month.
  */
 export function isOrderActiveForAgentDashboardForMonth(order, monthKey, allOrders = []) {
-  if (!isOrderInProgressForMonth(order, monthKey)) return false
   if (isCampaignClosedBeforeMonth(order, monthKey, allOrders)) return false
-  return true
+  const status = getOrderStatusForMonth(order, monthKey)
+  return status === 'in-progress' || status === 'completed'
 }
 
 /** Callers see assigned orders except pending, cancelled, and campaigns already inactive in an earlier month. */
