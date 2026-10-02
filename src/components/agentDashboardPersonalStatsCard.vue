@@ -96,6 +96,27 @@
                 </tr>
               </tbody>
             </v-table>
+            <v-table v-else-if="activeBreakdownKind === 'hours'" density="compact" class="text-caption">
+              <thead>
+                <tr>
+                  <th class="text-left">{{ t('ordersDashboard.charts.breakdownCaseType') }}</th>
+                  <th class="text-left">{{ t('ordersDashboard.charts.breakdownCase') }}</th>
+                  <th class="text-right">{{ t('agentDashboard.callingHours') }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="(row, i) in hoursWorkedBreakdown"
+                  :key="row.orderId || i"
+                  :class="breakdownRowClass(row)"
+                  @click="selectOrder(row.orderId)"
+                >
+                  <td>{{ row.caseType }}</td>
+                  <td class="breakdown-case-link">{{ row.caseName }}</td>
+                  <td class="text-right">{{ formatStatNumber(row.hours) }}</td>
+                </tr>
+              </tbody>
+            </v-table>
           </v-card-text>
         </v-card>
       </div>
@@ -134,6 +155,10 @@ const props = defineProps({
     default: () => [],
   },
   resultsNowBreakdown: {
+    type: Array,
+    default: () => [],
+  },
+  hoursWorkedBreakdown: {
     type: Array,
     default: () => [],
   },
@@ -193,6 +218,7 @@ const kpiCards = computed(() => {
       progress: 100,
       barColor: '#5d5d5d',
       subtitle: t('agentDashboard.personalHoursWorkedHint'),
+      breakdownKind: 'hours',
     },
     {
       title: t('agentDashboard.personalCallsMade'),
@@ -225,6 +251,9 @@ const activeBreakdownTitle = computed(() => {
   }
   if (activeBreakdownKind.value === 'current') {
     return t('agentDashboard.breakdownTitleResultsNow');
+  }
+  if (activeBreakdownKind.value === 'hours') {
+    return t('agentDashboard.breakdownTitleHoursWorked');
   }
   return '';
 });

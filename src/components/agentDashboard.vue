@@ -41,6 +41,7 @@
             :my-paycheck="casesTableTotals.myPaycheck"
             :monthly-goal-breakdown="personalMonthlyGoalBreakdown"
             :results-now-breakdown="personalResultsNowBreakdown"
+            :hours-worked-breakdown="personalHoursWorkedBreakdown"
             @select-order="onPersonalBreakdownSelectOrder"
           />
         </v-col>
@@ -1928,6 +1929,57 @@ const personalResultsNowBreakdown = computed(() => {
     .filter((row) => row.revenue > 0);
 
   return sortPersonalBreakdownRows(rows);
+});
+
+const personalHoursWorkedBreakdown = computed(() => {
+  const agent = selectedGcAgent.value;
+  const agentId = String(agent?._id ?? agent?.id ?? '');
+  const stats = caseStats.value;
+  const dateRange = currentDateRange.value;
+  if (!agentId || !Array.isArray(stats) || !dateRange) return [];
+
+  const monthStart = new Date(dateRange[0]);
+  const monthEnd = new Date(dateRange[1]);
+  monthEnd.setHours(23, 59, 59, 999);
+  const agentCases = getAgentOrdersForView(agentId, { includeTestCases: false });
+  const hoursByOrder = new Map();
+  const seenLogs = new Set();
+
+  stats.forEach((log) => {
+    const logDate = new Date(log.date);
+    const logAgentId = log.agent?._id || log.agent?.id || log.agent || log.agentId;
+    if (String(logAgentId) !== agentId) return;
+    if (logDate < monthStart || logDate > monthEnd) return;
+    if (String(log.caseName || '').toLowerCase().includes('test')) return;
+
+    const logKey = `${log.date}_${log.agentName || log.agent}_${log.caseName}_${log._id || log.id}`;
+    if (seenLogs.has(logKey)) return;
+    seenLogs.add(logKey);
+
+    const order = findOrderForLog(log, agentCases);
+    if (!order || isTestCase(order)) return;
+    const hours = Number(log.call_time ?? log.callTime ?? 0) || 0;
+    if (hours <= 0) return;
+
+    const orderId = String(order._id ?? order.id ?? '');
+    const existing = hoursByOrder.get(orderId);
+    if (existing) {
+      existing.hours += hours;
+      return;
+    }
+    hoursByOrder.set(orderId, {
+      orderId: order._id ?? order.id,
+      caseType: order.caseType || 'Unspecified',
+      caseName: order.caseName || '—',
+      hours,
+    });
+  });
+
+  return sortPersonalBreakdownRows(
+    [...hoursByOrder.values()]
+      .map((row) => ({ ...row, hours: roundTo2Decimals(row.hours) }))
+      .filter((row) => row.hours > 0)
+  );
 });
 
 // Team current revenue using the same approach as orders dashboard:
