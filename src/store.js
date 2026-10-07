@@ -275,7 +275,7 @@ const store = createStore({
       } catch (error) {
         console.error('❌ Error fetching user:', error)
         // If session expired, clear user state
-        if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+        if (error.response && error.response.status === 401) {
           commit('LOGOUT')
         }
         throw error // Re-throw so callers can handle it

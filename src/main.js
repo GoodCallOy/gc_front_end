@@ -10,20 +10,18 @@ import axios from 'axios';
 
 axios.defaults.withCredentials = true;
 
-// Add response interceptor to handle expired sessions
+// Only 401 means the session is gone. 403 is "logged in, not allowed"
+// (for example frozen daily logs) and must not kick the user to login.
 axios.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Handle 401 (Unauthorized) or 403 (Forbidden) responses
-    if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+    if (error.response && error.response.status === 401) {
       console.warn('Session expired - clearing auth and redirecting to login');
-      
-      // Clear auth state
+
       localStorage.removeItem('auth_user');
       localStorage.removeItem('token');
       store.commit('LOGOUT');
-      
-      // Only redirect if we're not already on the login page
+
       if (router.currentRoute.value.name !== 'login') {
         router.replace({ name: 'login' });
       }

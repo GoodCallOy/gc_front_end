@@ -114,6 +114,16 @@
         >
           {{ successMessage }}
         </v-alert>
+        <v-alert
+          v-if="showErrorMessage"
+          type="error"
+          density="compact"
+          variant="tonal"
+          class="mb-0"
+          style="flex: 1;"
+        >
+          {{ errorMessage }}
+        </v-alert>
       </div>
     </v-form>
   </v-card>
@@ -178,6 +188,8 @@ export default {
     originalLogId: null, // Store the ID of the log being edited
     showSuccessMessage: false,
     successMessage: '',
+    showErrorMessage: false,
+    errorMessage: '',
     // Leads section is collapsed by default for new logs, expanded if editing with existing lead values
     showLeadFieldsExpanded: !!(this.logToEdit && (
       this.logToEdit.aLeads ||
@@ -425,6 +437,8 @@ async mounted() {
             
             console.log('Saving log with caseName:', payload.caseName);
             console.log('Selected order caseName:', selectedOrder ? selectedOrder.caseName : 'No order selected');
+            this.showErrorMessage = false;
+            this.errorMessage = '';
 
             if (this.isEditing && this.originalLogId) {
                 // Update existing log
@@ -479,9 +493,13 @@ async mounted() {
                 this.$emit('saved');
         } catch (err) {
             console.error('Failed to save log', err);
-            // Hide success message if there was an error
             this.showSuccessMessage = false;
             this.successMessage = '';
+            this.showErrorMessage = true;
+            this.errorMessage =
+              err?.response?.data?.message ||
+              this.$t('dailyLogForm.saveFailed') ||
+              'Failed to save log.';
         }
     }
   },

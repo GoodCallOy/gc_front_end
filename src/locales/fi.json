@@ -88,6 +88,7 @@
       "addLog": "Lisää loki",
       "logCreatedSuccessfully": "Loki luotu onnistuneesti!",
       "logUpdatedSuccessfully": "Loki päivitetty onnistuneesti!",
+      "saveFailed": "Lokin tallennus epäonnistui.",
       "frozenCompleted": "Päivittäiset lokit on jäädytetty tälle tapaukselle — tilaus on peruutettu tältä kuukaudelta."
     },
     "ordersDashboard": {
