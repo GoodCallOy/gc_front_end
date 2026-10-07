@@ -629,7 +629,7 @@ import { useStore } from 'vuex'
 import { useI18n } from 'vue-i18n';
 import { useRouter, useRoute } from 'vue-router';
 import { goToNextMonth, goToPreviousMonth, formattedDateRange, isCurrentMonth, getMonthWeeks } from '@/js/dateUtils';
-import { fetchAgentgoalsByAgentAndMonth, orderSpansMultipleMonths, calculateMonthlyProgress, groupOrderCampaignsForMonthView, getScaledAgentGoalForMonth, getOrderMonthGoalUnits } from '@/js/statsUtils';
+import { fetchAgentgoalsByAgentAndMonth, orderSpansMultipleMonths, calculateMonthlyProgress, groupOrderCampaignsForMonthView, getScaledAgentGoalForMonth, getOrderMonthGoalUnits, getLogCompletedUnits, getLogCallHours } from '@/js/statsUtils';
 import { getStoredAgentRate, isAgentAssignedToOrder, assignedCallerIds } from '@/js/orderAuthority.js'
 import agentCaseCard from './agentCaseCard.vue'
 import AgentDashboardTeamStatsCard from './agentDashboardTeamStatsCard.vue'
@@ -1087,23 +1087,15 @@ const revenueGenerated = computed(() => {
 
     totalOutgoingCalls += Number(log.outgoing_calls ?? 0) || 0;
 
-    const logQuantityCompleted = Number(log.quantityCompleted) || 0;
-    totalUnits += logQuantityCompleted;
-
     const logCase = findOrderForLog(log, agentCases);
     if (!logCase || isTestCase(logCase)) return;
 
     const pricePerUnit = Number(logCase.pricePerUnit) || 0;
-    const caseUnit = String(logCase.caseUnit || log.caseUnit || log.case_unit || '').toLowerCase();
-    const isHoursCase = /^hours?$|^hrs?$|^h$/.test(caseUnit);
-    const isInterviewsCase = /^interview(s)?$/.test(caseUnit);
-
-    let canonicalUnits = logQuantityCompleted;
-    if (isHoursCase) {
-      canonicalUnits = Number(log.hours) || Number(logQuantityCompleted) || 0;
-    } else if (isInterviewsCase) {
-      canonicalUnits = Number(log.completedInterviews ?? log.interviews ?? logQuantityCompleted) || 0;
-    }
+    const caseUnit = String(logCase.caseUnit || log.caseUnit || log.case_unit || '');
+    const isHoursCase = isHoursCaseUnit(caseUnit);
+    const isInterviewsCase = /^interview(s)?$/i.test(caseUnit);
+    const canonicalUnits = getLogCompletedUnits(log, caseUnit);
+    totalUnits += canonicalUnits;
 
     const logRevenue = canonicalUnits * pricePerUnit;
     totalRevenue += logRevenue;
@@ -1113,33 +1105,33 @@ const revenueGenerated = computed(() => {
     totalMyRateRevenue += logMyRateRevenue;
 
     const interviewUnits = isInterviewsCase
-      ? Number(log.completedInterviews ?? log.interviews ?? logQuantityCompleted) || 0
+      ? canonicalUnits
       : Number(log.completedInterviews ?? log.interviews ?? 0);
     if (Number.isFinite(interviewUnits) && !Number.isNaN(interviewUnits)) {
       unitsByType.interviews += interviewUnits;
     }
 
     const hourUnits = isHoursCase
-      ? Number(log.hours) || Number(logQuantityCompleted) || 0
+      ? canonicalUnits
       : Number(log.hours ?? 0);
     if (Number.isFinite(hourUnits) && !Number.isNaN(hourUnits)) {
       unitsByType.hours += hourUnits;
     }
 
-    const isMeetingsCase = /^meeting(s)?$/.test(caseUnit);
+    const isMeetingsCase = /^meeting(s)?$/i.test(caseUnit);
     if (isMeetingsCase) {
-      unitsByType.meetings += logQuantityCompleted;
+      unitsByType.meetings += canonicalUnits;
     }
 
     const isALeadsCase = /^a[-_]?leads?$/i.test(String(logCase.caseUnit || ''));
     const aLeads = isALeadsCase
-      ? Number(log.aLeads ?? logQuantityCompleted) || 0
+      ? canonicalUnits
       : Number(log.aLeads ?? 0);
     if (Number.isFinite(aLeads) && !Number.isNaN(aLeads)) {
       unitsByType.aLeads += aLeads;
     }
 
-    const logCallTime = Number(log.call_time ?? log.callTime ?? 0) || 0;
+    const logCallTime = getLogCallHours(log);
     totalCallTime += logCallTime;
     if (isALeadsCase) {
       callTimeByType.aLeads += logCallTime;
@@ -1294,15 +1286,15 @@ const weeklyTotals = computed(() => {
       weeklyGroups[weekKey].cases.add(log.caseName); // Add case to the set
       
       // Add to totals
-      const logCallTime = log.call_time || 0;
+      const logCallTime = getLogCallHours(log);
       const logOutgoingCalls = log.outgoing_calls || 0;
       const logAnsweredCalls = log.answered_calls || 0;
       const logCompletedCalls = log.completed_calls || 0;
-      const logQuantityCompleted = log.quantityCompleted || 0;
       
       // Find the case for this log to get the correct price per unit
       const logCase = findOrderForLog(log, agentCases);
       const pricePerUnit = logCase?.pricePerUnit || 0;
+      const logQuantityCompleted = getLogCompletedUnits(log, logCase?.caseUnit || log.caseUnit);
       const logAmountMade = logQuantityCompleted * pricePerUnit;
       if (isHoursCaseUnit(logCase?.caseUnit || log.caseUnit)) {
         weeklyGroups[weekKey].totals.hasHoursCase = true;
@@ -1812,7 +1804,7 @@ const casesTableRows = computed(() => {
     });
 
     const myAgentUnits = myAgentOrderLogs.reduce(
-      (sum, l) => sum + (Number(l?.quantityCompleted) ?? 0),
+      (sum, l) => sum + getLogCompletedUnits(l, order.caseUnit),
       0
     );
 
@@ -1844,7 +1836,7 @@ const casesTableRows = computed(() => {
     });
 
     const teamUnits = teamTeamLogsUnique.reduce(
-      (sum, l) => sum + (Number(l?.quantityCompleted) ?? 0),
+      (sum, l) => sum + getLogCompletedUnits(l, order.caseUnit),
       0
     );
     const isMultiMonth = orderSpansMultipleMonths(order)
@@ -1969,7 +1961,7 @@ const personalHoursWorkedBreakdown = computed(() => {
 
     const order = findOrderForLog(log, agentCases);
     if (!order || isTestCase(order)) return;
-    const hours = Number(log.call_time ?? log.callTime ?? 0) || 0;
+    const hours = getLogCallHours(log);
     if (hours <= 0) return;
 
     const orderId = String(order._id ?? order.id ?? '');
@@ -2034,7 +2026,6 @@ const teamCurrentRevenueDashboardStyle = computed(() => {
 
   let totalRevenue = 0;
   logsInMonth.forEach((log) => {
-    const quantityCompleted = Number(log?.quantityCompleted) || 0;
     const order = eligibleOrders.find((o) =>
       o.caseName === log?.caseName ||
       String(o._id) === String(log?.order?._id ?? log?.order ?? log?.orderId)
@@ -2042,7 +2033,7 @@ const teamCurrentRevenueDashboardStyle = computed(() => {
 
     if (!order || isTestCase(order)) return;
     const pricePerUnit = Number(order?.pricePerUnit) || 0;
-    totalRevenue += quantityCompleted * pricePerUnit;
+    totalRevenue += getLogCompletedUnits(log, order.caseUnit) * pricePerUnit;
   });
 
   return roundTo2Decimals(totalRevenue);
@@ -2335,7 +2326,7 @@ const activityKpiCards = computed(() => [
     value: formatStatNumber(revenueGenerated.value?.unitsByType?.aLeads || 0),
     progress: 100,
     barColor: '#90a4ae',
-    subtitle: `${t('agentDashboard.billedHours')}: ${formatStatNumber(revenueGenerated.value?.billedHours || 0)}`,
+    subtitle: `${t('agentDashboard.callingHours')}: ${formatStatNumber(revenueGenerated.value?.callTimeByType?.aLeads || 0)}`,
   },
   {
     key: 'meetings',

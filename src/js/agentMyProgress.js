@@ -1,6 +1,6 @@
 import { roundTo2Decimals } from '@/js/formatNumbers';
 import { isOrderEligibleForAgentGoalsForMonth, monthKeyFromDateRange } from '@/js/orderStatusUtils';
-import { getScaledAgentGoalForMonth } from '@/js/statsUtils';
+import { getScaledAgentGoalForMonth, getLogCompletedUnits } from '@/js/statsUtils';
 import { isAgentAssignedToOrder, getStoredAgentGoal } from '@/js/orderAuthority.js';
 
 function isTestCase(order) {
@@ -98,7 +98,7 @@ export function computeAgentMyProgressPercent(agent, orders, statsLogs, dateRang
     });
 
     const myAgentUnits = myAgentOrderLogs.reduce(
-      (sum, l) => sum + (Number(l?.quantityCompleted) ?? 0),
+      (sum, l) => sum + getLogCompletedUnits(l, order.caseUnit),
       0
     );
     return myGoal > 0 ? Number(((myAgentUnits / myGoal) * 100).toFixed(2)) : 0;

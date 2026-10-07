@@ -68,7 +68,7 @@
   // Import utilities
   import { adjustColorOpacity } from '../utils/Utils'
   import { formatSlashPair, formatCurrencyEUR, formatStatNumber } from '@/js/formatNumbers'
-  import { getScaledAgentGoalForMonth, getOrderMonthGoalUnits, getStoredAgentRate } from '@/js/statsUtils'
+  import { getScaledAgentGoalForMonth, getOrderMonthGoalUnits, getStoredAgentRate, getLogCompletedUnits } from '@/js/statsUtils'
   
   export default {
     name: 'agentCaseCard',
@@ -183,7 +183,7 @@
       // current agent's units completed for this order
       const myAgentUnits = computed(() => {
         const total = myAgentOrderLogs.value.reduce(
-          (sum, l) => sum + (Number(l.quantityCompleted) || 0),
+          (sum, l) => sum + getLogCompletedUnits(l, props.order?.caseUnit),
           0
         )
         return total
@@ -210,7 +210,7 @@
           }
         )
         return allCaseLogs.reduce(
-          (sum, log) => sum + (Number(log?.quantityCompleted) || 0),
+          (sum, log) => sum + getLogCompletedUnits(log, props.order?.caseUnit),
           0
         )
       })

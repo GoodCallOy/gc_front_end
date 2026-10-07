@@ -2,7 +2,7 @@ import axios from 'axios';
 import urls from './config.js';
 import { toLocalYmdNumber, parseWeekDateLocal } from './dateUtils';
 import { monthKeyFromDateRange, monthKeyFromDate } from './orderStatusUtils';
-import { roundTo2Decimals } from './formatNumbers';
+import { roundTo2Decimals, isHoursCaseUnit } from './formatNumbers';
 
 export function normalizeEntityId(value) {
   if (value == null || value === '') return ''
@@ -109,7 +109,41 @@ export function getSelectedMonthBounds(dateRange) {
   }
 }
 
-/** Sum quantityCompleted from dailyLogs for one order within a selected month. */
+/** Calling hours logged on a daily log (`call_time`). */
+export function getLogCallHours(log) {
+  const n = Number(log?.call_time ?? log?.callTime ?? 0)
+  return Number.isFinite(n) ? n : 0
+}
+
+/**
+ * Completed units used for Results / revenue.
+ * Hours cases prefer calling hours so Results now matches Hours worked.
+ * Older logs with no call_time still fall back to `hours` then `quantityCompleted`.
+ */
+export function getLogCompletedUnits(log, caseUnit) {
+  if (!log) return 0
+  const unit = String(caseUnit || log.caseUnit || log.case_unit || '')
+  if (isHoursCaseUnit(unit)) {
+    const callHours = getLogCallHours(log)
+    if (callHours > 0) return callHours
+    const hours = Number(log.hours)
+    if (Number.isFinite(hours) && hours > 0) return hours
+    const qty = Number(log.quantityCompleted)
+    return Number.isFinite(qty) ? qty : 0
+  }
+  if (/^interview(s)?$/i.test(unit)) {
+    const n = Number(log.completedInterviews ?? log.interviews ?? log.quantityCompleted ?? 0)
+    return Number.isFinite(n) ? n : 0
+  }
+  if (/^a[-_\s]?leads?$/i.test(unit)) {
+    const n = Number(log.aLeads ?? log.quantityCompleted ?? 0)
+    return Number.isFinite(n) ? n : 0
+  }
+  const qty = Number(log.quantityCompleted)
+  return Number.isFinite(qty) ? qty : 0
+}
+
+/** Sum completed units from dailyLogs for one order within a selected month. */
 export function computeOrderQuantityForMonth(order, dailyLogs, dateRange) {
   if (!order || !Array.isArray(dailyLogs) || !dateRange) return 0
   const bounds = getSelectedMonthBounds(dateRange)
@@ -122,14 +156,9 @@ export function computeOrderQuantityForMonth(order, dailyLogs, dateRange) {
     .filter((log) => {
       const logN = toLocalYmdNumber(log.date)
       if (logN == null) return false
-      return (
-        logMatchesOrderForMonthRevenue(log, order) &&
-        logN >= startN &&
-        logN <= endN &&
-        typeof log.quantityCompleted === 'number'
-      )
+      return logMatchesOrderForMonthRevenue(log, order) && logN >= startN && logN <= endN
     })
-    .reduce((sum, log) => sum + Number(log.quantityCompleted || 0), 0)
+    .reduce((sum, log) => sum + getLogCompletedUnits(log, order?.caseUnit), 0)
 }
 
 export function computeOrderRevenueForMonth(order, dailyLogs, dateRange) {
@@ -555,9 +584,8 @@ export function populateCasesSortedByAgent(agentStats, selectedAgent) {
         return logDate >= monthStart && logDate <= monthEnd;
       });
       
-      // Calculate total quantity completed in this month (always show quantity)
       const quantityCompleted = monthLogs.reduce(
-        (sum, log) => sum + (Number(log.quantityCompleted) || 0),
+        (sum, log) => sum + getLogCompletedUnits(log, order.caseUnit),
         0
       );
       

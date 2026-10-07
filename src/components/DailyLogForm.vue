@@ -143,6 +143,7 @@ import {
   monthKeyFromDate,
 } from '@/js/orderStatusUtils'
 import { isAgentAssignedToOrder } from '@/js/orderAuthority.js'
+import { isHoursCaseUnit } from '@/js/formatNumbers'
 
 
 export default {
@@ -301,6 +302,19 @@ export default {
     'form.order'(newOrderId) {
         const selectedOrder = this.filteredOrders.find(order => order._id === newOrderId);
         this.form.caseUnit = selectedOrder ? selectedOrder.caseUnit || '' : '';
+        if (isHoursCaseUnit(this.form.caseUnit)) {
+          this.form.quantityCompleted = this.normalizeDecimal(this.form.call_time) || 0;
+        }
+    },
+    'form.call_time'(val) {
+        if (isHoursCaseUnit(this.form.caseUnit)) {
+          this.form.quantityCompleted = this.normalizeDecimal(val) || 0;
+        }
+    },
+    'form.caseUnit'(val) {
+        if (isHoursCaseUnit(val)) {
+          this.form.quantityCompleted = this.normalizeDecimal(this.form.call_time) || 0;
+        }
     },
     'form.agent'(newAgentId) {
         // Clear the selected order when agent changes since available orders will change
@@ -422,7 +436,11 @@ async mounted() {
 
         // Allow both comma and dot as decimal separators for key numeric fields
         this.form.hours = this.normalizeDecimal(this.form.hours);
+        this.form.call_time = this.normalizeDecimal(this.form.call_time);
         this.form.quantityCompleted = this.normalizeDecimal(this.form.quantityCompleted);
+        if (isHoursCaseUnit(this.form.caseUnit)) {
+          this.form.quantityCompleted = this.form.call_time || 0;
+        }
 
         try {
             const selectedAgent = this.gcAgents.find(agent => agent._id === this.form.agent);

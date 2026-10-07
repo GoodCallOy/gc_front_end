@@ -18,6 +18,8 @@ export {
   getScaledAgentGoalForMonth,
   getAssignableGoalCap,
   recordToObject,
+  getLogCallHours,
+  getLogCompletedUnits,
 } from '@/js/statsUtils.js'
 
 import {
