@@ -428,7 +428,7 @@
                     <span v-if="currentMonthLabel">({{ currentMonthLabel }})</span>
                   </div>
                   <div class="mb-2">
-                    {{ formatStatNumber(agent.completedUnitsForThisOrder ?? 0) }}/{{ formatStatNumber(agent.goalForThisOrder) }} {{ t('assignGoals.totalGoals') }}
+                    {{ formatStatNumber(agent.completedUnitsForThisOrder ?? 0) }}/{{ formatStatNumber(agent.monthGoalForDisplay ?? agent.goalForThisOrder) }} {{ t('assignGoals.totalGoals') }}
                   </div>
 
                   <div class="text-caption mb-1 text-grey">{{ t('assignGoals.otherOrders') }}</div>
@@ -661,10 +661,10 @@ import {
   campaignTotalRevenueWithFeesEuros,
   getAssignableGoalCap,
   getCampaignRemainingUnitsAtMonthStart,
-  getScaledAgentGoalForMonth,
   getDistributedAssignedGoals,
   getOrderMonthGoalUnits,
   getCampaignMonthView,
+  getLogCompletedUnits,
 } from '@/js/orderAuthority.js'
 import DateHeader from '@/components/DateHeader.vue';
 import OrderForm from '@/components/orders/OrderForm.vue';
@@ -1855,7 +1855,7 @@ function completedUnitsForOrderInDateRange(order, logs, dateRange) {
     if (!sameOrder) return sum
     const d = new Date(log.date)
     if (d < from || d > to) return sum
-    return sum + (Number(log.quantityCompleted) || 0)
+    return sum + getLogCompletedUnits(log, order?.caseUnit)
   }, 0)
 }
 
@@ -1961,9 +1961,6 @@ const selectOrder = async (order, event) => {
     const monthlyGoals = selectedOrder.value.monthlyRevenueGoals || {}
     const caseMonthlyGoalRevenue = Number(monthlyGoals[currentMonthKeyForGoals]) || 0
 
-    const goalOrderId = orderId
-    const goalCaseName = selectedOrder.value.caseName || selectedOrder.value.case?.name || ''
-
     // build agentSummary only for agents on this order
     const summaries = assignedIds.map(agentId => {
       const gcAgent = agentsById.get(String(agentId))
@@ -1978,48 +1975,12 @@ const selectOrder = async (order, event) => {
 
       const goalForThisOrder = getStoredAgentGoal(selectedOrder.value, agentId)
       const rateForThisOrder = getStoredAgentRate(selectedOrder.value, agentId)
-
-      // Completed units: compute from dailyLogs for the current month + order + agent
-      let completedUnitsForThisOrderInt = 0;
-      try {
-        const logs = Array.isArray(dailyLogs.value) ? dailyLogs.value : [];
-        const fromTime = from.getTime();
-        const toTime = to.getTime();
-        completedUnitsForThisOrderInt = logs
-          .filter(l => {
-            const logAgentId = String(
-              l?.agent?._id ??
-              l?.agentId ??
-              l?.agent ??
-              ''
-            );
-            if (logAgentId !== String(agentId)) return false;
-
-            const logOrderId = String(
-              l?.order?._id ??
-              l?.order?.id ??
-              l?.orderId ??
-              ''
-            );
-            const logCaseName = l?.caseName ?? ''
-            const sameOrder =
-              (goalOrderId && logOrderId && logOrderId === goalOrderId) ||
-              (goalCaseName && logCaseName && logCaseName === goalCaseName)
-            if (!sameOrder) return false;
-
-            const d = new Date(l.date);
-            const tMs = d.getTime();
-            if (!Number.isFinite(tMs)) return false;
-            return tMs >= fromTime && tMs <= toTime;
-          })
-          .reduce((sum, l) => {
-            const units = Number(l.quantityCompleted ?? l.completedUnits ?? 0);
-            return sum + (Number.isFinite(units) && !Number.isNaN(units) ? units : 0);
-          }, 0);
-      } catch (e) {
-        console.warn('Failed to compute completed units for agent/order in AssignGoals:', e);
-        completedUnitsForThisOrderInt = 0;
-      }
+      const view = getCampaignMonthView(
+        selectedOrder.value,
+        dailyLogs.value || [],
+        currentMonthKey.value || currentMonthKeyForGoals,
+        agentId
+      )
 
       return {
         AgentOrders,
@@ -2027,7 +1988,8 @@ const selectOrder = async (order, event) => {
         name,
         goalForThisOrder,
         rateForThisOrder,
-        completedUnitsForThisOrder: completedUnitsForThisOrderInt,
+        completedUnitsForThisOrder: Number(view.myUnits) || 0,
+        monthGoalForDisplay: Number(view.myGoal) || 0,
         monthRevenue,
         monthRevenueFormatted: currency(monthRevenue),
         monthOrders: AgentOrders.length,

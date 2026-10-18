@@ -227,12 +227,11 @@ import { Doughnut, Bar } from 'vue-chartjs'
 import { formatStatNumber, formatCurrencyEUR } from '@/js/formatNumbers'
 import { toLocalYmdNumber } from '@/js/dateUtils'
 import {
-  computeOrderQuantityForMonth,
-  computeOrderRevenueForMonth,
   logMatchesOrderForMonthRevenue,
   estimatedRevenueEurosForCampaignGroup,
   groupOrderCampaignsForMonthView,
 } from '@/js/statsUtils'
+import { getCampaignMonthView, getLogCompletedUnits } from '@/js/orderAuthority.js'
 import {
   isOrderOnHoldForMonth,
   isOrderCancelledForMonth,
@@ -420,12 +419,12 @@ function revenueEligibleOrder(order) {
 
 function computeOrderQuantity(order, dailyLogs) {
   if (!order || isOrderOnHold(order)) return 0
-  return computeOrderQuantityForMonth(order, dailyLogs, props.currentDateRange)
+  return Number(getCampaignMonthView(order, dailyLogs, chartMonthKey()).teamUnits) || 0
 }
 
 function computeOrderRevenue(order, dailyLogs) {
   if (!order || isOrderOnHold(order)) return 0
-  return computeOrderRevenueForMonth(order, dailyLogs, props.currentDateRange)
+  return Number(getCampaignMonthView(order, dailyLogs, chartMonthKey()).teamRevenue) || 0
 }
 
 function estimatedRevenueForOrder(order) {
@@ -810,7 +809,7 @@ function computeWeekRevenueForCaseType(caseType, week) {
     if (logN == null || logN < startN || logN > endN) continue
     const order = typeOrders.find((o) => logMatchesOrderForMonthRevenue(log, o))
     if (!order) continue
-    sum += (Number(log.quantityCompleted) || 0) * (Number(order.pricePerUnit) || 0)
+    sum += getLogCompletedUnits(log, order.caseUnit) * (Number(order.pricePerUnit) || 0)
   }
   return sum
 }

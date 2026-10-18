@@ -63,7 +63,9 @@
   // Import utilities
   import { adjustColorOpacity } from '../../utils/Utils'
   import { formatSlashPair, formatCurrencyEUR, formatStatNumber } from '@/js/formatNumbers'
-  import { ordersDashboardRevenueGoalEuros, getOrderMonthGoalUnits } from '@/js/statsUtils'
+  import { ordersDashboardRevenueGoalEuros } from '@/js/statsUtils'
+  import { getCampaignMonthView } from '@/js/orderAuthority.js'
+  import { monthKeyFromDate } from '@/js/orderStatusUtils'
   
   export default {
     name: 'DashboardCard01',
@@ -96,54 +98,18 @@
         return ordersDashboardRevenueGoalEuros(props.order)
       })
 
-      const monthGoalUnits = computed(() => getOrderMonthGoalUnits(props.order))
-
-      const totalAgentUnitsValue = computed(() => {
-        if (
-          !props.order ||
-          !props.order.assignedCallers ||
-          !Array.isArray(props.dailyLogs)
-        )
-          return 0;
-
-        const assignedIds = props.order.assignedCallers;
-        // If we have custom weeks, base total on current month weeks; otherwise fallback to all logs
-        const weeks = Array.isArray(props.monthWeeks) ? props.monthWeeks : []
-        let totalUnits = 0
-        const orderId = String(props.order._id ?? props.order.id ?? '')
-        const toId = (x) => String(x?._id ?? x?.id ?? x ?? '')
-        const isAssigned = (logAgentId) => assignedIds.some(id => toId(id) === logAgentId)
-
-        if (weeks.length) {
-          for (const w of weeks) {
-            const start = new Date(w.start)
-            const end = new Date(w.end)
-            const weekUnits = props.dailyLogs
-              .filter(log => {
-                const logAgentId = toId(log.agent)
-                const logOrderId = toId(log.order) || toId(log.orderId)
-                return logAgentId && isAssigned(logAgentId) &&
-                  logOrderId === orderId &&
-                  new Date(log.date) >= start && new Date(log.date) <= end &&
-                  typeof log.quantityCompleted === 'number'
-              })
-              .reduce((sum, log) => sum + log.quantityCompleted, 0)
-            totalUnits += weekUnits
-          }
-        } else {
-          totalUnits = props.dailyLogs
-            .filter(log => {
-              const logAgentId = toId(log.agent)
-              const logOrderId = toId(log.order) || toId(log.orderId)
-              return logAgentId && isAssigned(logAgentId) &&
-                logOrderId === orderId &&
-                typeof log.quantityCompleted === 'number'
-            })
-            .reduce((sum, log) => sum + log.quantityCompleted, 0)
+      const monthView = computed(() => {
+        if (!props.order || !Array.isArray(props.dailyLogs)) {
+          return { teamGoal: 0, teamUnits: 0, teamRevenue: 0 }
         }
+        const weeks = Array.isArray(props.monthWeeks) ? props.monthWeeks : []
+        const monthKey = weeks.length ? monthKeyFromDate(weeks[0].start) : ''
+        return getCampaignMonthView(props.order, props.dailyLogs, monthKey)
+      })
 
-        return totalUnits * (props.order.pricePerUnit || 0);
-      });
+      const monthGoalUnits = computed(() => Number(monthView.value.teamGoal) || 0)
+
+      const totalAgentUnitsValue = computed(() => Number(monthView.value.teamRevenue) || 0)
 
       const percentage = computed(() => {
         const goal = revenueGoalEuros.value || 0;
@@ -162,29 +128,7 @@
         return 'percentage-green';
       });
 
-      const totalUnits = computed(() => {
-        if (
-          !props.order ||
-          !props.order.assignedCallers ||
-          !Array.isArray(props.dailyLogs)
-        )
-          return 0;
-
-        const assignedIds = props.order.assignedCallers;
-        const orderId = String(props.order._id ?? props.order.id ?? '');
-        const toId = (x) => String(x?._id ?? x?.id ?? x ?? '');
-        const isAssigned = (logAgentId) => assignedIds.some(id => toId(id) === logAgentId);
-
-        return props.dailyLogs
-          .filter(log => {
-            const logAgentId = toId(log.agent);
-            const logOrderId = toId(log.order) || toId(log.orderId);
-            return logAgentId && isAssigned(logAgentId) &&
-              logOrderId === orderId &&
-              typeof log.quantityCompleted === 'number';
-          })
-          .reduce((sum, log) => sum + log.quantityCompleted, 0);
-      });
+      const totalUnits = computed(() => Number(monthView.value.teamUnits) || 0)
 
   
       return {

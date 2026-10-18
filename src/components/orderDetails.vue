@@ -217,7 +217,7 @@
   import { formatSlashPair, formatStatNumber, formatCurrencyEUR } from '@/js/formatNumbers'
   import DateHeader from '@/components/DateHeader.vue'
   import { getOrderStatusForMonth, monthKeyFromDateRange, areDailyLogsFrozenForLog } from '@/js/orderStatusUtils'
-  import { getCampaignGoalUnits, getStoredAgentGoal, assignedCallerIds } from '@/js/orderAuthority.js'
+  import { getCampaignGoalUnits, assignedCallerIds, getCampaignMonthView, getLogCompletedUnits } from '@/js/orderAuthority.js'
   import { ordersDashboardRevenueGoalEuros } from '@/js/statsUtils'
 
 
@@ -261,30 +261,16 @@
     if (!ord) return [];
     const callerIds = assignedCallerIds(ord);
     if (!callerIds.length) return [];
-    const currentCaseName = ord.caseName;
-    if (!currentCaseName) return [];
-    let monthStart, monthEnd;
-    if (dateRange && dateRange.length >= 2) {
-      monthStart = new Date(dateRange[0]);
-      monthEnd = new Date(dateRange[1]);
-      monthEnd.setHours(23, 59, 59, 999);
-    }
+    const monthKey = monthKeyFromDateRange(dateRange)
     return callerIds.map(agentId => {
       const name = agentName(agentId);
-      const target = getStoredAgentGoal(ord, agentId);
-      let achieved = 0;
-      if (stats && Array.isArray(stats) && monthStart && monthEnd) {
-        achieved = stats
-          .filter(log => {
-            const logDate = new Date(log.date);
-            if (logDate < monthStart || logDate > monthEnd) return false;
-            const logAgentId = String(log.agent?._id ?? log.agent ?? log.agentId ?? '');
-            const sameCase = (log.caseName || log.case) === currentCaseName;
-            return logAgentId === agentId && sameCase;
-          })
-          .reduce((sum, log) => sum + (Number(log.quantityCompleted) || 0), 0);
-      }
-      return { agentId, name, target, achieved };
+      const view = getCampaignMonthView(ord, stats || [], monthKey, agentId)
+      return {
+        agentId,
+        name,
+        target: Number(view.myGoal) || 0,
+        achieved: Number(view.myUnits) || 0,
+      };
     });
   });
 
@@ -308,64 +294,22 @@
   });
 
   const revenueGenerated = computed(() => {
-  // Make this reactive to both caseStats and currentDateRange
-  const stats = caseStats.value;
-  const dateRange = currentDateRange.value;
-  
-  if (!order.value || !Array.isArray(stats) || !dateRange) {
-    return { totalUnits: 0, revenue: '0.00' };
-  }
-  
-  const currentCaseName = order.value.caseName;
-  if (!currentCaseName) return { totalUnits: 0, revenue: '0.00' };
-  
-  // Filter logs: within date range AND for the current case (show all logs for the case)
-  const [startDate, endDate] = dateRange;
-  const monthStart = new Date(startDate);
-  const monthEnd = new Date(endDate);
-  monthEnd.setHours(23, 59, 59, 999);
-  
-  const filteredStats = stats.filter(log => {
-    const logDate = new Date(log.date);
-    const isInDateRange = logDate >= monthStart && logDate <= monthEnd;
-    const isCurrentCase = (log.caseName || log.case) === currentCaseName;
-    return isInDateRange && isCurrentCase;
-  });
-
-  // Add deduplication to prevent double counting
-  const uniqueLogs = [];
-  const seenLogs = new Set();
-  
-  filteredStats.forEach(log => {
-    // Create a unique key for deduplication
-    const logKey = `${log.date}_${log.agentName || log.agent}_${log.caseName}_${log._id || log.id}`;
-    
-    if (!seenLogs.has(logKey)) {
-      seenLogs.add(logKey);
-      uniqueLogs.push(log);
+    if (!order.value) {
+      return { totalUnits: 0, revenue: '0.00' };
     }
+    if (isTestCase(order.value)) {
+      return { totalUnits: 0, revenue: '0.00' };
+    }
+    const view = getCampaignMonthView(
+      order.value,
+      caseStats.value || [],
+      monthKeyFromDateRange(currentDateRange.value)
+    )
+    return {
+      totalUnits: Number(view.teamUnits) || 0,
+      revenue: (Number(view.teamRevenue) || 0).toFixed(2),
+    };
   });
-
-  // Calculate total units from deduplicated logs for the current case only (excluding test cases)
-  const isTest = isTestCase(order.value);
-  
-  // If it's a test case, return zero revenue
-  if (isTest) {
-    return { totalUnits: 0, revenue: '0.00' };
-  }
-  
-  const totalUnits = uniqueLogs
-    .filter(log => {
-      if (log.caseName !== currentCaseName) return false;
-      // Also filter out test logs by case name
-      const logCaseName = String(log.caseName || '').toLowerCase();
-      return !logCaseName.includes('test');
-    })
-    .reduce((sum, log) => sum + (Number(log.quantityCompleted) || 0), 0);
-  const revenue = (totalUnits * (Number(order.value.pricePerUnit) || 0)).toFixed(2);
-  
-  return { totalUnits, revenue };
-});
 
 // Headers for weekly totals table
 const weeklyHeaders = computed(() => [
@@ -559,7 +503,7 @@ const calculateWeeklyTotals = async () => {
     const logOutgoingCalls = log.outgoing_calls || 0
     const logAnsweredCalls = log.answered_calls || 0
     const logCompletedCalls = log.completed_calls || 0
-    const logQuantityCompleted = log.quantityCompleted || 0
+    const logQuantityCompleted = getLogCompletedUnits(log, order.value?.caseUnit || log.caseUnit)
     const pricePerUnit = order.value?.pricePerUnit || 0
     // Only count revenue if not a test case
     const logAmountMade = (isTestLog || isTestOrder) ? 0 : logQuantityCompleted * pricePerUnit
@@ -676,7 +620,7 @@ const individualLogs = computed(() => {
       const outgoingCalls = log.outgoing_calls || 0;
       const answeredCalls = log.answered_calls || 0;
       const responseRate = outgoingCalls > 0 ? (answeredCalls / outgoingCalls) * 100 : 0;
-      const quantityCompleted = log.quantityCompleted || 0;
+      const quantityCompleted = getLogCompletedUnits(log, order.value?.caseUnit || log.caseUnit);
       
       // Use the current order's data since we're only showing current case data
       const caseUnit = order.value?.caseUnit || 'N/A';

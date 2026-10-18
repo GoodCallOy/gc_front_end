@@ -633,7 +633,6 @@ import { fetchAgentgoalsByAgentAndMonth, groupOrderCampaignsForMonthView, getLog
 import {
   getCampaignMonthView,
   getOrderMonthGoalUnits,
-  getScaledAgentGoalForMonth,
   getStoredAgentRate,
   isAgentAssignedToOrder,
   assignedCallerIds,
@@ -842,7 +841,7 @@ function getCaseMonthlyAgentALeads(item, month) {
     if (!logAgentId) return
 
     const aLeads = isALeadsCase
-      ? Number(log?.aLeads ?? log?.quantityCompleted ?? 0)
+      ? getLogCompletedUnits(log, 'a-leads')
       : Number(log?.aLeads ?? 0)
     if (!Number.isFinite(aLeads) || Number.isNaN(aLeads)) return
 
@@ -1422,12 +1421,11 @@ const individualLogs = computed(() => {
       const outgoingCalls = log.outgoing_calls || 0;
       const answeredCalls = log.answered_calls || 0;
       const responseRate = outgoingCalls > 0 ? (answeredCalls / outgoingCalls) * 100 : 0;
-      const quantityCompleted = log.quantityCompleted || 0;
-      
       // Find the case for this log to get the correct case unit and price per unit
       const logCase = findOrderForLog(log, agentCases);
       const caseUnit = logCase?.caseUnit || 'N/A';
       const pricePerUnit = logCase?.pricePerUnit || 0;
+      const quantityCompleted = getLogCompletedUnits(log, logCase?.caseUnit || log.caseUnit);
       return {
         date: formatDateToDDMMYYYY(log.date),
         caseName: log.caseName || 'Unknown Case',
@@ -1628,8 +1626,9 @@ const weeklyGoalsTableRows = computed(() => {
           }
         })
 
+        const caseUnitForLogs = resolveCaseUnitForWeeklyGoal(g)
         completed = matchingLogs.reduce(
-          (sum, log) => sum + (Number(log.quantityCompleted) || 0),
+          (sum, log) => sum + getLogCompletedUnits(log, caseUnitForLogs || log.caseUnit),
           0
         )
       }
@@ -1827,11 +1826,9 @@ const personalMonthlyGoalBreakdown = computed(() => {
     const logsForCalc = (caseStats.value && caseStats.value.length)
       ? caseStats.value
       : (dailyLogs.value || [])
-    const monthlyGoal =
-      Number(row?.myGoal) ||
-      Number(getScaledAgentGoalForMonth(order, agentId, logsForCalc, monthKey)) ||
-      0;
-    const revenue = Number(row?.myRevenueGoal) || monthlyGoal * pricePerUnit;
+    const view = row || getCampaignMonthView(order, logsForCalc, monthKey, agentId)
+    const monthlyGoal = Number(view.myGoal) || 0;
+    const revenue = Number(view.myRevenueGoal) || monthlyGoal * pricePerUnit;
 
     let excludedReason = null;
     if (isTestCase(order)) excludedReason = 'Test case';
@@ -2327,7 +2324,7 @@ const aLeadDetailRows = computed(() => {
       const caseUnit = String(matchedOrder?.caseUnit || log?.caseUnit || '').toLowerCase();
       const isALeadsCase = /^a[-_]?leads?$/i.test(caseUnit);
       const aLeads = isALeadsCase
-        ? Number(log?.aLeads ?? log?.quantityCompleted ?? 0) || 0
+        ? getLogCompletedUnits(log, 'a-leads')
         : Number(log?.aLeads ?? 0) || 0;
       if (aLeads <= 0) return null;
 
