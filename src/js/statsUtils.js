@@ -725,11 +725,77 @@ export function getAssignableGoalCap(order, dailyLogs, campaignGoal, monthKey) {
   return remaining
 }
 
+/** Campaign-lifetime unit goal (falls back to monthly/assigned total). */
+export function resolveCampaignGoalUnits(order) {
+  const raw = Number(order?.campaignGoal ?? order?.campaign_goal)
+  if (Number.isFinite(raw) && raw > 0) return raw
+  return getOrderMonthGoalUnits(order)
+}
+
+/**
+ * Sum completed units for an order in one calendar month (YYYY-MM).
+ * Optionally filter to one agent. Dedupes identical log rows.
+ */
+export function sumOrderUnitsInMonth(order, dailyLogs = [], monthKey = '', agentId = null) {
+  const key = String(monthKey || '').slice(0, 7)
+  if (!order || key.length < 7 || !Array.isArray(dailyLogs)) return 0
+  const aid = agentId != null && agentId !== '' ? String(agentId) : null
+  const seen = new Set()
+  let units = 0
+  for (const log of dailyLogs) {
+    if (!logMatchesOrderForMonthRevenue(log, order)) continue
+    if (aid) {
+      const logAgentId = String(
+        log?.agent?._id ?? log?.agent?.id ?? log?.agent ?? log?.agentId ?? ''
+      )
+      if (logAgentId !== aid) continue
+    }
+    const logMonth = monthKeyFromDate(log.date)
+    if (logMonth !== key) continue
+    const dedupeKey = `${log.date}_${log.agentName || log.agent}_${log.caseName}_${log._id || log.id}`
+    if (seen.has(dedupeKey)) continue
+    seen.add(dedupeKey)
+    units += getLogCompletedUnits(log, order?.caseUnit)
+  }
+  return units
+}
+
+/**
+ * Team progress for one calendar month on a campaign.
+ * Multi-month: denominator is campaign leftover at month start (0 once the
+ * campaign goal is already met); numerator is units completed in that month.
+ * Single-month: teamGoal is the monthly order goal; teamUnits are that month's logs.
+ */
+export function getTeamMonthProgress(order, dailyLogs = [], monthKey = '') {
+  const key = String(monthKey || '').slice(0, 7)
+  const isMulti = orderSpansMultipleMonths(order) || order?.isMultiMonth
+  const campaignGoal = resolveCampaignGoalUnits(order)
+  if (isMulti && key.length >= 7) {
+    const monthlyBreakdown = calculateMonthlyProgress(order, dailyLogs || [])
+    const row = monthlyBreakdown.find((m) => String(m.monthKey) === key)
+    return {
+      isMultiMonth: true,
+      campaignGoal,
+      teamGoal: row ? Number(row.monthGoalUnits) || 0 : 0,
+      teamUnits: row ? Number(row.quantityCompleted) || 0 : 0,
+      monthlyBreakdown,
+    }
+  }
+  return {
+    isMultiMonth: false,
+    campaignGoal,
+    teamGoal: getOrderMonthGoalUnits(order),
+    teamUnits: key.length >= 7 ? sumOrderUnitsInMonth(order, dailyLogs, key) : 0,
+    monthlyBreakdown: null,
+  }
+}
+
 /**
  * Personal unit goal for the viewed month.
  * Single-month: stored agentGoals.
  * Multi-month: leftover of that agent's assignment after what they already completed
- * in earlier months (not a share of campaign leftover).
+ * in earlier months, capped by campaign leftover at month start (so nobody still
+ * "owes" hours after the campaign goal is already met).
  */
 export function getScaledAgentGoalForMonth(order, agentId, dailyLogs = [], monthKey = '') {
   const stored = getStoredAgentGoal(order, agentId)
@@ -738,5 +804,18 @@ export function getScaledAgentGoalForMonth(order, agentId, dailyLogs = [], month
   const key = String(monthKey || '').slice(0, 7)
   if (key.length < 7) return stored
   const prior = sumAgentCompletedUnitsBeforeMonthKey(order, agentId, dailyLogs, key)
-  return roundTo2Decimals(Math.max(0, stored - prior))
+  const personalLeftover = roundTo2Decimals(Math.max(0, stored - prior))
+
+  const campaignGoal = resolveCampaignGoalUnits(order)
+  if (campaignGoal > 0) {
+    const campaignLeft = getCampaignRemainingUnitsAtMonthStart(
+      order,
+      dailyLogs,
+      campaignGoal,
+      key,
+      order?.monthlyBreakdown
+    )
+    return roundTo2Decimals(Math.min(personalLeftover, campaignLeft))
+  }
+  return personalLeftover
 }

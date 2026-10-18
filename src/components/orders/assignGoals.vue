@@ -645,13 +645,8 @@ import { goToNextMonth, goToPreviousMonth, formattedDateRange, isCurrentMonth, g
 import {
   orderSpansMultipleMonths,
   calculateMonthlyProgress,
-  getAssignableGoalCap,
   getCompletedUnitsBeforeMonthKey,
-  getCampaignRemainingUnitsAtMonthStart,
   groupOrderCampaignsForMonthView,
-  getScaledAgentGoalForMonth,
-  getDistributedAssignedGoals,
-  getOrderMonthGoalUnits,
 } from '@/js/statsUtils';
 import {
   getStoredAgentGoal,
@@ -664,6 +659,12 @@ import {
   campaignEstimatedRevenueEuros,
   getOrderFeeEuros,
   campaignTotalRevenueWithFeesEuros,
+  getAssignableGoalCap,
+  getCampaignRemainingUnitsAtMonthStart,
+  getScaledAgentGoalForMonth,
+  getDistributedAssignedGoals,
+  getOrderMonthGoalUnits,
+  getCampaignMonthView,
 } from '@/js/orderAuthority.js'
 import DateHeader from '@/components/DateHeader.vue';
 import OrderForm from '@/components/orders/OrderForm.vue';
@@ -1722,9 +1723,13 @@ function agentIsAssignedToOrder(order, agentId) {
   return isAgentAssignedToOrder(order, agentId)
 }
 
-/** Assigned cases for an agent in the viewed month (pending + in-progress), one row per campaign. */
-function getAgentMonthGoalOrders(agentId, from, to) {
+/**
+ * Assigned cases for an agent in the viewed month (pending + in-progress), one row per campaign.
+ * Pass excludeOrderId to omit the campaign currently being edited ("Other orders this month").
+ */
+function getAgentMonthGoalOrders(agentId, from, to, excludeOrderId = null) {
   const aid = String(agentId)
+  const excludeId = excludeOrderId != null && excludeOrderId !== '' ? String(excludeOrderId) : null
   const monthKey = currentMonthKey.value
   const overlapping = (orders.value || []).filter((o) => {
     if (!overlapsMonth(o, from, to)) return false
@@ -1733,16 +1738,25 @@ function getAgentMonthGoalOrders(agentId, from, to) {
     return true
   })
   const groups = groupOrderCampaignsForMonthView(overlapping, currentDateRange.value)
-  return groups.map(({ representative: o }) => {
-    const goal = getScaledAgentGoalForMonth(o, aid, dailyLogs.value || [], monthKey)
-    const price = Number(o?.pricePerUnit) || 0
-    return {
-      orderId: String(o?._id ?? o?.id ?? ''),
-      caseName: o?.caseName || o?.case?.name || '—',
-      goal,
-      pricePerUnit: price,
-    }
-  }).filter((row) => row.orderId)
+  return groups
+    .filter(({ orders: groupOrders, representative: o }) => {
+      if (!excludeId) return true
+      // Drop the campaign being edited even if a sibling copy is the month representative
+      const ids = (groupOrders || []).map((x) => String(x?._id ?? x?.id ?? ''))
+      ids.push(String(o?._id ?? o?.id ?? ''))
+      return !ids.includes(excludeId)
+    })
+    .map(({ representative: o }) => {
+      const view = getCampaignMonthView(o, dailyLogs.value || [], monthKey, aid)
+      const price = Number(o?.pricePerUnit) || 0
+      return {
+        orderId: String(o?._id ?? o?.id ?? ''),
+        caseName: o?.caseName || o?.case?.name || '—',
+        goal: Number(view.myGoal) || 0,
+        pricePerUnit: price,
+      }
+    })
+    .filter((row) => Boolean(row.orderId))
 }
 
 function isOrderOnHold(order) {
@@ -1954,8 +1968,10 @@ const selectOrder = async (order, event) => {
     const summaries = assignedIds.map(agentId => {
       const gcAgent = agentsById.get(String(agentId))
       const name = gcAgent?.name || t('assignGoals.unknownAgent');
-      const AgentOrders = getAgentMonthGoalOrders(agentId, from, to);
-      const monthRevenue = AgentOrders.reduce(
+      // Full month list for total revenue; "Other orders" omits the campaign being edited
+      const allMonthOrders = getAgentMonthGoalOrders(agentId, from, to)
+      const AgentOrders = getAgentMonthGoalOrders(agentId, from, to, orderId)
+      const monthRevenue = allMonthOrders.reduce(
         (sum, o) => sum + (Number(o.goal) || 0) * (Number(o.pricePerUnit) || 0),
         0
       );

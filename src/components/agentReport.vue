@@ -112,7 +112,8 @@ import {
 import { Bar, Doughnut } from 'vue-chartjs'
 import ChartDataLabels from 'chartjs-plugin-datalabels'
 import { goToNextMonth, goToPreviousMonth, formattedDateRange, getMonthWeeks } from '@/js/dateUtils'
-import { fetchAgentgoalsByAgentAndMonth, getOrderMonthGoalUnits, getScaledAgentGoalForMonth } from '@/js/statsUtils'
+import { fetchAgentgoalsByAgentAndMonth } from '@/js/statsUtils'
+import { getOrderMonthGoalUnits, getScaledAgentGoalForMonth } from '@/js/orderAuthority.js'
 import { isAgentAssignedToOrder } from '@/js/orderAuthority.js'
 import {
   monthKeyFromDateRange,

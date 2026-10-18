@@ -1,7 +1,6 @@
 import { roundTo2Decimals } from '@/js/formatNumbers';
 import { isOrderEligibleForAgentGoalsForMonth, monthKeyFromDateRange } from '@/js/orderStatusUtils';
-import { getScaledAgentGoalForMonth, getLogCompletedUnits } from '@/js/statsUtils';
-import { isAgentAssignedToOrder, getStoredAgentGoal } from '@/js/orderAuthority.js';
+import { getCampaignMonthView, isAgentAssignedToOrder, getStoredAgentGoal } from '@/js/orderAuthority.js';
 
 function isTestCase(order) {
   if (!order) return false;
@@ -29,12 +28,7 @@ export function resolveGcAgentId(agent, gcAgents = []) {
  * Average of per-order % toward the agent's monthly unit goal — same definition as
  * agent dashboard `myRevenueToGoalPercent` (mean of row `percentage` values).
  *
- * @param {object} agent
- * @param {object[]} orders
- * @param {object[]} statsLogs daily logs (store `dailyLogs` or merged stats)
- * @param {string[]|null|undefined} dateRange [start, end] ISO
- * @param {object[]} [gcAgents]
- * @returns {number|null} average percent, or null if no applicable orders
+ * Uses getCampaignMonthView so % matches the cases table.
  */
 export function computeAgentMyProgressPercent(agent, orders, statsLogs, dateRange, gcAgents = []) {
   const agentId = resolveGcAgentId(agent, gcAgents);
@@ -69,39 +63,9 @@ export function computeAgentMyProgressPercent(agent, orders, statsLogs, dateRang
 
   if (!inRange.length) return null;
 
-  const stats = statsLogs;
   const percentages = inRange.map((order) => {
-    const orderId = String(order._id ?? order.id ?? '');
-    const myGoal = getScaledAgentGoalForMonth(order, agentId, statsLogs, monthKey);
-
-    const myAgentOrderLogsRaw = stats.filter((log) => {
-      const logOrderId = String(log?.order?._id ?? log?.order ?? log?.orderId ?? '');
-      const logCaseName = log?.caseName ?? '';
-      const sameOrder = logOrderId === orderId || logCaseName === (order?.caseName ?? '');
-      const logAgentId = String(log?.agent?._id ?? log?.agent ?? log?.agentId ?? '');
-      if (logAgentId !== agentId || !sameOrder) return false;
-      if (from && to) {
-        const d = new Date(log?.date);
-        return d >= from && d <= to;
-      }
-      return true;
-    });
-
-    const myAgentOrderLogs = [];
-    const seenMyLogs = new Set();
-    myAgentOrderLogsRaw.forEach((log) => {
-      const key = `${log.date}_${log.agentName || log.agent}_${log.caseName}_${log._id || log.id}`;
-      if (!seenMyLogs.has(key)) {
-        seenMyLogs.add(key);
-        myAgentOrderLogs.push(log);
-      }
-    });
-
-    const myAgentUnits = myAgentOrderLogs.reduce(
-      (sum, l) => sum + getLogCompletedUnits(l, order.caseUnit),
-      0
-    );
-    return myGoal > 0 ? Number(((myAgentUnits / myGoal) * 100).toFixed(2)) : 0;
+    const view = getCampaignMonthView(order, statsLogs, monthKey, agentId);
+    return Number(view.percentage) || 0;
   });
 
   const sum = percentages.reduce((acc, p) => acc + (Number(p) || 0), 0);

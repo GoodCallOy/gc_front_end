@@ -142,7 +142,7 @@ import { goToNextMonth, goToPreviousMonth, formattedDateRange, isCurrentMonth } 
 import { formatUnitsByCaseUnit } from '@/js/formatNumbers';
 import { getPercentageToGoalVuetifyColor } from '@/js/percentageToGoalStyle';
 import { isOrderEligibleForAgentGoalsForMonth, monthKeyFromDateRange } from '@/js/orderStatusUtils';
-import { getScaledAgentGoalForMonth, getStoredAgentGoal } from '@/js/statsUtils';
+import { getScaledAgentGoalForMonth, getStoredAgentGoal } from '@/js/orderAuthority.js';
 import { isAgentAssignedToOrder } from '@/js/orderAuthority.js';
 import DateHeader from '@/components/DateHeader.vue';
 import AgentPersonalRevenueStatsStack from '@/components/AgentPersonalRevenueStatsStack.vue';
