@@ -647,7 +647,7 @@ import {
   calculateMonthlyProgress,
   getAssignableGoalCap,
   getCompletedUnitsBeforeMonthKey,
-  getCampaignRemainingUnits,
+  getCampaignRemainingUnitsAtMonthStart,
   groupOrderCampaignsForMonthView,
   getScaledAgentGoalForMonth,
   getDistributedAssignedGoals,
@@ -1227,7 +1227,15 @@ function resolveOrderForEdit(orderLike) {
   const shouldSuggestRemaining =
     isMultiMonth || (campaignGoal > storedMonthly && campaignGoal > 0)
   const suggestedMonthlyGoal = shouldSuggestRemaining
-    ? roundTo2Decimals(getCampaignRemainingUnits(enriched, logs, campaignGoal, monthlyBreakdown))
+    ? roundTo2Decimals(
+        getCampaignRemainingUnitsAtMonthStart(
+          enriched,
+          logs,
+          campaignGoal,
+          currentMonthKey.value,
+          monthlyBreakdown
+        )
+      )
     : null
   return {
     ...enriched,
@@ -1644,7 +1652,12 @@ const getRemainingGoals = (order) => {
 }
 
 function getAssignableGoalCapForOrder(order) {
-  return getAssignableGoalCap(order, dailyLogs.value || [], getDisplayGoal(order))
+  return getAssignableGoalCap(
+    order,
+    dailyLogs.value || [],
+    getDisplayGoal(order),
+    currentMonthKey.value
+  )
 }
 
 function editCaseFromOrder(order) {
@@ -1721,7 +1734,7 @@ function getAgentMonthGoalOrders(agentId, from, to) {
   })
   const groups = groupOrderCampaignsForMonthView(overlapping, currentDateRange.value)
   return groups.map(({ representative: o }) => {
-    const goal = getScaledAgentGoalForMonth(o, aid, dailyLogs.value || [])
+    const goal = getScaledAgentGoalForMonth(o, aid, dailyLogs.value || [], monthKey)
     const price = Number(o?.pricePerUnit) || 0
     return {
       orderId: String(o?._id ?? o?.id ?? ''),

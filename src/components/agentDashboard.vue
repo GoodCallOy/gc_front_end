@@ -1774,7 +1774,12 @@ const casesTableRows = computed(() => {
 
   return orders.map((order) => {
     const orderId = String(order._id ?? order.id ?? '');
-    const myGoal = getScaledAgentGoalForMonth(order, agentId, dailyLogs.value || []);
+    const myGoal = getScaledAgentGoalForMonth(
+      order,
+      agentId,
+      dailyLogs.value || [],
+      monthKeyFromDateRange(dateRange)
+    );
     const pricePerUnit = Number(order?.pricePerUnit ?? 0);
     const agentRate = getStoredAgentRate(order, agentId);
 
@@ -1890,7 +1895,7 @@ const personalMonthlyGoalBreakdown = computed(() => {
     const pricePerUnit = Number(order?.pricePerUnit ?? row?.pricePerUnit) || 0;
     const monthlyGoal =
       Number(row?.myGoal) ||
-      Number(getScaledAgentGoalForMonth(order, agentId, dailyLogs.value || [])) ||
+      Number(getScaledAgentGoalForMonth(order, agentId, dailyLogs.value || [], monthKey)) ||
       0;
     const revenue = Number(row?.myRevenueGoal) || monthlyGoal * pricePerUnit;
 

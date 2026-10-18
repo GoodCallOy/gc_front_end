@@ -658,47 +658,85 @@ export function getCampaignRemainingUnits(order, dailyLogs, campaignGoal, monthl
   const goal = Number(campaignGoal) || 0
   if (goal <= 0) return 0
   const completed = getCampaignCompletedUnits(order, dailyLogs, monthlyBreakdown)
-  return Math.max(0, goal - completed)
+  return Math.max(0, roundTo2Decimals(goal - completed))
+}
+
+/** Campaign units still open at the start of monthKey (YYYY-MM). */
+export function getCampaignRemainingUnitsAtMonthStart(
+  order,
+  dailyLogs,
+  campaignGoal,
+  monthKey,
+  monthlyBreakdown
+) {
+  const goal = Number(campaignGoal) || 0
+  if (goal <= 0) return 0
+  const prior = getCompletedUnitsBeforeMonthKey(order, dailyLogs, monthKey, monthlyBreakdown)
+  return Math.max(0, roundTo2Decimals(goal - prior))
+}
+
+/**
+ * This agent's completed units in calendar months strictly before monthKey.
+ */
+export function sumAgentCompletedUnitsBeforeMonthKey(order, agentId, dailyLogs, monthKey) {
+  const aid = String(agentId ?? '')
+  const prefix = String(monthKey || '').slice(0, 7)
+  if (!order || !aid || prefix.length < 7 || !Array.isArray(dailyLogs)) return 0
+
+  const seen = new Set()
+  let units = 0
+  for (const log of dailyLogs) {
+    const logAgentId = String(
+      log?.agent?._id ?? log?.agent?.id ?? log?.agent ?? log?.agentId ?? ''
+    )
+    if (logAgentId !== aid) continue
+    if (!logMatchesOrderForMonthRevenue(log, order)) continue
+    const logMonth = monthKeyFromDate(log.date)
+    if (!logMonth || logMonth >= prefix) continue
+    const key = `${log.date}_${logAgentId}_${log.caseName}_${log._id || log.id}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    units += getLogCompletedUnits(log, order.caseUnit)
+  }
+  return units
 }
 
 /**
  * Max team goal units assignable/split for an order in Assign Goals.
- * Multi-month: min(monthly cap, campaign remaining after usage).
+ * Multi-month: campaign remaining at the start of the viewed month (so that month
+ * can still be redistributed). Without monthKey, remaining after all logs.
  */
-export function getAssignableGoalCap(order, dailyLogs, campaignGoal) {
+export function getAssignableGoalCap(order, dailyLogs, campaignGoal, monthKey) {
   const monthlyCap = getOrderMonthGoalUnits(order)
   if (!orderSpansMultipleMonths(order) && !order?.isMultiMonth) {
     return monthlyCap
   }
   const goal = Number(campaignGoal) || 0
   if (goal <= 0) return monthlyCap
-  const remaining = getCampaignRemainingUnits(
-    order,
-    dailyLogs,
-    goal,
-    order?.monthlyBreakdown
-  )
-  if (monthlyCap > 0) {
-    return Math.min(monthlyCap, remaining)
-  }
+  const remaining = monthKey
+    ? getCampaignRemainingUnitsAtMonthStart(
+        order,
+        dailyLogs,
+        goal,
+        monthKey,
+        order?.monthlyBreakdown
+      )
+    : getCampaignRemainingUnits(order, dailyLogs, goal, order?.monthlyBreakdown)
   return remaining
 }
 
 /**
- * Personal unit goal for the viewed month. Multi-month campaigns often still store
- * the original agentGoals; scale them down when assigned units exceed this month's cap
- * (remaining campaign / monthly goal).
+ * Personal unit goal for the viewed month.
+ * Single-month: stored agentGoals.
+ * Multi-month: leftover of that agent's assignment after what they already completed
+ * in earlier months (not a share of campaign leftover).
  */
-export function getScaledAgentGoalForMonth(order, agentId, dailyLogs = []) {
+export function getScaledAgentGoalForMonth(order, agentId, dailyLogs = [], monthKey = '') {
   const stored = getStoredAgentGoal(order, agentId)
   if (stored <= 0) return 0
   if (!orderSpansMultipleMonths(order) && !order?.isMultiMonth) return stored
-  const campaignGoal = Number(order?.campaignGoal ?? order?.campaign_goal) || 0
-  const cap = getAssignableGoalCap(order, dailyLogs, campaignGoal)
-  const totalAssigned = getDistributedAssignedGoals(order)
-  if (!(Number.isFinite(cap) && cap >= 0)) return stored
-  if (totalAssigned > cap && totalAssigned > 0) {
-    return roundTo2Decimals(stored * (cap / totalAssigned))
-  }
-  return stored
+  const key = String(monthKey || '').slice(0, 7)
+  if (key.length < 7) return stored
+  const prior = sumAgentCompletedUnitsBeforeMonthKey(order, agentId, dailyLogs, key)
+  return roundTo2Decimals(Math.max(0, stored - prior))
 }

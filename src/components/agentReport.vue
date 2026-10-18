@@ -250,11 +250,12 @@ const donutChartData = computed(() => {
       'rgba(121, 85, 72, 0.8)',
     ]
 
-    const casesWithGoal = cases.filter((o) => (getScaledAgentGoalForMonth(o, agentId, dailyLogs.value) || 0) > 0)
+    const monthKey = monthKeyFromDateRange(currentDateRange.value)
+    const casesWithGoal = cases.filter((o) => (getScaledAgentGoalForMonth(o, agentId, dailyLogs.value, monthKey) || 0) > 0)
     if (!casesWithGoal.length) return emptyDonutData
 
     const labels = casesWithGoal.map((o) => o.caseName || o.caseId || 'Unknown')
-    const data = casesWithGoal.map((o) => getScaledAgentGoalForMonth(o, agentId, dailyLogs.value) || 0)
+    const data = casesWithGoal.map((o) => getScaledAgentGoalForMonth(o, agentId, dailyLogs.value, monthKey) || 0)
     const backgroundColor = casesWithGoal.map((_, i) => DONUT_COLORS[i % DONUT_COLORS.length])
 
     return {
@@ -460,7 +461,12 @@ async function loadReportData() {
     // If no weekly goals, use monthly agentGoals from orders as fallback (divided by weeks)
     if (weeklyGoals.length === 0) {
       for (const order of agentOrders) {
-        const myGoal = getScaledAgentGoalForMonth(order, agentId, allLogs)
+        const myGoal = getScaledAgentGoalForMonth(
+          order,
+          agentId,
+          allLogs,
+          monthKeyFromDateRange(currentDateRange.value)
+        )
         const perWeek = myGoal / numWeeks
         for (const [, bucket] of weekBuckets) {
           bucket.agentGoal += perWeek

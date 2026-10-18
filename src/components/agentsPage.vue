@@ -195,7 +195,7 @@ function computeAgentMonthlyGoalEuros(agent, orders, dailyLogs, dateRange) {
   const aid = String(agent?._id ?? agent?.id ?? '');
   if (!aid) return 0;
   return getAgentMonthOrders(agent, orders, dateRange).reduce((sum, order) => {
-    const goal = getScaledAgentGoalForMonth(order, aid, dailyLogs);
+    const goal = getScaledAgentGoalForMonth(order, aid, dailyLogs, monthKeyFromDateRange(dateRange));
     const price = Number(order?.pricePerUnit ?? 0);
     return sum + goal * price;
   }, 0);
@@ -264,7 +264,7 @@ function buildAgentCasesForAgent(agent, orders, dailyLogs, gcCases, dateRange) {
       return true;
     })
     .map((order) => {
-      const goal = getScaledAgentGoalForMonth(order, aid, dailyLogs);
+      const goal = getScaledAgentGoalForMonth(order, aid, dailyLogs, monthKeyFromDateRange(dateRange));
       const completed = sumAgentUnitsOnOrderInRange(agent, order, dailyLogs, from, to);
       const progressPercent = goal > 0 ? Math.min(100, (completed / goal) * 100) : 0;
       const fullCaseName = order.caseName || order.caseId || '—';
