@@ -643,12 +643,6 @@ import { useStore } from 'vuex'
 import { useI18n } from 'vue-i18n'
 import { goToNextMonth, goToPreviousMonth, formattedDateRange, isCurrentMonth, getMonthWeeks } from '@/js/dateUtils';
 import {
-  orderSpansMultipleMonths,
-  calculateMonthlyProgress,
-  getCompletedUnitsBeforeMonthKey,
-  groupOrderCampaignsForMonthView,
-} from '@/js/statsUtils';
-import {
   getStoredAgentGoal,
   getStoredAgentRate,
   isAgentAssignedToOrder,
@@ -665,6 +659,9 @@ import {
   getOrderMonthGoalUnits,
   getCampaignMonthView,
   getLogCompletedUnits,
+  orderSpansMultipleMonths,
+  getCompletedUnitsBeforeMonthKey,
+  groupOrderCampaignsForMonthView,
 } from '@/js/orderAuthority.js'
 import DateHeader from '@/components/DateHeader.vue';
 import OrderForm from '@/components/orders/OrderForm.vue';
@@ -1077,6 +1074,7 @@ async function bulkCopyOrdersToNextMonth() {
         agents: gcAgents.value || [],
         sourceMonthStart: currentStart,
         targetMonthStart: nextStart,
+        dailyLogs: dailyLogs.value || [],
       });
 
       try {
@@ -1215,9 +1213,9 @@ function resolveOrderForEdit(orderLike) {
   const fromList = (filteredSortedOrders.value || []).find((o) => String(o._id ?? o.id) === id)
   const base = fromList || raw
   const logs = dailyLogs.value || []
-  const isMultiMonth = orderSpansMultipleMonths(base) || Boolean(base.isMultiMonth)
-  const monthlyBreakdown =
-    base.monthlyBreakdown ?? (isMultiMonth ? calculateMonthlyProgress(base, logs) : null)
+  const view = getCampaignMonthView(base, logs, currentMonthKey.value)
+  const isMultiMonth = view.isMultiMonth || Boolean(base.isMultiMonth)
+  const monthlyBreakdown = view.monthlyBreakdown ?? base.monthlyBreakdown ?? null
   const enriched = {
     ...base,
     isMultiMonth,
@@ -1350,6 +1348,7 @@ const filteredSortedOrders = computed(() => {
   // Use string comparison for dates to avoid timezone issues
   const rangeStart = currentDateRange.value[0]; // "YYYY-MM-DD"
   const rangeEnd = currentDateRange.value[1];   // "YYYY-MM-DD"
+  const monthKey = monthKeyFromDateRange(currentDateRange.value);
 
   // Filter to orders overlapping the selected month
   let list = orders.value
@@ -1360,19 +1359,16 @@ const filteredSortedOrders = computed(() => {
       // Order overlaps with the month range (any overlap counts)
       // String comparison works for YYYY-MM-DD format
       if (!(start <= rangeEnd && end >= rangeStart)) return false;
-      const monthKey = monthKeyFromDateRange(currentDateRange.value);
       if (monthKey && isCampaignClosedBeforeMonth(order, monthKey, orders.value)) return false;
       return true;
     })
     .map(order => {
-      // Enrich with multi-month information (same as ordersDashboard)
-      const isMultiMonth = orderSpansMultipleMonths(order);
       const logs = Array.isArray(dailyLogs.value) ? dailyLogs.value : [];
-      const monthlyBreakdown = isMultiMonth ? calculateMonthlyProgress(order, logs) : null;
+      const view = getCampaignMonthView(order, logs, monthKey)
       return {
         ...order,
-        isMultiMonth,
-        monthlyBreakdown,
+        isMultiMonth: view.isMultiMonth,
+        monthlyBreakdown: view.monthlyBreakdown,
       };
     });
 
@@ -1592,6 +1588,7 @@ function copyOrder(item) {
     prefill: buildOrderCopyPrefill(item, copyFields, {
       sourceMonthStart,
       targetMonthStart: nextStart,
+      dailyLogs: dailyLogs.value || [],
     }),
     defaultDates: null
   };
@@ -1883,20 +1880,17 @@ function getTotalCompletedUpToMonth(monthlyBreakdown, upToMonthKey) {
 function getCampaignGoalDisplay(order) {
   const logs = dailyLogs.value || []
   const range = currentDateRange.value
+  const view = getCampaignMonthView(order, logs, monthKeyFromDateRange(range))
+  const breakdown = view.monthlyBreakdown || order.monthlyBreakdown
 
   let current = 0
-  if (Array.isArray(order.monthlyBreakdown) && order.monthlyBreakdown.length) {
-    current = order.monthlyBreakdown.reduce(
+  if (Array.isArray(breakdown) && breakdown.length) {
+    current = breakdown.reduce(
       (sum, m) => sum + (Number(m.quantityCompleted) || 0),
       0
     )
   } else {
-    const progress = calculateMonthlyProgress(order, logs)
-    if (progress.length) {
-      current = progress.reduce((sum, m) => sum + (Number(m.quantityCompleted) || 0), 0)
-    } else {
-      current = completedUnitsForOrderInDateRange(order, logs, range)
-    }
+    current = completedUnitsForOrderInDateRange(order, logs, range)
   }
 
   const campaignGoal = getDisplayGoal(order)

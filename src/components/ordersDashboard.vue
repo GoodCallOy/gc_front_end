@@ -262,8 +262,14 @@ import DashboardCard01 from '@/partials/dashboard/caseCard2.vue'
 import OrdersAnalyticsCharts from '@/partials/dashboard/orders-analytics-charts.vue'
 import OrdersTableInsights from '@/partials/dashboard/orders-table-insights.vue'
 import DateHeader from '@/components/DateHeader.vue'
-import { orderSpansMultipleMonths, calculateMonthlyProgress, groupOrderCampaignsForMonthView, estimatedRevenueEurosForCampaignGroup } from '@/js/statsUtils'
-import { getCampaignGoalUnits, assignedCallerIds, getCampaignMonthView, getLogCompletedUnits } from '@/js/orderAuthority.js'
+import {
+  getCampaignGoalUnits,
+  assignedCallerIds,
+  getCampaignMonthView,
+  getLogCompletedUnits,
+  groupOrderCampaignsForMonthView,
+  estimatedRevenueEurosForCampaignGroup,
+} from '@/js/orderAuthority.js'
 import {
   getOrderStatusForMonth,
   isOrderOnHoldForMonth,
@@ -348,13 +354,11 @@ const filteredOrders = computed(() => {
 // Enrich orders with multi-month information
 const enrichedOrders = computed(() => {
   let enriched = filteredOrders.value.map(order => {
-    const isMultiMonth = orderSpansMultipleMonths(order);
-    const monthlyBreakdown = isMultiMonth ? calculateMonthlyProgress(order, dailyLogs.value) : null;
-    
+    const view = getCampaignMonthView(order, dailyLogs.value, currentMonthKey.value)
     return {
       ...order,
-      isMultiMonth,
-      monthlyBreakdown,
+      isMultiMonth: view.isMultiMonth,
+      monthlyBreakdown: view.monthlyBreakdown,
     };
   });
   
@@ -837,7 +841,7 @@ function getTotalCompletedUpToMonth(monthlyBreakdown, upToMonthKey) {
   return total
 }
 
-/** Match daily log to order — aligned with calculateMonthlyProgress in statsUtils */
+/** Match daily log to order — aligned with logMatchesOrderForMonthRevenue */
 function logBelongsToOrder(log, order) {
   if (!log || !order) return false
   const orderId = order._id || order.id

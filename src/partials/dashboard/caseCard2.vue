@@ -63,8 +63,7 @@
   // Import utilities
   import { adjustColorOpacity } from '../../utils/Utils'
   import { formatSlashPair, formatCurrencyEUR, formatStatNumber } from '@/js/formatNumbers'
-  import { ordersDashboardRevenueGoalEuros } from '@/js/statsUtils'
-  import { getCampaignMonthView } from '@/js/orderAuthority.js'
+  import { getCampaignMonthView, ordersDashboardRevenueGoalEuros } from '@/js/orderAuthority.js'
   import { monthKeyFromDate } from '@/js/orderStatusUtils'
   
   export default {

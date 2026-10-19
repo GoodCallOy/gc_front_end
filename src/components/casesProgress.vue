@@ -117,8 +117,7 @@ import { useStore } from 'vuex'
 import DateHeader from '@/components/DateHeader.vue'
 import { goToNextMonth, goToPreviousMonth } from '@/js/dateUtils'
 import { useRouter } from 'vue-router'
-import { orderSpansMultipleMonths, calculateMonthlyProgress, ordersDashboardRevenueGoalEuros } from '@/js/statsUtils'
-import { getCampaignMonthView } from '@/js/orderAuthority.js'
+import { getCampaignMonthView, orderSpansMultipleMonths, ordersDashboardRevenueGoalEuros } from '@/js/orderAuthority.js'
 import { formatStatNumber, formatCurrencyEUR, formatSlashPair } from '@/js/formatNumbers'
 import { monthKeyFromDateRange, isCampaignClosedBeforeMonth } from '@/js/orderStatusUtils'
 
@@ -296,9 +295,7 @@ const tableRowsFromOrders = computed(() => {
       const revenueGoal = ordersDashboardRevenueGoalEuros(o)
 
       const isMultiMonth = Boolean(view.isMultiMonth) || orderSpansMultipleMonths(o)
-      const monthlyBreakdown = isMultiMonth
-        ? (view.monthlyBreakdown || calculateMonthlyProgress(o, dailyLogs.value))
-        : null
+      const monthlyBreakdown = isMultiMonth ? (view.monthlyBreakdown || []) : null
 
       // For multi-month cases, calculate total completed across all months
       const totalCompleted = isMultiMonth && monthlyBreakdown

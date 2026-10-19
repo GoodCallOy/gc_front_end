@@ -1,5 +1,7 @@
 /** Order status helpers — global fallback plus per-month overrides (YYYY-MM keys). */
 
+import { toLocalYmdString } from './dateUtils'
+
 export const ORDER_STATUS_OPTIONS = [
   'pending',
   'in-progress',
@@ -23,7 +25,7 @@ export function monthKeyFromDateRange(dateRange) {
 }
 
 export function monthKeyFromDate(dateVal) {
-  const s = String(dateVal || '').split('T')[0]
+  const s = toLocalYmdString(dateVal) || String(dateVal || '').split('T')[0]
   return s.length >= 7 ? s.slice(0, 7) : ''
 }
 

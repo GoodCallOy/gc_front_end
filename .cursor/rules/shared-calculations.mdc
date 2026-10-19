@@ -9,9 +9,11 @@ If more than one component needs the same number (goals, units, leftover, revenu
 
 ## Campaign month progress (My results / Team results)
 
-Source of truth: `getCampaignMonthView` in [`src/js/orderAuthority.js`](src/js/orderAuthority.js), which uses helpers in [`src/js/statsUtils.js`](src/js/statsUtils.js).
+Public front door: `getCampaignMonthView` in [`src/js/orderAuthority.js`](src/js/orderAuthority.js). Implementation helpers live in [`src/js/statsUtils.js`](src/js/statsUtils.js) and are re-exported from orderAuthority.
 
-If My results or Team results look wrong again, change `getCampaignMonthView` (or the statsUtils helpers it calls). Do not patch `agentDashboard.vue`, `assignGoals.vue`, `agentCaseCard.vue`, `agentsPage.vue`, or reports separately.
+Vue screens, the store, and copy helpers import campaign math from `orderAuthority.js`, not from `statsUtils.js`.
+
+If My results, Team results, leftover, or monthly breakdowns look wrong, change `getCampaignMonthView` (or the statsUtils helpers it calls). Do not patch `agentDashboard.vue`, `assignGoals.vue`, `agentCaseCard.vue`, `agentsPage.vue`, or reports separately.
 
 Call it like:
 
@@ -19,12 +21,18 @@ Call it like:
 const view = getCampaignMonthView(order, dailyLogs, monthKey, agentId)
 // view.myUnits / view.myGoal   — personal
 // view.teamUnits / view.teamGoal — team
+// view.monthlyBreakdown        — calendar month buckets
 ```
+
+Do not call `calculateMonthlyProgress` from Vue. Use `view.monthlyBreakdown`.
+
+Month buckets are local calendar `YYYY-MM` / `YYYY-MM-DD`. Never use `toISOString()` for those strings (it shifts the day in UTC+).
 
 Leftover hours stay with the agent who still has unused assignment. Never split leftover or auto-assign it to anyone else — see `.cursor/rules/leftover-stays-with-agent.mdc`.
 
 ## When adding a new screen
 
-- Import the existing helper. If it is missing a field, extend the helper and reuse it.
+- Import the existing helper from `orderAuthority.js`. If it is missing a field, extend the view object and reuse it.
 - Vue components format and render. They do not invent leftover, scaling, or month-cap logic.
-- New shared math goes in `src/js/` (prefer `statsUtils.js` / `orderAuthority.js` for campaign stats).
+- Per-log unit extraction (`getLogCompletedUnits`) is fine for weekly tables and A-leads rows. Campaign leftover / goal / month totals still go through `getCampaignMonthView`.
+- New campaign math goes in `statsUtils.js` and is exposed through `orderAuthority.js`.

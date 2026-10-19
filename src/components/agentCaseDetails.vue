@@ -154,8 +154,7 @@
   import urls from '@/js/config.js'
   import { formatStatNumber, formatCurrencyEUR } from '@/js/formatNumbers'
   import { areDailyLogsFrozenForLog, isOrderVisibleToCallerForMonth, monthKeyFromDateRange } from '@/js/orderStatusUtils'
-  import { getOrderMonthGoalUnits, getStoredAgentGoal, assignedCallerIds, getCampaignMonthView, getLogCompletedUnits } from '@/js/orderAuthority.js'
-  import { ordersDashboardRevenueGoalEuros } from '@/js/statsUtils'
+  import { getOrderMonthGoalUnits, getStoredAgentGoal, assignedCallerIds, getCampaignMonthView, getLogCompletedUnits, ordersDashboardRevenueGoalEuros } from '@/js/orderAuthority.js'
 
 
   const route = useRoute()

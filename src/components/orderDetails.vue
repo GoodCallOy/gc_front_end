@@ -217,8 +217,7 @@
   import { formatSlashPair, formatStatNumber, formatCurrencyEUR } from '@/js/formatNumbers'
   import DateHeader from '@/components/DateHeader.vue'
   import { getOrderStatusForMonth, monthKeyFromDateRange, areDailyLogsFrozenForLog } from '@/js/orderStatusUtils'
-  import { getCampaignGoalUnits, assignedCallerIds, getCampaignMonthView, getLogCompletedUnits } from '@/js/orderAuthority.js'
-  import { ordersDashboardRevenueGoalEuros } from '@/js/statsUtils'
+  import { getCampaignGoalUnits, assignedCallerIds, getCampaignMonthView, getLogCompletedUnits, ordersDashboardRevenueGoalEuros } from '@/js/orderAuthority.js'
 
 
   const route = useRoute()

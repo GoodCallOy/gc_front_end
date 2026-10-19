@@ -1,6 +1,6 @@
 import axios from 'axios';
 import urls from './config.js';
-import { toLocalYmdNumber, parseWeekDateLocal } from './dateUtils';
+import { toLocalYmdNumber, toLocalYmdString, parseWeekDateLocal } from './dateUtils';
 import { monthKeyFromDateRange, monthKeyFromDate } from './orderStatusUtils';
 import { roundTo2Decimals, isHoursCaseUnit } from './formatNumbers';
 
@@ -496,55 +496,55 @@ export function populateCasesSortedByAgent(agentStats, selectedAgent) {
    */
   export function orderSpansMultipleMonths(order) {
     if (!order.startDate || !order.deadline) return false;
-    
-    const start = new Date(order.startDate);
-    const end = new Date(order.deadline);
-    
-    // Check if start and end are in different months/years
-    return start.getFullYear() !== end.getFullYear() || 
+
+    const start = parseWeekDateLocal(order.startDate, false);
+    const end = parseWeekDateLocal(order.deadline, false);
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) return false;
+
+    return start.getFullYear() !== end.getFullYear() ||
            start.getMonth() !== end.getMonth();
   }
 
   /**
-   * Get all months an order spans
+   * Get all local-calendar months an order spans.
+   * Date strings are YYYY-MM-DD in local time (never toISOString — that shifts UTC+).
    * @param {Object} order - Order object with startDate and deadline
    * @returns {Array} - Array of month objects with {year, month, startDate, endDate}
    */
   export function getOrderMonths(order) {
     if (!order.startDate || !order.deadline) return [];
-    
-    const start = new Date(order.startDate);
-    const end = new Date(order.deadline);
-    
+
+    const start = parseWeekDateLocal(order.startDate, false);
+    const end = parseWeekDateLocal(order.deadline, true);
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) return [];
+
     const months = [];
-    let current = new Date(start);
-    current.setDate(1); // Start of month
-    
-    while (current <= end) {
-      const year = current.getFullYear();
-      const month = current.getMonth();
-      
-      // First day of this month within the order range
-      const monthStart = new Date(Math.max(start.getTime(), new Date(year, month, 1).getTime()));
-      
-      // Last day of this month within the order range
-      const lastDayOfMonth = new Date(year, month + 1, 0);
-      const monthEnd = new Date(Math.min(end.getTime(), lastDayOfMonth.getTime()));
-      
+    let year = start.getFullYear();
+    let month = start.getMonth();
+
+    while (year < end.getFullYear() || (year === end.getFullYear() && month <= end.getMonth())) {
+      const firstOfMonth = new Date(year, month, 1, 0, 0, 0, 0);
+      const lastOfMonth = new Date(year, month + 1, 0, 23, 59, 59, 999);
+      const monthStart = start.getTime() > firstOfMonth.getTime() ? start : firstOfMonth;
+      const monthEnd = end.getTime() < lastOfMonth.getTime() ? end : lastOfMonth;
+
       months.push({
         year,
         month: month + 1, // 1-indexed for display
         monthKey: `${year}-${String(month + 1).padStart(2, '0')}`,
         startDate: monthStart,
         endDate: monthEnd,
-        startDateStr: monthStart.toISOString().split('T')[0],
-        endDateStr: monthEnd.toISOString().split('T')[0]
+        startDateStr: toLocalYmdString(monthStart),
+        endDateStr: toLocalYmdString(monthEnd),
       });
-      
-      // Move to next month
-      current.setMonth(month + 1);
+
+      month += 1;
+      if (month > 11) {
+        month = 0;
+        year += 1;
+      }
     }
-    
+
     return months;
   }
 
@@ -574,14 +574,19 @@ export function populateCasesSortedByAgent(agentStats, selectedAgent) {
     const isTest = isTestCase(order);
     
     const monthlyProgress = months.map(monthInfo => {
-      const monthStart = new Date(monthInfo.startDateStr);
-      const monthEnd = new Date(monthInfo.endDateStr);
-      monthEnd.setHours(23, 59, 59, 999);
-      
+      const monthStartYmd = toLocalYmdNumber(monthInfo.startDateStr);
+      const monthEndYmd = toLocalYmdNumber(monthInfo.endDateStr);
+
       const monthLogs = dailyLogs.filter(log => {
         if (!logMatchesOrderForMonthRevenue(log, order)) return false;
-        const logDate = new Date(log.date);
-        return logDate >= monthStart && logDate <= monthEnd;
+        const logYmd = toLocalYmdNumber(log.date);
+        return (
+          logYmd != null &&
+          monthStartYmd != null &&
+          monthEndYmd != null &&
+          logYmd >= monthStartYmd &&
+          logYmd <= monthEndYmd
+        );
       });
       
       const quantityCompleted = monthLogs.reduce(
@@ -676,12 +681,17 @@ export function getCampaignRemainingUnitsAtMonthStart(
 }
 
 /**
- * This agent's completed units in calendar months strictly before monthKey.
+ * This agent's completed units in campaign months strictly before monthKey.
+ * Uses the same local-calendar buckets as calculateMonthlyProgress so leftover
+ * is not wiped by logs outside the order range (that caused 6/0 vs team 6/6).
  */
 export function sumAgentCompletedUnitsBeforeMonthKey(order, agentId, dailyLogs, monthKey) {
   const aid = String(agentId ?? '')
   const prefix = String(monthKey || '').slice(0, 7)
   if (!order || !aid || prefix.length < 7 || !Array.isArray(dailyLogs)) return 0
+
+  const months = getOrderMonths(order).filter((m) => String(m.monthKey) < prefix)
+  if (!months.length) return 0
 
   const seen = new Set()
   let units = 0
@@ -691,8 +701,14 @@ export function sumAgentCompletedUnitsBeforeMonthKey(order, agentId, dailyLogs, 
     )
     if (logAgentId !== aid) continue
     if (!logMatchesOrderForMonthRevenue(log, order)) continue
-    const logMonth = monthKeyFromDate(log.date)
-    if (!logMonth || logMonth >= prefix) continue
+    const logYmd = toLocalYmdNumber(log.date)
+    if (logYmd == null) continue
+    const inPriorBucket = months.some((m) => {
+      const start = toLocalYmdNumber(m.startDateStr)
+      const end = toLocalYmdNumber(m.endDateStr)
+      return start != null && end != null && logYmd >= start && logYmd <= end
+    })
+    if (!inPriorBucket) continue
     const key = `${log.date}_${logAgentId}_${log.caseName}_${log._id || log.id}`
     if (seen.has(key)) continue
     seen.add(key)
@@ -770,13 +786,17 @@ export function getTeamMonthProgress(order, dailyLogs = [], monthKey = '') {
   const key = String(monthKey || '').slice(0, 7)
   const isMulti = orderSpansMultipleMonths(order) || order?.isMultiMonth
   const campaignGoal = resolveCampaignGoalUnits(order)
-  if (isMulti && key.length >= 7) {
+  if (isMulti) {
     const monthlyBreakdown = calculateMonthlyProgress(order, dailyLogs || [])
-    const row = monthlyBreakdown.find((m) => String(m.monthKey) === key)
+    const row = key.length >= 7
+      ? monthlyBreakdown.find((m) => String(m.monthKey) === key)
+      : null
     return {
       isMultiMonth: true,
       campaignGoal,
-      teamGoal: row ? Number(row.monthGoalUnits) || 0 : 0,
+      teamGoal: row
+        ? Number(row.monthGoalUnits) || 0
+        : (key.length >= 7 ? 0 : getOrderMonthGoalUnits(order)),
       teamUnits: row ? Number(row.quantityCompleted) || 0 : 0,
       monthlyBreakdown,
     }
@@ -793,12 +813,16 @@ export function getTeamMonthProgress(order, dailyLogs = [], monthKey = '') {
 /**
  * Personal unit goal for the viewed month. Applies to every case.
  * Single-month: stored agentGoals.
- * Multi-month: unused assignment for THIS agent carries over (stored − prior).
- * Never split leftover across agents. Never auto-give leftover to anyone else.
+ * Multi-month leftover stays with THIS agent only (never split / auto-given):
+ * - If agentGoals already are this month's leftover (e.g. Elina 6 + Maria 5 = 11),
+ *   use stored as the month goal. Do not subtract earlier months (that caused 6/0).
+ * - If agentGoals are still campaign-lifetime totals, carry unused (stored − prior).
+ * - If unused is 0 but leftover remains and this is the only assigned caller,
+ *   leftover stays with that agent (0/6 then 6/6, never 6/0).
  */
 export function getScaledAgentGoalForMonth(order, agentId, dailyLogs = [], monthKey = '') {
-  const stored = getStoredAgentGoal(order, agentId)
-  if (stored <= 0) return 0
+  const aid = String(agentId ?? '')
+  const stored = getStoredAgentGoal(order, aid)
   if (!orderSpansMultipleMonths(order) && !order?.isMultiMonth) return stored
   const key = String(monthKey || '').slice(0, 7)
   if (key.length < 7) return stored
@@ -806,8 +830,21 @@ export function getScaledAgentGoalForMonth(order, agentId, dailyLogs = [], month
   const leftover = Number(getTeamMonthProgress(order, dailyLogs || [], key).teamGoal) || 0
   if (leftover <= 0) return 0
 
-  const prior = sumAgentCompletedUnitsBeforeMonthKey(order, String(agentId ?? ''), dailyLogs || [], key)
-  const personalRemaining = roundTo2Decimals(Math.max(0, stored - prior))
-  if (personalRemaining <= 0) return 0
-  return roundTo2Decimals(Math.min(personalRemaining, leftover))
+  const assignedTotal = getDistributedAssignedGoals(order)
+  if (stored > 0 && assignedTotal > 0 && assignedTotal <= leftover + 0.009) {
+    return roundTo2Decimals(Math.min(stored, leftover))
+  }
+
+  if (stored > 0) {
+    const prior = sumAgentCompletedUnitsBeforeMonthKey(order, aid, dailyLogs || [], key)
+    const personalRemaining = roundTo2Decimals(Math.max(0, stored - prior))
+    if (personalRemaining > 0) {
+      return roundTo2Decimals(Math.min(personalRemaining, leftover))
+    }
+  }
+
+  const ids = assignedCallerIds(order)
+  const isSoloAssigned = ids.length === 1 && (ids[0] === aid || stored <= 0)
+  if (isSoloAssigned) return roundTo2Decimals(leftover)
+  return 0
 }

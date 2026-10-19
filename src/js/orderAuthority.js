@@ -2,8 +2,8 @@
  * Campaign / Assign Goals authority — ONE place for month progress math.
  *
  * UI screens (agent dashboard, cards, reports, Assign Goals, agents page)
- * should call `getCampaignMonthView` (or the re-exported helpers below)
- * instead of re-implementing my/team goal leftover logic.
+ * should import from this file and call `getCampaignMonthView` (or the
+ * re-exported helpers below) instead of `statsUtils.js` or leftover math in Vue.
  *
  * Rules (multi-month):
  * - Team goal for a month = campaign leftover at that month's start (0 if already met)
@@ -30,12 +30,21 @@ export {
   resolveCampaignGoalUnits,
   getCampaignRemainingUnits,
   getCampaignRemainingUnitsAtMonthStart,
+  getCampaignCompletedUnits,
+  getCompletedUnitsBeforeMonthKey,
+  getOrderMonths,
   sumOrderUnitsInMonth,
   calculateMonthlyProgress,
   orderSpansMultipleMonths,
   recordToObject,
   getLogCallHours,
   getLogCompletedUnits,
+  logMatchesOrderForMonthRevenue,
+  groupOrderCampaignsForMonthView,
+  estimatedRevenueEurosForCampaignGroup,
+  ordersDashboardRevenueGoalEuros,
+  fetchAgentgoalsByAgentAndMonth,
+  normalizeEntityId,
 } from '@/js/statsUtils.js'
 
 import {

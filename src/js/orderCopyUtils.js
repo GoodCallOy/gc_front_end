@@ -3,7 +3,6 @@
  * Keeps assign-goals bulk copy and modal copy aligned with OrderForm submit fields.
  */
 
-import { orderSpansMultipleMonths, getCampaignRemainingUnits, normalizeEntityId } from '@/js/statsUtils';
 import {
   getCampaignGoalUnits,
   getOrderMonthGoalUnits,
@@ -11,6 +10,10 @@ import {
   getStoredAgentGoal,
   getStoredAgentRate,
   buildAssignmentWriteFields,
+  orderSpansMultipleMonths,
+  getCampaignRemainingUnits,
+  normalizeEntityId,
+  getScaledAgentGoalForMonth,
 } from '@/js/orderAuthority.js';
 import { roundTo2Decimals } from '@/js/formatNumbers';
 import { buildMonthlyOrderStatusForNextMonth } from '@/js/orderStatusUtils';
@@ -126,38 +129,23 @@ export function normalizeManagerIds(order) {
   return [];
 }
 
-export function copyAgentMaps(order, remainingUnits) {
+export function copyAgentMaps(order, remainingUnits, extra = {}) {
   const ids = assignedCallerIds(order);
+  const dailyLogs = extra.dailyLogs || [];
+  const monthKey = extra.monthKey || monthKeyFromDate(extra.sourceMonthStart);
   const agentGoals = {};
   const agentRates = {};
   const agentPrices = {};
   ids.forEach((id) => {
     const rate = getStoredAgentRate(order, id);
-    agentGoals[id] = getStoredAgentGoal(order, id);
+    const leftoverGoal =
+      monthKey && dailyLogs.length
+        ? getScaledAgentGoalForMonth(order, id, dailyLogs, monthKey)
+        : getStoredAgentGoal(order, id);
+    agentGoals[id] = leftoverGoal;
     agentRates[id] = rate;
     agentPrices[id] = rate;
   });
-
-  const cap = Number(remainingUnits);
-  if (Number.isFinite(cap) && cap >= 0) {
-    const totalAssigned = ids.reduce((s, id) => s + (Number(agentGoals[id]) || 0), 0);
-    if (totalAssigned > cap && totalAssigned > 0) {
-      const scale = cap / totalAssigned;
-      const scaled = {};
-      let running = 0;
-      ids.forEach((id, index) => {
-        if (index === ids.length - 1) {
-          scaled[id] = roundTo2Decimals(Math.max(0, cap - running));
-        } else {
-          const val = roundTo2Decimals((Number(agentGoals[id]) || 0) * scale);
-          scaled[id] = val;
-          running += val;
-        }
-      });
-      return { agentGoals: scaled, agentRates, agentPrices };
-    }
-  }
-
   return { agentGoals, agentRates, agentPrices };
 }
 
@@ -193,7 +181,7 @@ export function buildOrderCopyPayload(order, copyFields, extra = {}) {
   const campaign = Number(campaignGoal) ?? monthly;
   const assignedIds = normalizeAssignedCallerIds(order);
   const managerIds = normalizeManagerIds(order);
-  const { agentGoals, agentRates } = copyAgentMaps(order, monthly);
+  const { agentGoals, agentRates } = copyAgentMaps(order, monthly, extra);
   const assignmentFields = buildAssignmentWriteFields(
     assignedIds.map((id) => ({
       id,
@@ -251,7 +239,7 @@ export function buildOrderCopyPrefill(order, copyFields, extra = {}) {
   const { sourceMonthStart } = extra;
   const assignedIds = normalizeAssignedCallerIds(order);
   const monthly = Number(monthlyGoal) || 0;
-  const { agentGoals, agentRates } = copyAgentMaps(order, monthly);
+  const { agentGoals, agentRates } = copyAgentMaps(order, monthly, extra);
   const agentGoalsPrefill = {};
   const agentRatesPrefill = {};
   assignedIds.forEach((id) => {

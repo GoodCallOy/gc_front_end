@@ -629,7 +629,6 @@ import { useStore } from 'vuex'
 import { useI18n } from 'vue-i18n';
 import { useRouter, useRoute } from 'vue-router';
 import { goToNextMonth, goToPreviousMonth, formattedDateRange, isCurrentMonth, getMonthWeeks } from '@/js/dateUtils';
-import { fetchAgentgoalsByAgentAndMonth, groupOrderCampaignsForMonthView, getLogCompletedUnits, getLogCallHours } from '@/js/statsUtils';
 import {
   getCampaignMonthView,
   getOrderMonthGoalUnits,
@@ -638,6 +637,10 @@ import {
   assignedCallerIds,
   orderSpansMultipleMonths,
   resolveCampaignGoalUnits,
+  fetchAgentgoalsByAgentAndMonth,
+  groupOrderCampaignsForMonthView,
+  getLogCompletedUnits,
+  getLogCallHours,
 } from '@/js/orderAuthority.js';
 import agentCaseCard from './agentCaseCard.vue'
 import AgentDashboardTeamStatsCard from './agentDashboardTeamStatsCard.vue'

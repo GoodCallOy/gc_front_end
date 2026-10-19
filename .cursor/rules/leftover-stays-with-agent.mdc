@@ -11,17 +11,19 @@ If an agent still has unused assignment, that leftover carries into the next mon
 
 ## Source of truth
 
-Personal leftover lives in `getScaledAgentGoalForMonth` (`src/js/statsUtils.js`), used by `getCampaignMonthView`. Screens only call the helper. Do not reimplement leftover in Vue.
+Personal leftover lives in `getScaledAgentGoalForMonth` (`src/js/statsUtils.js`), used by `getCampaignMonthView`. Screens import from `orderAuthority.js` and only call the helper. Do not reimplement leftover in Vue.
 
 ```js
-// THIS agent's unused assignment, not a share of team leftover
-personalRemaining = max(0, storedGoal - completedInEarlierMonths)
-myGoal = min(personalRemaining, campaignLeftoverAtMonthStart)
+// If agentGoals already equal this month's leftover (Elina 6 + Maria 5 = 11),
+// those ARE the carried leftover. Use stored. Do not subtract earlier months.
+// Otherwise carry unused lifetime assignment: stored − prior months, this agent only.
 ```
 
 ## Do / don't
 
-- Do: Sarastus assigned 24, finished 24 → **0/0** even if the campaign has 1 hour left
+- Do: October leftover 11 assigned Elina 6 / Maria 5 → Elina **0/6** then **6/6**, never **6/0**
+- Do: only assigned agent, leftover 6, hours done → **6/6**, never **6/0**
+- Do: Sarastus assigned 24, finished 24, another agent still on the case → **0/0** even if the campaign has 1 hour left
 - Do: Mika assigned 12, finished 1 → his remaining stays on **Mika**
 - Do: one agent assigned 24 of 30, finished 18 → **6 carries to next month for that agent**
 - Don't: `leftover * (thisAgentGoal / teamAssigned)` (this created **0/0.67**)

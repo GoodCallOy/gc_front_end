@@ -1,7 +1,7 @@
 import { createStore } from 'vuex'
 import axios from 'axios'
 import urls from './js/config.js'
-import { ordersDashboardRevenueGoalEuros, getOrderMonthGoalUnits } from './js/statsUtils'
+import { ordersDashboardRevenueGoalEuros, getOrderMonthGoalUnits } from './js/orderAuthority.js'
 
 const CACHE_TIMEOUT = 10 * 60 * 1000 // 10 minutes
 

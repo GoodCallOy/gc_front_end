@@ -205,8 +205,18 @@ import { useStore } from 'vuex'
 import { useI18n } from 'vue-i18n'
 import axios from 'axios'
 import urls from '@/js/config.js'
-import { getOrderMonths, orderSpansMultipleMonths, calculateMonthlyProgress, getCampaignRemainingUnitsAtMonthStart } from '@/js/statsUtils'
-import { getStoredAgentGoal, getStoredAgentRate, assignedCallerIds, getOrderMonthGoalUnits, getCampaignGoalUnits, buildAssignmentWriteFields } from '@/js/orderAuthority.js'
+import {
+  getStoredAgentGoal,
+  getStoredAgentRate,
+  assignedCallerIds,
+  getOrderMonthGoalUnits,
+  getCampaignGoalUnits,
+  buildAssignmentWriteFields,
+  getOrderMonths,
+  orderSpansMultipleMonths,
+  getCampaignRemainingUnitsAtMonthStart,
+  getCampaignMonthView,
+} from '@/js/orderAuthority.js'
 import { formatSlashPair, roundTo2Decimals } from '@/js/formatNumbers'
 import { monthKeyFromDateRange } from '@/js/orderStatusUtils'
 
@@ -427,18 +437,15 @@ function hydrateFromOrder(o) {
   form.monthlyRevenueGoals = { ...(o.monthlyRevenueGoals || {}) }
 
   if (isEditMode.value && !applySuggestedMonthlyGoal()) {
-    const orderForRemaining = { ...o }
-    if (orderSpansMultipleMonths(o) && !orderForRemaining.monthlyBreakdown?.length) {
-      orderForRemaining.monthlyBreakdown = calculateMonthlyProgress(o, dailyLogs.value || [])
-    }
     const viewedMonthKey = monthKeyFromDateRange(store.getters['currentDateRange'])
-    if (viewedMonthKey && (orderSpansMultipleMonths(orderForRemaining) || orderForRemaining.isMultiMonth)) {
+    const view = getCampaignMonthView(o, dailyLogs.value || [], viewedMonthKey)
+    if (viewedMonthKey && (view.isMultiMonth || orderSpansMultipleMonths(o))) {
       const remainingForMonth = getCampaignRemainingUnitsAtMonthStart(
-        orderForRemaining,
+        o,
         dailyLogs.value,
-        getCampaignGoalUnits(orderForRemaining, cases.value || []),
+        getCampaignGoalUnits(o, cases.value || []),
         viewedMonthKey,
-        orderForRemaining.monthlyBreakdown
+        view.monthlyBreakdown
       )
       if (Number(remainingForMonth) > 0) {
         form.totalQuantity = remainingForMonth

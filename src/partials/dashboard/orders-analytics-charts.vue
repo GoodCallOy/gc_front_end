@@ -227,11 +227,12 @@ import { Doughnut, Bar } from 'vue-chartjs'
 import { formatStatNumber, formatCurrencyEUR } from '@/js/formatNumbers'
 import { toLocalYmdNumber } from '@/js/dateUtils'
 import {
+  getCampaignMonthView,
+  getLogCompletedUnits,
   logMatchesOrderForMonthRevenue,
   estimatedRevenueEurosForCampaignGroup,
   groupOrderCampaignsForMonthView,
-} from '@/js/statsUtils'
-import { getCampaignMonthView, getLogCompletedUnits } from '@/js/orderAuthority.js'
+} from '@/js/orderAuthority.js'
 import {
   isOrderOnHoldForMonth,
   isOrderCancelledForMonth,
