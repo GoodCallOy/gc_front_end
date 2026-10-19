@@ -72,7 +72,7 @@ export function computeAgentMyProgressPercent(agent, orders, statsLogs, dateRang
   const stats = statsLogs;
   const percentages = inRange.map((order) => {
     const orderId = String(order._id ?? order.id ?? '');
-    const myGoal = getScaledAgentGoalForMonth(order, agentId, statsLogs);
+    const myGoal = getScaledAgentGoalForMonth(order, agentId, statsLogs, monthKey);
 
     const myAgentOrderLogsRaw = stats.filter((log) => {
       const logOrderId = String(log?.order?._id ?? log?.order ?? log?.orderId ?? '');

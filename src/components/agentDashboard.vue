@@ -1774,7 +1774,8 @@ const casesTableRows = computed(() => {
 
   return orders.map((order) => {
     const orderId = String(order._id ?? order.id ?? '');
-    const myGoal = getScaledAgentGoalForMonth(order, agentId, dailyLogs.value || []);
+    const monthKey = monthKeyFromDateRange(currentDateRange.value);
+    const myGoal = getScaledAgentGoalForMonth(order, agentId, dailyLogs.value || [], monthKey);
     const pricePerUnit = Number(order?.pricePerUnit ?? 0);
     const agentRate = getStoredAgentRate(order, agentId);
 
@@ -1809,7 +1810,10 @@ const casesTableRows = computed(() => {
     );
 
     // Team goal: use the order's total quantity (project goal)
-    const teamGoal = getOrderMonthGoalUnits(order);
+    const isMultiMonth = orderSpansMultipleMonths(order)
+    const monthlyBreakdown = isMultiMonth ? calculateMonthlyProgress(order, dailyLogs.value || []) : null
+    const leftoverGoal = monthlyBreakdown?.find((m) => String(m.monthKey) === String(monthKey))?.monthGoalUnits
+    const teamGoal = leftoverGoal != null ? Number(leftoverGoal) || 0 : getOrderMonthGoalUnits(order);
 
     // Team units: all agents' quantityCompleted for this order in the same date range,
     // with basic de-duplication to avoid double-counting identical logs.
@@ -1839,8 +1843,6 @@ const casesTableRows = computed(() => {
       (sum, l) => sum + getLogCompletedUnits(l, order.caseUnit),
       0
     );
-    const isMultiMonth = orderSpansMultipleMonths(order)
-    const monthlyBreakdown = isMultiMonth ? calculateMonthlyProgress(order, dailyLogs.value || []) : null
     // Personal € target (agent unit goal × price); personal stats / % to goal use this.
     const myRevenueGoal = myGoal * pricePerUnit;
     // Same € as orders dashboard; value is stored on the order in Vuex (`setOrders` → `estimatedRevenueEuros`)
@@ -1890,7 +1892,7 @@ const personalMonthlyGoalBreakdown = computed(() => {
     const pricePerUnit = Number(order?.pricePerUnit ?? row?.pricePerUnit) || 0;
     const monthlyGoal =
       Number(row?.myGoal) ||
-      Number(getScaledAgentGoalForMonth(order, agentId, dailyLogs.value || [])) ||
+      Number(getScaledAgentGoalForMonth(order, agentId, dailyLogs.value || [], monthKey)) ||
       0;
     const revenue = Number(row?.myRevenueGoal) || monthlyGoal * pricePerUnit;
 

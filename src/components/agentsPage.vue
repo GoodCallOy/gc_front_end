@@ -142,7 +142,7 @@ import { goToNextMonth, goToPreviousMonth, formattedDateRange, isCurrentMonth } 
 import { formatUnitsByCaseUnit } from '@/js/formatNumbers';
 import { getPercentageToGoalVuetifyColor } from '@/js/percentageToGoalStyle';
 import { isOrderEligibleForAgentGoalsForMonth, monthKeyFromDateRange } from '@/js/orderStatusUtils';
-import { getScaledAgentGoalForMonth, getStoredAgentGoal } from '@/js/statsUtils';
+import { getScaledAgentGoalForMonth, getStoredAgentGoal, getLogCompletedUnits } from '@/js/statsUtils';
 import { isAgentAssignedToOrder } from '@/js/orderAuthority.js';
 import DateHeader from '@/components/DateHeader.vue';
 import AgentPersonalRevenueStatsStack from '@/components/AgentPersonalRevenueStatsStack.vue';
@@ -194,8 +194,9 @@ function getAgentMonthOrders(agent, orders, dateRange) {
 function computeAgentMonthlyGoalEuros(agent, orders, dailyLogs, dateRange) {
   const aid = String(agent?._id ?? agent?.id ?? '');
   if (!aid) return 0;
+  const monthKey = monthKeyFromDateRange(dateRange);
   return getAgentMonthOrders(agent, orders, dateRange).reduce((sum, order) => {
-    const goal = getScaledAgentGoalForMonth(order, aid, dailyLogs);
+    const goal = getScaledAgentGoalForMonth(order, aid, dailyLogs, monthKey);
     const price = Number(order?.pricePerUnit ?? 0);
     return sum + goal * price;
   }, 0);
@@ -226,8 +227,7 @@ function sumAgentUnitsOnOrderInRange(agent, order, dailyLogs, from, to) {
     const key = `${log.date}_${logAgentId}_${logCaseName}_${log._id || log.id}`;
     if (seenLogs.has(key)) return;
     seenLogs.add(key);
-    const qty = Number(log.quantityCompleted ?? 0);
-    if (Number.isFinite(qty) && !Number.isNaN(qty)) units += qty;
+    units += getLogCompletedUnits(log, order?.caseUnit);
   });
 
   return units;
@@ -264,7 +264,7 @@ function buildAgentCasesForAgent(agent, orders, dailyLogs, gcCases, dateRange) {
       return true;
     })
     .map((order) => {
-      const goal = getScaledAgentGoalForMonth(order, aid, dailyLogs);
+      const goal = getScaledAgentGoalForMonth(order, aid, dailyLogs, monthKeyFromDateRange(dateRange));
       const completed = sumAgentUnitsOnOrderInRange(agent, order, dailyLogs, from, to);
       const progressPercent = goal > 0 ? Math.min(100, (completed / goal) * 100) : 0;
       const fullCaseName = order.caseName || order.caseId || '—';

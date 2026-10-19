@@ -428,7 +428,7 @@
                     <span v-if="currentMonthLabel">({{ currentMonthLabel }})</span>
                   </div>
                   <div class="mb-2">
-                    {{ formatStatNumber(agent.completedUnitsForThisOrder ?? 0) }}/{{ formatStatNumber(agent.goalForThisOrder) }} {{ t('assignGoals.totalGoals') }}
+                    {{ formatStatNumber(agent.completedUnitsForThisOrder ?? 0) }}/{{ formatStatNumber(agent.scaledGoalForThisOrder ?? agent.goalForThisOrder) }} {{ t('assignGoals.totalGoals') }}
                   </div>
 
                   <div class="text-caption mb-1 text-grey">{{ t('assignGoals.otherOrders') }}</div>
@@ -652,6 +652,7 @@ import {
   getScaledAgentGoalForMonth,
   getDistributedAssignedGoals,
   getOrderMonthGoalUnits,
+  getLogCompletedUnits,
 } from '@/js/statsUtils';
 import {
   getStoredAgentGoal,
@@ -1644,7 +1645,12 @@ const getRemainingGoals = (order) => {
 }
 
 function getAssignableGoalCapForOrder(order) {
-  return getAssignableGoalCap(order, dailyLogs.value || [], getDisplayGoal(order))
+  return getAssignableGoalCap(
+    order,
+    dailyLogs.value || [],
+    getDisplayGoal(order),
+    currentMonthKey.value
+  )
 }
 
 function editCaseFromOrder(order) {
@@ -1721,7 +1727,7 @@ function getAgentMonthGoalOrders(agentId, from, to) {
   })
   const groups = groupOrderCampaignsForMonthView(overlapping, currentDateRange.value)
   return groups.map(({ representative: o }) => {
-    const goal = getScaledAgentGoalForMonth(o, aid, dailyLogs.value || [])
+    const goal = getScaledAgentGoalForMonth(o, aid, dailyLogs.value || [], monthKey)
     const price = Number(o?.pricePerUnit) || 0
     return {
       orderId: String(o?._id ?? o?.id ?? ''),
@@ -1828,7 +1834,7 @@ function completedUnitsForOrderInDateRange(order, logs, dateRange) {
     if (!sameOrder) return sum
     const d = new Date(log.date)
     if (d < from || d > to) return sum
-    return sum + (Number(log.quantityCompleted) || 0)
+    return sum + getLogCompletedUnits(log, order.caseUnit)
   }, 0)
 }
 
@@ -1948,6 +1954,12 @@ const selectOrder = async (order, event) => {
       );
 
       const goalForThisOrder = getStoredAgentGoal(selectedOrder.value, agentId)
+      const scaledGoalForThisOrder = getScaledAgentGoalForMonth(
+        selectedOrder.value,
+        agentId,
+        dailyLogs.value || [],
+        currentMonthKey.value
+      )
       const rateForThisOrder = getStoredAgentRate(selectedOrder.value, agentId)
 
       // Completed units: compute from dailyLogs for the current month + order + agent
@@ -1983,10 +1995,7 @@ const selectOrder = async (order, event) => {
             if (!Number.isFinite(tMs)) return false;
             return tMs >= fromTime && tMs <= toTime;
           })
-          .reduce((sum, l) => {
-            const units = Number(l.quantityCompleted ?? l.completedUnits ?? 0);
-            return sum + (Number.isFinite(units) && !Number.isNaN(units) ? units : 0);
-          }, 0);
+          .reduce((sum, l) => sum + getLogCompletedUnits(l, selectedOrder.value?.caseUnit), 0);
       } catch (e) {
         console.warn('Failed to compute completed units for agent/order in AssignGoals:', e);
         completedUnitsForThisOrderInt = 0;
@@ -1997,6 +2006,7 @@ const selectOrder = async (order, event) => {
         id: agentId,
         name,
         goalForThisOrder,
+        scaledGoalForThisOrder,
         rateForThisOrder,
         completedUnitsForThisOrder: completedUnitsForThisOrderInt,
         monthRevenue,

@@ -178,6 +178,16 @@ export function toLocalYmdNumber(dateVal) {
   return x.getFullYear() * 10000 + (x.getMonth() + 1) * 100 + x.getDate()
 }
 
+/** Local calendar day as YYYY-MM-DD (do not use toISOString — that shifts the day in UTC+). */
+export function toLocalYmdString(dateVal) {
+  const x = parseWeekDateLocal(dateVal, false)
+  if (isNaN(x.getTime())) return ''
+  const y = x.getFullYear()
+  const m = String(x.getMonth() + 1).padStart(2, '0')
+  const d = String(x.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
 // Get all weeks for a month using custom configuration
 export async function getMonthWeeks(year, month) {
   const config = await fetchWeekConfiguration(year, month);

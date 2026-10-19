@@ -17,6 +17,7 @@ export {
   getOrderMonthGoalUnits,
   getScaledAgentGoalForMonth,
   getAssignableGoalCap,
+  getMonthLeftoverGoalUnits,
   recordToObject,
   getLogCallHours,
   getLogCompletedUnits,

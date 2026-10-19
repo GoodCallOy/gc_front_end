@@ -69,6 +69,7 @@
   import { adjustColorOpacity } from '../utils/Utils'
   import { formatSlashPair, formatCurrencyEUR, formatStatNumber } from '@/js/formatNumbers'
   import { getScaledAgentGoalForMonth, getOrderMonthGoalUnits, getStoredAgentRate, getLogCompletedUnits } from '@/js/statsUtils'
+  import { monthKeyFromDateRange } from '@/js/orderStatusUtils'
   
   export default {
     name: 'agentCaseCard',
@@ -165,7 +166,8 @@
       const myGoal = computed(() => {
         const agentId = myAgentId.value;
         if (!agentId) return 0;
-        return getScaledAgentGoalForMonth(props.order, agentId, props.dailyLogs);
+        const monthKey = monthKeyFromDateRange(currentDateRange.value)
+        return getScaledAgentGoalForMonth(props.order, agentId, props.dailyLogs, monthKey);
       });
 
       // Total project goal (for reference)

@@ -1,6 +1,6 @@
 import axios from 'axios';
 import urls from './config.js';
-import { toLocalYmdNumber, parseWeekDateLocal } from './dateUtils';
+import { toLocalYmdNumber, parseWeekDateLocal, toLocalYmdString } from './dateUtils';
 import { monthKeyFromDateRange, monthKeyFromDate } from './orderStatusUtils';
 import { roundTo2Decimals, isHoursCaseUnit } from './formatNumbers';
 
@@ -495,56 +495,54 @@ export function populateCasesSortedByAgent(agentStats, selectedAgent) {
    * @returns {boolean} - True if order spans multiple months
    */
   export function orderSpansMultipleMonths(order) {
-    if (!order.startDate || !order.deadline) return false;
-    
-    const start = new Date(order.startDate);
-    const end = new Date(order.deadline);
-    
-    // Check if start and end are in different months/years
-    return start.getFullYear() !== end.getFullYear() || 
+    if (!order?.startDate || !order?.deadline) return false;
+    const start = parseWeekDateLocal(order.startDate, false);
+    const end = parseWeekDateLocal(order.deadline, false);
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) return false;
+    return start.getFullYear() !== end.getFullYear() ||
            start.getMonth() !== end.getMonth();
   }
 
   /**
-   * Get all months an order spans
-   * @param {Object} order - Order object with startDate and deadline
-   * @returns {Array} - Array of month objects with {year, month, startDate, endDate}
+   * Get all months an order spans.
+   * Date strings are local calendar days so September is Sep 1–30, not Sep 1–29.
    */
   export function getOrderMonths(order) {
-    if (!order.startDate || !order.deadline) return [];
-    
-    const start = new Date(order.startDate);
-    const end = new Date(order.deadline);
-    
+    if (!order?.startDate || !order?.deadline) return [];
+
+    const start = parseWeekDateLocal(order.startDate, false);
+    const end = parseWeekDateLocal(order.deadline, true);
+    if (isNaN(start.getTime()) || isNaN(end.getTime()) || start > end) return [];
+
     const months = [];
-    let current = new Date(start);
-    current.setDate(1); // Start of month
-    
-    while (current <= end) {
-      const year = current.getFullYear();
-      const month = current.getMonth();
-      
-      // First day of this month within the order range
-      const monthStart = new Date(Math.max(start.getTime(), new Date(year, month, 1).getTime()));
-      
-      // Last day of this month within the order range
-      const lastDayOfMonth = new Date(year, month + 1, 0);
-      const monthEnd = new Date(Math.min(end.getTime(), lastDayOfMonth.getTime()));
-      
+    let year = start.getFullYear();
+    let month = start.getMonth();
+    const endYear = end.getFullYear();
+    const endMonth = end.getMonth();
+
+    while (year < endYear || (year === endYear && month <= endMonth)) {
+      const calendarStart = new Date(year, month, 1);
+      const calendarEnd = new Date(year, month + 1, 0, 23, 59, 59, 999);
+      const monthStart = start > calendarStart ? start : calendarStart;
+      const monthEnd = end < calendarEnd ? end : calendarEnd;
+
       months.push({
         year,
-        month: month + 1, // 1-indexed for display
+        month: month + 1,
         monthKey: `${year}-${String(month + 1).padStart(2, '0')}`,
         startDate: monthStart,
         endDate: monthEnd,
-        startDateStr: monthStart.toISOString().split('T')[0],
-        endDateStr: monthEnd.toISOString().split('T')[0]
+        startDateStr: toLocalYmdString(monthStart),
+        endDateStr: toLocalYmdString(monthEnd),
       });
-      
-      // Move to next month
-      current.setMonth(month + 1);
+
+      month += 1;
+      if (month > 11) {
+        month = 0;
+        year += 1;
+      }
     }
-    
+
     return months;
   }
 
@@ -574,14 +572,14 @@ export function populateCasesSortedByAgent(agentStats, selectedAgent) {
     const isTest = isTestCase(order);
     
     const monthlyProgress = months.map(monthInfo => {
-      const monthStart = new Date(monthInfo.startDateStr);
-      const monthEnd = new Date(monthInfo.endDateStr);
-      monthEnd.setHours(23, 59, 59, 999);
-      
+      const startN = toLocalYmdNumber(monthInfo.startDateStr);
+      const endN = toLocalYmdNumber(monthInfo.endDateStr);
+
       const monthLogs = dailyLogs.filter(log => {
         if (!logMatchesOrderForMonthRevenue(log, order)) return false;
-        const logDate = new Date(log.date);
-        return logDate >= monthStart && logDate <= monthEnd;
+        const logN = toLocalYmdNumber(log.date);
+        if (logN == null || startN == null || endN == null) return false;
+        return logN >= startN && logN <= endN;
       });
       
       const quantityCompleted = monthLogs.reduce(
@@ -662,14 +660,31 @@ export function getCampaignRemainingUnits(order, dailyLogs, campaignGoal, monthl
 }
 
 /**
- * Max team goal units assignable/split for an order in Assign Goals.
- * Multi-month: min(monthly cap, campaign remaining after usage).
+ * Leftover campaign units at the START of a month (e.g. Sep 24/30 → Oct leftover 6).
+ * Does not subtract this month's logs, so completing the leftover does not zero the goal.
  */
-export function getAssignableGoalCap(order, dailyLogs, campaignGoal) {
+export function getMonthLeftoverGoalUnits(order, dailyLogs = [], monthKey) {
+  const monthlyCap = getOrderMonthGoalUnits(order)
+  if (!orderSpansMultipleMonths(order) && !order?.isMultiMonth) return monthlyCap
+  const key = String(monthKey || '').slice(0, 7)
+  if (!key) return monthlyCap
+  const progress = calculateMonthlyProgress(order, dailyLogs || [])
+  const month = progress.find((m) => String(m.monthKey) === key)
+  if (month && month.monthGoalUnits != null) return Number(month.monthGoalUnits) || 0
+  return monthlyCap
+}
+
+/**
+ * Max team goal units assignable/split for an order in Assign Goals.
+ * Multi-month: leftover at the start of the viewed month (not remaining after this month's logs).
+ */
+export function getAssignableGoalCap(order, dailyLogs, campaignGoal, monthKey) {
   const monthlyCap = getOrderMonthGoalUnits(order)
   if (!orderSpansMultipleMonths(order) && !order?.isMultiMonth) {
     return monthlyCap
   }
+  const key = String(monthKey || '').slice(0, 7)
+  if (key) return getMonthLeftoverGoalUnits(order, dailyLogs, key)
   const goal = Number(campaignGoal) || 0
   if (goal <= 0) return monthlyCap
   const remaining = getCampaignRemainingUnits(
@@ -686,15 +701,15 @@ export function getAssignableGoalCap(order, dailyLogs, campaignGoal) {
 
 /**
  * Personal unit goal for the viewed month. Multi-month campaigns often still store
- * the original agentGoals; scale them down when assigned units exceed this month's cap
- * (remaining campaign / monthly goal).
+ * the original agentGoals; scale them down to this month's leftover (24 stored, 6 left → 6).
  */
-export function getScaledAgentGoalForMonth(order, agentId, dailyLogs = []) {
+export function getScaledAgentGoalForMonth(order, agentId, dailyLogs = [], monthKey) {
   const stored = getStoredAgentGoal(order, agentId)
   if (stored <= 0) return 0
   if (!orderSpansMultipleMonths(order) && !order?.isMultiMonth) return stored
+  const key = String(monthKey || '').slice(0, 7)
   const campaignGoal = Number(order?.campaignGoal ?? order?.campaign_goal) || 0
-  const cap = getAssignableGoalCap(order, dailyLogs, campaignGoal)
+  const cap = getAssignableGoalCap(order, dailyLogs, campaignGoal, key)
   const totalAssigned = getDistributedAssignedGoals(order)
   if (!(Number.isFinite(cap) && cap >= 0)) return stored
   if (totalAssigned > cap && totalAssigned > 0) {
