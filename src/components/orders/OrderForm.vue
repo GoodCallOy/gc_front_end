@@ -205,10 +205,10 @@ import { useStore } from 'vuex'
 import { useI18n } from 'vue-i18n'
 import axios from 'axios'
 import urls from '@/js/config.js'
-import { getOrderMonths, orderSpansMultipleMonths, calculateMonthlyProgress } from '@/js/statsUtils'
+import { getOrderMonths, orderSpansMultipleMonths, calculateMonthlyProgress, getCampaignRemainingUnitsAtMonthStart } from '@/js/statsUtils'
 import { getStoredAgentGoal, getStoredAgentRate, assignedCallerIds, getOrderMonthGoalUnits, getCampaignGoalUnits, buildAssignmentWriteFields } from '@/js/orderAuthority.js'
 import { formatSlashPair, roundTo2Decimals } from '@/js/formatNumbers'
-import { getRemainingMonthlyGoalForMultiMonthOrder } from '@/js/orderCopyUtils'
+import { monthKeyFromDateRange } from '@/js/orderStatusUtils'
 
 const { t } = useI18n()
 const store = useStore()
@@ -431,13 +431,18 @@ function hydrateFromOrder(o) {
     if (orderSpansMultipleMonths(o) && !orderForRemaining.monthlyBreakdown?.length) {
       orderForRemaining.monthlyBreakdown = calculateMonthlyProgress(o, dailyLogs.value || [])
     }
-    const remainingMonthly = getRemainingMonthlyGoalForMultiMonthOrder(
-      orderForRemaining,
-      dailyLogs.value,
-      cases.value
-    )
-    if (remainingMonthly != null && Number(remainingMonthly) > 0) {
-      form.totalQuantity = remainingMonthly
+    const viewedMonthKey = monthKeyFromDateRange(store.getters['currentDateRange'])
+    if (viewedMonthKey && (orderSpansMultipleMonths(orderForRemaining) || orderForRemaining.isMultiMonth)) {
+      const remainingForMonth = getCampaignRemainingUnitsAtMonthStart(
+        orderForRemaining,
+        dailyLogs.value,
+        getCampaignGoalUnits(orderForRemaining, cases.value || []),
+        viewedMonthKey,
+        orderForRemaining.monthlyBreakdown
+      )
+      if (Number(remainingForMonth) > 0) {
+        form.totalQuantity = remainingForMonth
+      }
     }
   }
 

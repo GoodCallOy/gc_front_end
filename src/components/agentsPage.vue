@@ -142,8 +142,7 @@ import { goToNextMonth, goToPreviousMonth, formattedDateRange, isCurrentMonth } 
 import { formatUnitsByCaseUnit } from '@/js/formatNumbers';
 import { getPercentageToGoalVuetifyColor } from '@/js/percentageToGoalStyle';
 import { isOrderEligibleForAgentGoalsForMonth, monthKeyFromDateRange } from '@/js/orderStatusUtils';
-import { getScaledAgentGoalForMonth, getStoredAgentGoal, getLogCompletedUnits } from '@/js/statsUtils';
-import { isAgentAssignedToOrder } from '@/js/orderAuthority.js';
+import { getCampaignMonthView, getStoredAgentGoal, getLogCompletedUnits, isAgentAssignedToOrder } from '@/js/orderAuthority.js';
 import DateHeader from '@/components/DateHeader.vue';
 import AgentPersonalRevenueStatsStack from '@/components/AgentPersonalRevenueStatsStack.vue';
 
@@ -191,57 +190,30 @@ function getAgentMonthOrders(agent, orders, dateRange) {
   );
 }
 
+function campaignViewForAgentOrder(agent, order, dailyLogs, dateRange) {
+  const aid = String(agent?._id ?? agent?.id ?? '');
+  return getCampaignMonthView(order, dailyLogs || [], monthKeyFromDateRange(dateRange), aid);
+}
+
 function computeAgentMonthlyGoalEuros(agent, orders, dailyLogs, dateRange) {
   const aid = String(agent?._id ?? agent?.id ?? '');
   if (!aid) return 0;
-  const monthKey = monthKeyFromDateRange(dateRange);
   return getAgentMonthOrders(agent, orders, dateRange).reduce((sum, order) => {
-    const goal = getScaledAgentGoalForMonth(order, aid, dailyLogs, monthKey);
-    const price = Number(order?.pricePerUnit ?? 0);
-    return sum + goal * price;
+    const view = campaignViewForAgentOrder(agent, order, dailyLogs, dateRange);
+    return sum + (Number(view.myRevenueGoal) || 0);
   }, 0);
 }
 
-function sumAgentUnitsOnOrderInRange(agent, order, dailyLogs, from, to) {
-  const aid = String(agent?._id ?? agent?.id ?? '');
-  if (!aid || !Array.isArray(dailyLogs)) return 0;
-  const fromTime = from.getTime();
-  const toTime = to.getTime();
-  const orderId = String(order?._id ?? order?.id ?? '');
-  const caseName = order?.caseName || '';
-  const seenLogs = new Set();
-  let units = 0;
-
-  dailyLogs.forEach((log) => {
-    const logAgentId = String(log?.agent?._id ?? log?.agentId ?? log?.agent ?? '');
-    if (logAgentId !== aid) return;
-    const logOrderId = String(log?.order?._id ?? log?.order?.id ?? log?.orderId ?? '');
-    const logCaseName = log?.caseName ?? '';
-    const sameOrder =
-      (orderId && logOrderId && logOrderId === orderId) ||
-      (caseName && logCaseName && logCaseName === caseName);
-    if (!sameOrder) return;
-    const d = new Date(log.date);
-    const tMs = d.getTime();
-    if (!Number.isFinite(tMs) || tMs < fromTime || tMs > toTime) return;
-    const key = `${log.date}_${logAgentId}_${logCaseName}_${log._id || log.id}`;
-    if (seenLogs.has(key)) return;
-    seenLogs.add(key);
-    units += getLogCompletedUnits(log, order?.caseUnit);
-  });
-
-  return units;
-}
-
 function computeAgentRevenueKpi(agent, orders, dailyLogs, dateRange) {
-  const goal = computeAgentMonthlyGoalEuros(agent, orders, dailyLogs, dateRange);
-  if (goal <= 0) return { goal: 0, current: 0 };
-  const { from, to } = monthBoundsFromRange(dateRange);
+  const monthOrders = getAgentMonthOrders(agent, orders, dateRange);
+  let goal = 0;
   let current = 0;
-  for (const order of getAgentMonthOrders(agent, orders, dateRange)) {
-    const price = Number(order?.pricePerUnit ?? 0);
-    current += sumAgentUnitsOnOrderInRange(agent, order, dailyLogs, from, to) * price;
+  for (const order of monthOrders) {
+    const view = campaignViewForAgentOrder(agent, order, dailyLogs, dateRange);
+    goal += Number(view.myRevenueGoal) || 0;
+    current += Number(view.currentRevenue) || 0;
   }
+  if (goal <= 0) return { goal: 0, current: 0 };
   return { goal, current };
 }
 
@@ -253,7 +225,6 @@ function caseProgressLabelTextClass(percent) {
 function buildAgentCasesForAgent(agent, orders, dailyLogs, gcCases, dateRange) {
   const aid = String(agent?._id ?? agent?.id ?? '');
   if (!aid) return [];
-  const { from, to } = monthBoundsFromRange(dateRange);
   const seen = new Set();
 
   return getAgentMonthOrders(agent, orders, dateRange)
@@ -264,9 +235,10 @@ function buildAgentCasesForAgent(agent, orders, dailyLogs, gcCases, dateRange) {
       return true;
     })
     .map((order) => {
-      const goal = getScaledAgentGoalForMonth(order, aid, dailyLogs, monthKeyFromDateRange(dateRange));
-      const completed = sumAgentUnitsOnOrderInRange(agent, order, dailyLogs, from, to);
-      const progressPercent = goal > 0 ? Math.min(100, (completed / goal) * 100) : 0;
+      const view = campaignViewForAgentOrder(agent, order, dailyLogs, dateRange);
+      const goal = Number(view.myGoal) || 0;
+      const completed = Number(view.myUnits) || 0;
+      const progressPercent = Number(view.percentage) || (goal > 0 ? Math.min(100, (completed / goal) * 100) : 0);
       const fullCaseName = order.caseName || order.caseId || '—';
       const caseId = order?.caseId;
       const gc = (gcCases || []).find(
@@ -373,7 +345,7 @@ function enrichAgentRow(agent, orders, dailyLogs, gcCases, dateRange, logStats =
             outgoing_calls: totalOutgoingCalls,
             answered_calls: totalAnsweredCalls,
             completed_calls: agentLogs.reduce((sum, log) => sum + (log.completed_calls || 0), 0),
-            quantityCompleted: agentLogs.reduce((sum, log) => sum + (log.quantityCompleted || 0), 0),
+            quantityCompleted: agentLogs.reduce((sum, log) => sum + getLogCompletedUnits(log), 0),
             response_rate: (totalOutgoingCalls > 0 ? (totalAnsweredCalls / totalOutgoingCalls) * 100 : 0).toFixed(2),
             meetings: agentLogs.length,
           });

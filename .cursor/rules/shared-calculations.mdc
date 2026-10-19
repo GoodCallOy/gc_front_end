@@ -1,0 +1,28 @@
+---
+description: Shared campaign/stats math lives in one helper; do not duplicate it in Vue components
+alwaysApply: true
+---
+
+# One calculation, many screens
+
+If more than one component needs the same number (goals, units, leftover, revenue, %), put the math in a shared module and have every screen call it. Do not copy the formula into each Vue file.
+
+## Campaign month progress (My results / Team results)
+
+Source of truth: `getCampaignMonthView` in [`src/js/orderAuthority.js`](src/js/orderAuthority.js), which uses helpers in [`src/js/statsUtils.js`](src/js/statsUtils.js).
+
+If My results or Team results look wrong again, change `getCampaignMonthView` (or the statsUtils helpers it calls). Do not patch `agentDashboard.vue`, `assignGoals.vue`, `agentCaseCard.vue`, `agentsPage.vue`, or reports separately.
+
+Call it like:
+
+```js
+const view = getCampaignMonthView(order, dailyLogs, monthKey, agentId)
+// view.myUnits / view.myGoal   — personal
+// view.teamUnits / view.teamGoal — team
+```
+
+## When adding a new screen
+
+- Import the existing helper. If it is missing a field, extend the helper and reuse it.
+- Vue components format and render. They do not invent leftover, scaling, or month-cap logic.
+- New shared math goes in `src/js/` (prefer `statsUtils.js` / `orderAuthority.js` for campaign stats).

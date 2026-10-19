@@ -117,7 +117,8 @@ import { useStore } from 'vuex'
 import DateHeader from '@/components/DateHeader.vue'
 import { goToNextMonth, goToPreviousMonth } from '@/js/dateUtils'
 import { useRouter } from 'vue-router'
-import { orderSpansMultipleMonths, calculateMonthlyProgress, getOrderMonthGoalUnits, ordersDashboardRevenueGoalEuros } from '@/js/statsUtils'
+import { orderSpansMultipleMonths, calculateMonthlyProgress, ordersDashboardRevenueGoalEuros } from '@/js/statsUtils'
+import { getCampaignMonthView } from '@/js/orderAuthority.js'
 import { formatStatNumber, formatCurrencyEUR, formatSlashPair } from '@/js/formatNumbers'
 import { monthKeyFromDateRange, isCampaignClosedBeforeMonth } from '@/js/orderStatusUtils'
 
@@ -288,35 +289,16 @@ const tableRowsFromOrders = computed(() => {
         return o.manager?.name || caseMeta.managers || ''
       })()
 
-      // Month Goal and Revenue Goal from order
-      const monthGoal = getOrderMonthGoalUnits(o)
+      const monthKey = monthKeyFromDateRange(currentDateRange.value)
+      const view = getCampaignMonthView(o, dailyLogs.value || [], monthKey)
+      const monthGoal = Number(view.teamGoal) || 0
+      const currentAmount = Number(view.teamUnits) || 0
       const revenueGoal = ordersDashboardRevenueGoalEuros(o)
 
-      // Check if order spans multiple months
-      const isMultiMonth = orderSpansMultipleMonths(o)
-      const monthlyBreakdown = isMultiMonth ? calculateMonthlyProgress(o, dailyLogs.value) : null
-
-      // Current Amount = sum of quantityCompleted from daily logs for this order within current month
-      const range = currentDateRange.value || []
-      const [startDate, endDate] = range
-      const monthStart = startDate ? new Date(startDate) : null
-      const monthEnd = endDate ? new Date(endDate) : null
-      const isInRange = (d) => {
-        if (!monthStart || !monthEnd) return true
-        const x = new Date(d)
-        return x >= monthStart && x <= monthEnd
-      }
-      const isOrderMatch = (log) => {
-        const orderId = o._id || o.id
-        return (
-          (log.order?._id && orderId && String(log.order._id) === String(orderId)) ||
-          (log.caseId && o.caseId && String(log.caseId) === String(o.caseId)) ||
-          (log.caseName && o.caseName && String(log.caseName) === String(o.caseName))
-        )
-      }
-      const currentAmount = dailyLogs.value
-        .filter(l => isInRange(l.date) && isOrderMatch(l))
-        .reduce((sum, l) => sum + (Number(l.quantityCompleted) || 0), 0)
+      const isMultiMonth = Boolean(view.isMultiMonth) || orderSpansMultipleMonths(o)
+      const monthlyBreakdown = isMultiMonth
+        ? (view.monthlyBreakdown || calculateMonthlyProgress(o, dailyLogs.value))
+        : null
 
       // For multi-month cases, calculate total completed across all months
       const totalCompleted = isMultiMonth && monthlyBreakdown

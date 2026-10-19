@@ -103,6 +103,7 @@ import ChartDataLabels from 'chartjs-plugin-datalabels'
 import { Bar } from 'vue-chartjs'
 import { formatStatNumber, formatCurrencyEUR } from '@/js/formatNumbers'
 import { toLocalYmdNumber } from '@/js/dateUtils'
+import { getLogCompletedUnits } from '@/js/orderAuthority.js'
 
 ChartJS.register(BarElement, CategoryScale, LinearScale, Tooltip, Legend, ChartDataLabels)
 
@@ -297,7 +298,11 @@ const meetingsByAgentPairs = computed(() => {
 
     if (!logMatchesDashboardOrder(log, rows)) continue
 
-    const qty = Number(log.quantityCompleted) || 0
+    const oid = String(log.order?._id || log.order || log.orderId || '')
+    const matchingRow = rows.find((r) =>
+      (oid && String(r.id) === oid) || String(r.caseName) === String(log.caseName || '')
+    )
+    const qty = getLogCompletedUnits(log, matchingRow?.caseUnit || log.caseUnit)
     if (!Number.isFinite(qty) || qty === 0) continue
 
     const label =

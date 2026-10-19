@@ -154,7 +154,7 @@
   import urls from '@/js/config.js'
   import { formatStatNumber, formatCurrencyEUR } from '@/js/formatNumbers'
   import { areDailyLogsFrozenForLog, isOrderVisibleToCallerForMonth, monthKeyFromDateRange } from '@/js/orderStatusUtils'
-  import { getOrderMonthGoalUnits, getStoredAgentGoal, assignedCallerIds } from '@/js/orderAuthority.js'
+  import { getOrderMonthGoalUnits, getStoredAgentGoal, assignedCallerIds, getCampaignMonthView, getLogCompletedUnits } from '@/js/orderAuthority.js'
   import { ordersDashboardRevenueGoalEuros } from '@/js/statsUtils'
 
 
@@ -197,98 +197,29 @@
     return agent?.name || agentId || 'Unknown';
   };
 
+  const campaignMonthView = computed(() => {
+    if (!order.value) return { myGoal: 0, myUnits: 0, currentRevenue: 0 }
+    return getCampaignMonthView(
+      order.value,
+      caseStats.value || [],
+      monthKeyFromDateRange(currentDateRange.value),
+      selectedAgentId.value
+    )
+  })
+
   const revenueGenerated = computed(() => {
-  // Make this reactive to both caseStats and currentDateRange
-  const stats = caseStats.value;
-  const dateRange = currentDateRange.value;
-  
-  if (!order.value || !order.value.assignedCallers || !Array.isArray(stats) || !dateRange) {
-    return { totalUnits: 0, revenue: '0.00' };
-  }
-  
-  // Get agent ID for filtering - handle both object and string formats
-  const agentIdStr = String(selectedAgentId.value || '');
-  if (!agentIdStr) {
-    console.log('⚠️ Revenue: No selected agent ID');
-    return { totalUnits: 0, revenue: '0.00' };
-  }
-  console.log('💰 Revenue Calculation - Agent ID:', agentIdStr);
-  console.log('💰 Revenue Calculation - Assigned callers:', order.value.assignedCallers);
-  
-  // Filter logs to only include those within the selected date range AND for the specific agent
-  const [startDate, endDate] = dateRange;
-  const monthStart = new Date(startDate);
-  const monthEnd = new Date(endDate);
-  monthEnd.setHours(23, 59, 59, 999);
-  
-  console.log('💰 Revenue Calculation - Date range:', { startDate, endDate, monthStart, monthEnd });
-  console.log('💰 Revenue Calculation - Total stats:', stats.length);
-  
-  const filteredStats = stats.filter(log => {
-    const logDate = new Date(log.date);
-    const isInDateRange = logDate >= monthStart && logDate <= monthEnd;
-    
-    // Check if this log belongs to the specific agent - handle multiple formats
-    const logAgentId = log.agent?._id || log.agent?.id || log.agent || log.agentId;
-    const logAgentIdStr = String(logAgentId || '');
-    const isAgentLog = logAgentIdStr === agentIdStr;
-    
-    if (isInDateRange && isAgentLog) {
-      console.log('✅ Revenue: Matching log found:', {
-        date: log.date,
-        caseName: log.caseName,
-        agentId: logAgentIdStr,
-        quantityCompleted: log.quantityCompleted
-      });
+    if (!order.value || !selectedAgentId.value) {
+      return { totalUnits: 0, revenue: '0.00' };
     }
-    
-    return isInDateRange && isAgentLog;
-  });
-  
-  console.log('💰 Revenue Calculation - Filtered stats count:', filteredStats.length);
-
-  // Add deduplication to prevent double counting
-  const uniqueLogs = [];
-  const seenLogs = new Set();
-  
-  filteredStats.forEach(log => {
-    // Create a unique key for deduplication
-    const logKey = `${log.date}_${log.agentName || log.agent}_${log.caseName}_${log._id || log.id}`;
-    
-    if (!seenLogs.has(logKey)) {
-      seenLogs.add(logKey);
-      uniqueLogs.push(log);
+    if (isTestCase(order.value)) {
+      return { totalUnits: 0, revenue: '0.00' };
     }
+    const view = campaignMonthView.value
+    return {
+      totalUnits: Number(view.myUnits) || 0,
+      revenue: (Number(view.currentRevenue) || 0).toFixed(2),
+    };
   });
-
-  // Calculate total units and revenue from deduplicated logs for the current case only (excluding test cases)
-  const currentCaseName = order.value.caseName;
-  const isTest = isTestCase(order.value);
-  
-  // If it's a test case, return zero revenue
-  if (isTest) {
-    return { totalUnits: 0, revenue: '0.00' };
-  }
-  
-  const totalUnits = uniqueLogs
-    .filter(log => {
-      if (log.caseName !== currentCaseName) return false;
-      // Also filter out test logs by case name
-      const logCaseName = String(log.caseName || '').toLowerCase();
-      return !logCaseName.includes('test');
-    })
-    .reduce((sum, log) => sum + (Number(log.quantityCompleted) || 0), 0);
-  const revenue = (totalUnits * (Number(order.value.pricePerUnit) || 0)).toFixed(2);
-  
-  console.log('Revenue calculation - Total stats:', stats.length);
-  console.log('Revenue calculation - Filtered stats:', filteredStats.length);
-  console.log('Revenue calculation - Unique logs:', uniqueLogs.length);
-  console.log('Revenue calculation - Current case logs:', uniqueLogs.filter(log => log.caseName === currentCaseName).length);
-  console.log('Revenue calculation - Total units:', totalUnits);
-  console.log('Revenue calculation - Total revenue:', revenue);
-  
-  return { totalUnits, revenue };
-});
 
 const assignedAgentGoalRows = computed(() => {
   if (!order.value) return []
@@ -301,12 +232,7 @@ const assignedAgentGoalRows = computed(() => {
 const displayEstimatedRevenue = computed(() => ordersDashboardRevenueGoalEuros(order.value))
 
 // Agent goal for this case (for the selected agent)
-const caseGoal = computed(() => {
-  if (!order.value) return 0
-  const agentIdStr = String(selectedAgentId.value || '')
-  if (!agentIdStr) return 0
-  return getStoredAgentGoal(order.value, agentIdStr)
-})
+const caseGoal = computed(() => Number(campaignMonthView.value.myGoal) || 0)
 
 // Headers for weekly totals table
 const weeklyHeaders = computed(() => [
@@ -505,7 +431,7 @@ const weeklyTotals = computed(() => {
     const logOutgoingCalls = log.outgoing_calls || 0;
     const logAnsweredCalls = log.answered_calls || 0;
     const logCompletedCalls = log.completed_calls || 0;
-    const logQuantityCompleted = log.quantityCompleted || 0;
+    const logQuantityCompleted = getLogCompletedUnits(log, order.value?.caseUnit || log.caseUnit);
     
     // Use the current case's price per unit
     const pricePerUnit = Number(order.value.pricePerUnit) || 0;
@@ -544,8 +470,7 @@ const weeklyTotals = computed(() => {
     const casesDisplay = order.value.caseName || 'Current Case';
 
     // Agent's goal for this case (for selected agent)
-    const agentIdForGoal = String(selectedAgentId.value || '');
-    const myGoal = getStoredAgentGoal(order.value, agentIdForGoal);
+    const myGoal = Number(campaignMonthView.value.myGoal) || 0;
     const goalReached = myGoal > 0
       ? Number(((totals.quantityCompleted / myGoal) * 100).toFixed(2))
       : 0;
@@ -648,7 +573,7 @@ const individualLogs = computed(() => {
       const outgoingCalls = log.outgoing_calls || 0;
       const answeredCalls = log.answered_calls || 0;
       const responseRate = outgoingCalls > 0 ? (answeredCalls / outgoingCalls) * 100 : 0;
-      const quantityCompleted = log.quantityCompleted || 0;
+      const quantityCompleted = getLogCompletedUnits(log, order.value?.caseUnit || log.caseUnit);
       
       // Use the current case's unit and price per unit
       const caseUnit = order.value.caseUnit || 'N/A';

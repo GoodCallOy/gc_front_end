@@ -176,7 +176,7 @@
               {{ getCallerNames(item) }}
             </template>
             <template #item.monthlyGoal="{ item }">
-              {{ formatSlashPair(computeOrderQuantity(item), getOrderMonthGoalUnits(item)) }}
+              {{ formatSlashPair(computeOrderQuantity(item), campaignMonthView(item).teamGoal) }}
             </template>
             <template #item.goal="{ item }">
               {{ formatCurrency(estimatedRevenueEurosForCampaignGroup([item], item, currentMonthKey)) }}
@@ -262,8 +262,8 @@ import DashboardCard01 from '@/partials/dashboard/caseCard2.vue'
 import OrdersAnalyticsCharts from '@/partials/dashboard/orders-analytics-charts.vue'
 import OrdersTableInsights from '@/partials/dashboard/orders-table-insights.vue'
 import DateHeader from '@/components/DateHeader.vue'
-import { orderSpansMultipleMonths, calculateMonthlyProgress, computeOrderQuantityForMonth, computeOrderRevenueForMonth, groupOrderCampaignsForMonthView, estimatedRevenueEurosForCampaignGroup, getOrderMonthGoalUnits } from '@/js/statsUtils'
-import { getCampaignGoalUnits, assignedCallerIds } from '@/js/orderAuthority.js'
+import { orderSpansMultipleMonths, calculateMonthlyProgress, groupOrderCampaignsForMonthView, estimatedRevenueEurosForCampaignGroup } from '@/js/statsUtils'
+import { getCampaignGoalUnits, assignedCallerIds, getCampaignMonthView, getLogCompletedUnits } from '@/js/orderAuthority.js'
 import {
   getOrderStatusForMonth,
   isOrderOnHoldForMonth,
@@ -571,7 +571,7 @@ const estimatedRevenueBreakdown = computed(() => {
     );
     const monthlyGoal = Math.max(
       0,
-      ...orders.map((o) => getOrderMonthGoalUnits(o)),
+      ...orders.map((o) => Number(campaignMonthView(o).teamGoal) || 0),
       pricePerUnit > 0 ? revenue / pricePerUnit : 0
     );
 
@@ -624,7 +624,7 @@ const currentRevenueTotal = computed(() => {
     const monthKey = currentMonthKey.value
     if (isOrderCancelledForMonth(order, monthKey)) return total
     if (wasOrderInactiveBeforeMonth(order, monthKey)) return total
-    return total + computeOrderRevenueForMonth(order, dailyLogs.value, currentDateRange.value);
+    return total + computeOrderRevenue(order);
   }, 0);
 });
 
@@ -693,22 +693,28 @@ const formatDate = date => {
 
 const formatCurrency = formatCurrencyEUR
 
+function campaignMonthView(order) {
+  return getCampaignMonthView(order, dailyLogs.value || [], currentMonthKey.value)
+}
+
 function computeOrderQuantity(order) {
   if (!order || isOrderOnHold(order)) return 0
-  return computeOrderQuantityForMonth(order, dailyLogs.value, currentDateRange.value)
+  return Number(campaignMonthView(order).teamUnits) || 0
 }
 
 function computeOrderRevenue(order) {
   if (!order || isOrderOnHold(order)) return 0
-  return computeOrderRevenueForMonth(order, dailyLogs.value, currentDateRange.value)
+  return Number(campaignMonthView(order).teamRevenue) || 0
 }
 
 function computePercentageToGoal(order) {
-  const monthlyGoal = getOrderMonthGoalUnits(order)
+  if (!order || isOrderOnHold(order)) return 0
+  const view = campaignMonthView(order)
+  const monthlyGoal = Number(view.teamGoal) || 0
   if (!monthlyGoal) {
     return 0
   }
-  const quantityCompleted = computeOrderQuantity(order)
+  const quantityCompleted = Number(view.teamUnits) || 0
   const percentage = (quantityCompleted / monthlyGoal) * 100
   if (!isFinite(percentage) || isNaN(percentage)) {
     return 0
@@ -855,7 +861,7 @@ function sumQuantityLogsForOrderInDateRange(order) {
       if (d < rangeStart || d > rangeEnd) return false
       return logBelongsToOrder(log, order)
     })
-    .reduce((sum, log) => sum + Number(log.quantityCompleted || 0), 0)
+    .reduce((sum, log) => sum + getLogCompletedUnits(log, order?.caseUnit), 0)
 }
 
 /**
@@ -878,7 +884,7 @@ const tableInsightRows = computed(() => {
   if (!eligible.length) return []
   const groups = groupOrderCampaignsForMonthView(eligible, currentDateRange.value)
   return groups.map(({ orders, representative }) => {
-    const monthlyGoal = Math.max(0, ...orders.map((o) => getOrderMonthGoalUnits(o)))
+    const monthlyGoal = Math.max(0, ...orders.map((o) => Number(campaignMonthView(o).teamGoal) || 0))
     const qtyThisMonth = orders.reduce((sum, o) => sum + computeOrderQuantity(o), 0)
     const currentRevenue = orders.reduce((sum, o) => sum + computeOrderRevenue(o), 0)
     const estimatedRevenue = estimatedRevenueEurosForCampaignGroup(

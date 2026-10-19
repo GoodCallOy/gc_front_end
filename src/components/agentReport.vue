@@ -112,7 +112,8 @@ import {
 import { Bar, Doughnut } from 'vue-chartjs'
 import ChartDataLabels from 'chartjs-plugin-datalabels'
 import { goToNextMonth, goToPreviousMonth, formattedDateRange, getMonthWeeks } from '@/js/dateUtils'
-import { fetchAgentgoalsByAgentAndMonth, getOrderMonthGoalUnits, getScaledAgentGoalForMonth } from '@/js/statsUtils'
+import { fetchAgentgoalsByAgentAndMonth } from '@/js/statsUtils'
+import { getCampaignMonthView, getLogCompletedUnits } from '@/js/orderAuthority.js'
 import { isAgentAssignedToOrder } from '@/js/orderAuthority.js'
 import {
   monthKeyFromDateRange,
@@ -251,11 +252,13 @@ const donutChartData = computed(() => {
     ]
 
     const monthKey = monthKeyFromDateRange(currentDateRange.value)
-    const casesWithGoal = cases.filter((o) => (getScaledAgentGoalForMonth(o, agentId, dailyLogs.value, monthKey) || 0) > 0)
-    if (!casesWithGoal.length) return emptyDonutData
+    const casesWithView = cases
+      .map((o) => ({ o, view: getCampaignMonthView(o, dailyLogs.value || [], monthKey, agentId) }))
+      .filter(({ view }) => (Number(view.myGoal) || 0) > 0)
+    if (!casesWithView.length) return emptyDonutData
 
-    const labels = casesWithGoal.map((o) => o.caseName || o.caseId || 'Unknown')
-    const data = casesWithGoal.map((o) => getScaledAgentGoalForMonth(o, agentId, dailyLogs.value, monthKey) || 0)
+    const labels = casesWithView.map(({ o }) => o.caseName || o.caseId || 'Unknown')
+    const data = casesWithView.map(({ view }) => Number(view.myGoal) || 0)
     const backgroundColor = casesWithGoal.map((_, i) => DONUT_COLORS[i % DONUT_COLORS.length])
 
     return {
@@ -425,9 +428,9 @@ async function loadReportData() {
       })
     }
 
-    // Team goal per week: sum of (totalQuantity/numWeeks) for orders agent is in
+    // Team goal per week: leftover month team goal divided across weeks
     for (const order of agentOrders) {
-      const teamQty = getOrderMonthGoalUnits(order)
+      const teamQty = Number(getCampaignMonthView(order, allLogs, monthKey).teamGoal) || 0
       const perWeek = teamQty / numWeeks
       for (const [, bucket] of weekBuckets) {
         bucket.teamGoal += perWeek
@@ -461,7 +464,14 @@ async function loadReportData() {
     // If no weekly goals, use monthly agentGoals from orders as fallback (divided by weeks)
     if (weeklyGoals.length === 0) {
       for (const order of agentOrders) {
-        const myGoal = getScaledAgentGoalForMonth(order, agentId, allLogs, monthKeyFromDateRange(currentDateRange.value))
+        const myGoal = Number(
+          getCampaignMonthView(
+            order,
+            allLogs,
+            monthKeyFromDateRange(currentDateRange.value),
+            agentId
+          ).myGoal
+        ) || 0
         const perWeek = myGoal / numWeeks
         for (const [, bucket] of weekBuckets) {
           bucket.agentGoal += perWeek
@@ -482,7 +492,12 @@ async function loadReportData() {
       )
       if (!sameOrder) continue
 
-      const units = Number(log?.quantityCompleted ?? 0)
+      const matchingOrder = agentOrders.find(
+        (o) =>
+          String(o._id ?? o.id) === logOrderId ||
+          (o?.caseName ?? '') === logCaseName
+      )
+      const units = getLogCompletedUnits(log, matchingOrder?.caseUnit || log?.caseUnit)
       for (const [weekKey, bucket] of weekBuckets) {
         const weekStart = new Date(weekKey)
         const weekEnd = new Date(weekStart)

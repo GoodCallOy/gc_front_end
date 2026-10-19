@@ -1,9 +1,17 @@
 /**
- * Assign Goals is the authority for a campaign in a given month.
- * Other screens must read through these helpers so charts, edit case,
- * agent dashboards, and Assign Goals stay in sync.
+ * Campaign / Assign Goals authority — ONE place for month progress math.
  *
- * Stored fields (order document) are implementation details:
+ * UI screens (agent dashboard, cards, reports, Assign Goals, agents page)
+ * should call `getCampaignMonthView` (or the re-exported helpers below)
+ * instead of re-implementing my/team goal leftover logic.
+ *
+ * Rules (multi-month):
+ * - Team goal for a month = campaign leftover at that month's start (0 if already met)
+ * - Team units = completed in that calendar month
+ * - Personal (my) goal = agent assignment leftover, capped by campaign leftover
+ * - Personal units = that agent's completed units in that calendar month
+ *
+ * Stored fields on the order document are implementation details:
  * monthlyGoal / totalQuantity, agentGoals, agentRates / agentPrices,
  * agentAssignments, assignedCallers, campaignGoal, monthlyOrderStatus.
  */
@@ -17,7 +25,13 @@ export {
   getOrderMonthGoalUnits,
   getScaledAgentGoalForMonth,
   getAssignableGoalCap,
-  getMonthLeftoverGoalUnits,
+  getTeamMonthProgress,
+  resolveCampaignGoalUnits,
+  getCampaignRemainingUnits,
+  getCampaignRemainingUnitsAtMonthStart,
+  sumOrderUnitsInMonth,
+  calculateMonthlyProgress,
+  orderSpansMultipleMonths,
   recordToObject,
   getLogCallHours,
   getLogCompletedUnits,
@@ -28,7 +42,10 @@ import {
   getStoredAgentGoal,
   getStoredAgentRate,
   getOrderMonthGoalUnits,
-  getDistributedAssignedGoals,
+  getScaledAgentGoalForMonth,
+  getTeamMonthProgress,
+  resolveCampaignGoalUnits,
+  sumOrderUnitsInMonth,
 } from '@/js/statsUtils.js'
 
 export function isAgentAssignedToOrder(order, agentId) {
@@ -53,7 +70,57 @@ export function getCampaignGoalUnits(order, cases = []) {
       if (n > 0) return n
     }
   }
-  return getOrderMonthGoalUnits(order)
+  return resolveCampaignGoalUnits(order) || getOrderMonthGoalUnits(order)
+}
+
+/**
+ * Single snapshot for one campaign in one viewed month.
+ * Optional agentId adds personal myGoal / myUnits / € fields.
+ *
+ * @param {object} order
+ * @param {object[]} dailyLogs  Prefer full case logs (all agents) when available
+ * @param {string} monthKey     YYYY-MM
+ * @param {string|null} [agentId]
+ */
+export function getCampaignMonthView(order, dailyLogs = [], monthKey = '', agentId = null) {
+  const key = String(monthKey || '').slice(0, 7)
+  const team = getTeamMonthProgress(order, dailyLogs || [], key)
+  const pricePerUnit = Number(order?.pricePerUnit) || 0
+  const campaignGoal = Number(team.campaignGoal) || getCampaignGoalUnits(order)
+  const teamGoal = Number(team.teamGoal) || 0
+  const teamUnits = Number(team.teamUnits) || 0
+
+  const view = {
+    monthKey: key,
+    isMultiMonth: Boolean(team.isMultiMonth),
+    campaignGoal,
+    monthlyGoal: getOrderMonthGoalUnits(order),
+    teamGoal,
+    teamUnits,
+    monthlyBreakdown: team.monthlyBreakdown,
+    pricePerUnit,
+    teamRevenue: teamUnits * pricePerUnit,
+    teamRevenueGoal: teamGoal * pricePerUnit,
+  }
+
+  if (agentId != null && agentId !== '') {
+    const aid = String(agentId)
+    const myGoal = getScaledAgentGoalForMonth(order, aid, dailyLogs || [], key)
+    const myUnits = sumOrderUnitsInMonth(order, dailyLogs || [], key, aid)
+    const myRate = getStoredAgentRate(order, aid)
+    view.agentId = aid
+    view.storedGoal = getStoredAgentGoal(order, aid)
+    view.myGoal = myGoal
+    view.myUnits = myUnits
+    view.myAgentUnits = myUnits
+    view.myRate = myRate
+    view.myRevenueGoal = myGoal * pricePerUnit
+    view.currentRevenue = myUnits * pricePerUnit
+    view.myPaycheck = myUnits * myRate
+    view.percentage = myGoal > 0 ? Number(((myUnits / myGoal) * 100).toFixed(2)) : 0
+  }
+
+  return view
 }
 
 /** Project start + management fees (€). */

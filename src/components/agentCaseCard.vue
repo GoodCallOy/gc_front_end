@@ -42,7 +42,7 @@
         <div>
           <strong>{{ translateCaseUnit(order.caseUnit) }}: </strong>
           <span v-if="order.assignedCallers.length">
-           {{ formatSlashPair(myAgentUnits, totalProjectGoal) }}
+           {{ formatSlashPair(teamUnitsForMonth, totalProjectGoal) }}
           </span>
           <span v-else>{{ t('agentCaseCard.none') }}</span>
         </div>
@@ -68,7 +68,10 @@
   // Import utilities
   import { adjustColorOpacity } from '../utils/Utils'
   import { formatSlashPair, formatCurrencyEUR, formatStatNumber } from '@/js/formatNumbers'
-  import { getScaledAgentGoalForMonth, getOrderMonthGoalUnits, getStoredAgentRate, getLogCompletedUnits } from '@/js/statsUtils'
+  import {
+    getCampaignMonthView,
+    getStoredAgentRate,
+  } from '@/js/orderAuthority.js'
   import { monthKeyFromDateRange } from '@/js/orderStatusUtils'
   
   export default {
@@ -162,59 +165,34 @@
         return Array.from(uniqueMap.values())
       })
 
-      // agent's specific goal for this case (from agentGoals)
-      const myGoal = computed(() => {
-        const agentId = myAgentId.value;
-        if (!agentId) return 0;
-        const monthKey = monthKeyFromDateRange(currentDateRange.value)
-        return getScaledAgentGoalForMonth(props.order, agentId, props.dailyLogs, monthKey);
-      });
+      const monthKey = computed(() => monthKeyFromDateRange(currentDateRange.value))
 
-      // Total project goal (for reference)
-      const totalProjectGoal = computed(() => {
-        return getOrderMonthGoalUnits(props.order);
-      });
+      // Single authority for my/team month numbers (same as agent dashboard table)
+      const monthView = computed(() =>
+        getCampaignMonthView(
+          props.order,
+          props.dailyLogs || [],
+          monthKey.value,
+          myAgentId.value || null
+        )
+      )
+
+      const myGoal = computed(() => Number(monthView.value.myGoal) || 0)
+      const totalProjectGoal = computed(() => Number(monthView.value.teamGoal) || 0)
+      const myAgentUnits = computed(() => Number(monthView.value.myAgentUnits) || 0)
+      const totalUnits = computed(() => Number(monthView.value.teamUnits) || 0)
+      const teamUnitsForMonth = computed(() => totalUnits.value)
+      const myRevenue = computed(() => Number(monthView.value.myRevenueGoal) || 0)
 
       const euro = new Intl.NumberFormat(undefined, { style: 'currency', currency: 'EUR' })
       const displayMyGoal = computed(() => (myAgentId.value ? `${myGoal.value}` : 'N/A'))
 
-      const myRevenue = computed(() =>
-        myGoal.value * (Number(props.order?.pricePerUnit) || 0)
-      )
-
-      // current agent's units completed for this order
-      const myAgentUnits = computed(() => {
-        const total = myAgentOrderLogs.value.reduce(
-          (sum, l) => sum + getLogCompletedUnits(l, props.order?.caseUnit),
-          0
-        )
-        return total
-      })
-
-      // revenue completed for this agent on this order (from daily logs, using agent rate only)
+      // revenue completed for this agent on the case (agent rate × personal units)
       const totalAgentUnitsValue = computed(() => {
         const rateFromOrder = getStoredAgentRate(props.order, myAgentId.value)
-
         const value = myAgentUnits.value * rateFromOrder
         console.log('Total agent units value (agent rate):', value)
         return value
-      })
-
-      // total units for this specific case from all agents
-      const totalUnits = computed(() => {
-        // Get all logs for this case (not just current agent)
-        const allCaseLogs = (props.dailyLogs || []).filter(
-          l => {
-            // Handle different data structures for order/case matching
-            const logOrderId = l?.order?._id ?? l?.order ?? l?.orderId ?? ''
-            const logCaseName = l?.caseName ?? ''
-            return String(logOrderId) === orderId.value || logCaseName === props.order?.caseName
-          }
-        )
-        return allCaseLogs.reduce(
-          (sum, log) => sum + getLogCompletedUnits(log, props.order?.caseUnit),
-          0
-        )
       })
 
       // helpful: see when things actually populate (runs on every change)
@@ -245,6 +223,7 @@
         myRevenue,              // <-- return so template can use it
         totalAgentUnitsValue,
         totalUnits,
+        teamUnitsForMonth,
         myAgentUnits,            // <-- return for template use
         totalProjectGoal,        // <-- return for template use
       }

@@ -629,8 +629,16 @@ import { useStore } from 'vuex'
 import { useI18n } from 'vue-i18n';
 import { useRouter, useRoute } from 'vue-router';
 import { goToNextMonth, goToPreviousMonth, formattedDateRange, isCurrentMonth, getMonthWeeks } from '@/js/dateUtils';
-import { fetchAgentgoalsByAgentAndMonth, orderSpansMultipleMonths, calculateMonthlyProgress, groupOrderCampaignsForMonthView, getScaledAgentGoalForMonth, getOrderMonthGoalUnits, getLogCompletedUnits, getLogCallHours } from '@/js/statsUtils';
-import { getStoredAgentRate, isAgentAssignedToOrder, assignedCallerIds } from '@/js/orderAuthority.js'
+import { fetchAgentgoalsByAgentAndMonth, groupOrderCampaignsForMonthView, getLogCompletedUnits, getLogCallHours } from '@/js/statsUtils';
+import {
+  getCampaignMonthView,
+  getOrderMonthGoalUnits,
+  getStoredAgentRate,
+  isAgentAssignedToOrder,
+  assignedCallerIds,
+  orderSpansMultipleMonths,
+  resolveCampaignGoalUnits,
+} from '@/js/orderAuthority.js';
 import agentCaseCard from './agentCaseCard.vue'
 import AgentDashboardTeamStatsCard from './agentDashboardTeamStatsCard.vue'
 import AgentDashboardPersonalStatsCard from './agentDashboardPersonalStatsCard.vue'
@@ -775,6 +783,9 @@ function getTotalCompletedUpToMonth(monthlyBreakdown, upToMonthKey) {
 }
 
 function getCaseDisplayGoal(item) {
+  if (orderSpansMultipleMonths(item) || item?.isMultiMonth) {
+    return resolveCampaignGoalUnits(item) || Number(item?.teamGoal ?? 0) || 0
+  }
   return getOrderMonthGoalUnits(item) || Number(item?.teamGoal ?? 0) || 0
 }
 
@@ -830,7 +841,7 @@ function getCaseMonthlyAgentALeads(item, month) {
     if (!logAgentId) return
 
     const aLeads = isALeadsCase
-      ? Number(log?.aLeads ?? log?.quantityCompleted ?? 0)
+      ? getLogCompletedUnits(log, 'a-leads')
       : Number(log?.aLeads ?? 0)
     if (!Number.isFinite(aLeads) || Number.isNaN(aLeads)) return
 
@@ -1410,12 +1421,11 @@ const individualLogs = computed(() => {
       const outgoingCalls = log.outgoing_calls || 0;
       const answeredCalls = log.answered_calls || 0;
       const responseRate = outgoingCalls > 0 ? (answeredCalls / outgoingCalls) * 100 : 0;
-      const quantityCompleted = log.quantityCompleted || 0;
-      
       // Find the case for this log to get the correct case unit and price per unit
       const logCase = findOrderForLog(log, agentCases);
       const caseUnit = logCase?.caseUnit || 'N/A';
       const pricePerUnit = logCase?.pricePerUnit || 0;
+      const quantityCompleted = getLogCompletedUnits(log, logCase?.caseUnit || log.caseUnit);
       return {
         date: formatDateToDDMMYYYY(log.date),
         caseName: log.caseName || 'Unknown Case',
@@ -1616,8 +1626,9 @@ const weeklyGoalsTableRows = computed(() => {
           }
         })
 
+        const caseUnitForLogs = resolveCaseUnitForWeeklyGoal(g)
         completed = matchingLogs.reduce(
-          (sum, log) => sum + (Number(log.quantityCompleted) || 0),
+          (sum, log) => sum + getLogCompletedUnits(log, caseUnitForLogs || log.caseUnit),
           0
         )
       }
@@ -1765,113 +1776,35 @@ const casesTableRows = computed(() => {
   if (!agent || !Array.isArray(orders)) return [];
 
   const agentId = String(agent._id ?? agent.id ?? '');
-  let from, to;
-  if (dateRange && dateRange.length >= 2) {
-    from = new Date(dateRange[0]);
-    to = new Date(dateRange[1]);
-    to.setHours(23, 59, 59, 999);
-  }
 
   return orders.map((order) => {
-    const orderId = String(order._id ?? order.id ?? '');
-    const monthKey = monthKeyFromDateRange(currentDateRange.value);
-    const myGoal = getScaledAgentGoalForMonth(order, agentId, dailyLogs.value || [], monthKey);
-    const pricePerUnit = Number(order?.pricePerUnit ?? 0);
-    const agentRate = getStoredAgentRate(order, agentId);
-
-    // All logs for this agent & order within the current date range
-    const myAgentOrderLogsRaw = stats.filter((log) => {
-      const logOrderId = String(log?.order?._id ?? log?.order ?? log?.orderId ?? '');
-      const logCaseName = log?.caseName ?? '';
-      const sameOrder = logOrderId === orderId || logCaseName === (order?.caseName ?? '');
-      const logAgentId = String(log?.agent?._id ?? log?.agent ?? log?.agentId ?? '');
-      if (logAgentId !== agentId || !sameOrder) return false;
-      if (from && to) {
-        const d = new Date(log?.date);
-        return d >= from && d <= to;
-      }
-      return true;
-    });
-
-    // De-duplicate logs to avoid double-counting (same strategy as in revenue calculations)
-    const myAgentOrderLogs = [];
-    const seenMyLogs = new Set();
-    myAgentOrderLogsRaw.forEach(log => {
-      const key = `${log.date}_${log.agentName || log.agent}_${log.caseName}_${log._id || log.id}`;
-      if (!seenMyLogs.has(key)) {
-        seenMyLogs.add(key);
-        myAgentOrderLogs.push(log);
-      }
-    });
-
-    const myAgentUnits = myAgentOrderLogs.reduce(
-      (sum, l) => sum + getLogCompletedUnits(l, order.caseUnit),
-      0
-    );
-
-    // Team goal: use the order's total quantity (project goal)
-    const isMultiMonth = orderSpansMultipleMonths(order)
-    const monthlyBreakdown = isMultiMonth ? calculateMonthlyProgress(order, dailyLogs.value || []) : null
-    const leftoverGoal = monthlyBreakdown?.find((m) => String(m.monthKey) === String(monthKey))?.monthGoalUnits
-    const teamGoal = leftoverGoal != null ? Number(leftoverGoal) || 0 : getOrderMonthGoalUnits(order);
-
-    // Team units: all agents' quantityCompleted for this order in the same date range,
-    // with basic de-duplication to avoid double-counting identical logs.
-    const candidateTeamLogs = stats.filter((log) => {
-      const logOrderId = String(log?.order?._id ?? log?.order ?? log?.orderId ?? '');
-      const logCaseName = log?.caseName ?? '';
-      const sameOrder = logOrderId === orderId || logCaseName === (order?.caseName ?? '');
-      if (!sameOrder) return false;
-      if (from && to) {
-        const d = new Date(log?.date);
-        return d >= from && d <= to;
-      }
-      return true;
-    });
-
-    const teamTeamLogsUnique = [];
-    const seenTeam = new Set();
-    candidateTeamLogs.forEach(log => {
-      const key = `${log.date}_${log.agentName || log.agent}_${log.caseName}_${log._id || log.id}`;
-      if (!seenTeam.has(key)) {
-        seenTeam.add(key);
-        teamTeamLogsUnique.push(log);
-      }
-    });
-
-    const teamUnits = teamTeamLogsUnique.reduce(
-      (sum, l) => sum + getLogCompletedUnits(l, order.caseUnit),
-      0
-    );
-    // Personal € target (agent unit goal × price); personal stats / % to goal use this.
-    const myRevenueGoal = myGoal * pricePerUnit;
+    const monthKey = monthKeyFromDateRange(dateRange)
+    // Prefer case-fetched logs (all agents on these cases) so prior-month
+    // completion and campaign leftover match what the table shows.
+    const storeLogs = dailyLogs.value || []
+    const logsForCalc = (stats && stats.length) ? stats : storeLogs
+    const view = getCampaignMonthView(order, logsForCalc, monthKey, agentId)
     // Same € as orders dashboard; value is stored on the order in Vuex (`setOrders` → `estimatedRevenueEuros`)
     const revenueGoal = store.getters.estimatedRevenueEurosForOrder(order);
-    // Results = company revenue generated by this agent on the case
-    const currentRevenue = myAgentUnits * pricePerUnit;
-    const myPaycheck = myAgentUnits * agentRate;
-    const teamRevenueGoal = revenueGoal;
-    const teamCurrentRevenue = teamUnits * pricePerUnit;
-    const percentage = myGoal > 0 ? Number(((myAgentUnits / myGoal) * 100).toFixed(2)) : 0;
 
     return {
       ...order,
       _id: order._id ?? order.id,
-      myGoal,
-      myAgentUnits,
-      teamGoal,
-      teamUnits,
-      totalQuantity: getOrderMonthGoalUnits(order),
-      isMultiMonth,
-      monthlyBreakdown,
-      myRevenueGoal,
+      myGoal: view.myGoal,
+      myAgentUnits: view.myAgentUnits,
+      teamGoal: view.teamGoal,
+      teamUnits: view.teamUnits,
+      totalQuantity: view.monthlyGoal,
+      isMultiMonth: view.isMultiMonth,
+      monthlyBreakdown: view.monthlyBreakdown,
+      myRevenueGoal: view.myRevenueGoal,
       revenueGoal,
-      myRate: agentRate,
-      currentRevenue,
-      myPaycheck,
-      teamRevenueGoal,
-      teamCurrentRevenue,
-      percentage,
+      myRate: view.myRate,
+      currentRevenue: view.currentRevenue,
+      myPaycheck: view.myPaycheck,
+      teamRevenueGoal: revenueGoal,
+      teamCurrentRevenue: view.teamRevenue,
+      percentage: view.percentage,
     };
   });
 });
@@ -1890,11 +1823,12 @@ const personalMonthlyGoalBreakdown = computed(() => {
     const orderId = String(order?._id ?? order?.id ?? '');
     const row = byId.get(orderId);
     const pricePerUnit = Number(order?.pricePerUnit ?? row?.pricePerUnit) || 0;
-    const monthlyGoal =
-      Number(row?.myGoal) ||
-      Number(getScaledAgentGoalForMonth(order, agentId, dailyLogs.value || [], monthKey)) ||
-      0;
-    const revenue = Number(row?.myRevenueGoal) || monthlyGoal * pricePerUnit;
+    const logsForCalc = (caseStats.value && caseStats.value.length)
+      ? caseStats.value
+      : (dailyLogs.value || [])
+    const view = row || getCampaignMonthView(order, logsForCalc, monthKey, agentId)
+    const monthlyGoal = Number(view.myGoal) || 0;
+    const revenue = Number(view.myRevenueGoal) || monthlyGoal * pricePerUnit;
 
     let excludedReason = null;
     if (isTestCase(order)) excludedReason = 'Test case';
@@ -2390,7 +2324,7 @@ const aLeadDetailRows = computed(() => {
       const caseUnit = String(matchedOrder?.caseUnit || log?.caseUnit || '').toLowerCase();
       const isALeadsCase = /^a[-_]?leads?$/i.test(caseUnit);
       const aLeads = isALeadsCase
-        ? Number(log?.aLeads ?? log?.quantityCompleted ?? 0) || 0
+        ? getLogCompletedUnits(log, 'a-leads')
         : Number(log?.aLeads ?? 0) || 0;
       if (aLeads <= 0) return null;
 
