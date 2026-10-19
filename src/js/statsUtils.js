@@ -791,11 +791,10 @@ export function getTeamMonthProgress(order, dailyLogs = [], monthKey = '') {
 }
 
 /**
- * Personal unit goal for the viewed month.
+ * Personal unit goal for the viewed month. Applies to every case.
  * Single-month: stored agentGoals.
- * Multi-month: leftover of that agent's assignment after what they already completed
- * in earlier months, capped by campaign leftover at month start (so nobody still
- * "owes" hours after the campaign goal is already met).
+ * Multi-month: unused assignment for THIS agent carries over (stored − prior).
+ * Never split leftover across agents. Never auto-give leftover to anyone else.
  */
 export function getScaledAgentGoalForMonth(order, agentId, dailyLogs = [], monthKey = '') {
   const stored = getStoredAgentGoal(order, agentId)
@@ -803,19 +802,12 @@ export function getScaledAgentGoalForMonth(order, agentId, dailyLogs = [], month
   if (!orderSpansMultipleMonths(order) && !order?.isMultiMonth) return stored
   const key = String(monthKey || '').slice(0, 7)
   if (key.length < 7) return stored
-  const prior = sumAgentCompletedUnitsBeforeMonthKey(order, agentId, dailyLogs, key)
-  const personalLeftover = roundTo2Decimals(Math.max(0, stored - prior))
 
-  const campaignGoal = resolveCampaignGoalUnits(order)
-  if (campaignGoal > 0) {
-    const campaignLeft = getCampaignRemainingUnitsAtMonthStart(
-      order,
-      dailyLogs,
-      campaignGoal,
-      key,
-      order?.monthlyBreakdown
-    )
-    return roundTo2Decimals(Math.min(personalLeftover, campaignLeft))
-  }
-  return personalLeftover
+  const leftover = Number(getTeamMonthProgress(order, dailyLogs || [], key).teamGoal) || 0
+  if (leftover <= 0) return 0
+
+  const prior = sumAgentCompletedUnitsBeforeMonthKey(order, String(agentId ?? ''), dailyLogs || [], key)
+  const personalRemaining = roundTo2Decimals(Math.max(0, stored - prior))
+  if (personalRemaining <= 0) return 0
+  return roundTo2Decimals(Math.min(personalRemaining, leftover))
 }

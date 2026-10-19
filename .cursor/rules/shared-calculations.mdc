@@ -21,6 +21,8 @@ const view = getCampaignMonthView(order, dailyLogs, monthKey, agentId)
 // view.teamUnits / view.teamGoal — team
 ```
 
+Leftover hours stay with the agent who still has unused assignment. Never split leftover or auto-assign it to anyone else — see `.cursor/rules/leftover-stays-with-agent.mdc`.
+
 ## When adding a new screen
 
 - Import the existing helper. If it is missing a field, extend the helper and reuse it.

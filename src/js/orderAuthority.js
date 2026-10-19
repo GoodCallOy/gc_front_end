@@ -8,7 +8,8 @@
  * Rules (multi-month):
  * - Team goal for a month = campaign leftover at that month's start (0 if already met)
  * - Team units = completed in that calendar month
- * - Personal (my) goal = agent assignment leftover, capped by campaign leftover
+ * - Personal (my) goal = that agent's unused assignment, carried into the
+ *   next month for every case. Never split leftover or auto-assign it.
  * - Personal units = that agent's completed units in that calendar month
  *
  * Stored fields on the order document are implementation details:
