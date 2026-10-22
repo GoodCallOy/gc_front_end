@@ -17,23 +17,25 @@
         item-value="_id"
         :label="$t('dailyLogForm.selectAgent')"
         :disabled="isCaller"
-        required
+        :rules="[requiredSelect]"
       />
 
-      <v-select
+      <v-autocomplete
         v-model="form.order"
         :items="filteredOrders"
         item-title="caseName"
         item-value="_id"
         :label="$t('dailyLogForm.selectCase')"
-        :hint="filteredOrders.length === 0 && form.agent ? $t('dailyLogForm.noCasesAssigned') : ''"
+        :hint="caseSelectHint"
         persistent-hint
-        required
+        :rules="[requiredSelect]"
+        auto-select-first
+        clearable
       />
 
-      <v-text-field v-model="form.caseUnit" :label="$t('dailyLogForm.caseUnit')" required />
-      <v-text-field v-model.number="form.call_time" :label="$t('dailyLogForm.callTime')" type="number" required />
-      <v-text-field v-model.number="form.completed_calls" :label="$t('dailyLogForm.completedCalls')" type="number" required />
+      <v-text-field v-model="form.caseUnit" :label="$t('dailyLogForm.caseUnit')" :rules="[requiredSelect]" />
+      <v-text-field v-model.number="form.call_time" :label="$t('dailyLogForm.callTime')" type="number" :rules="[requiredNumber]" />
+      <v-text-field v-model.number="form.completed_calls" :label="$t('dailyLogForm.completedCalls')" type="number" :rules="[requiredNumber]" />
 
       <!-- Toggle for call detail fields -->
       <v-btn
@@ -46,8 +48,8 @@
       </v-btn>
 
       <template v-if="showCallFieldsExpanded">
-        <v-text-field v-model.number="form.outgoing_calls" :label="$t('dailyLogForm.outboundCalls')" type="number" required />
-        <v-text-field v-model.number="form.answered_calls" :label="$t('dailyLogForm.answeredCalls')" type="number" required />
+        <v-text-field v-model.number="form.outgoing_calls" :label="$t('dailyLogForm.outboundCalls')" type="number" :rules="[requiredNumber]" />
+        <v-text-field v-model.number="form.answered_calls" :label="$t('dailyLogForm.answeredCalls')" type="number" :rules="[requiredNumber]" />
       </template>
 
       <!-- Toggle for lead fields -->
@@ -82,7 +84,7 @@
         v-model.number="form.quantityCompleted"
         :label="$t('dailyLogForm.results')"
         type="number"
-        required
+        :rules="[requiredNumber]"
       />
 
       <v-textarea
@@ -97,11 +99,11 @@
         v-model="form.date"
         :label="$t('dailyLogForm.date')"
         type="date"
-        required
+        :rules="[requiredSelect]"
       />
 
       <div class="d-flex align-center mt-4" style="gap: 12px;">
-        <v-btn type="submit" :disabled="!formValid || isFormFrozen" color="primary">
+        <v-btn type="submit" :disabled="isFormFrozen" :loading="isSaving" color="primary">
           {{ isEditing ? $t('dailyLogForm.updateLog') : $t('dailyLogForm.addLog') }}
         </v-btn>
         <v-alert
@@ -144,6 +146,21 @@ import {
 } from '@/js/orderStatusUtils'
 import { isAgentAssignedToOrder } from '@/js/orderAuthority.js'
 import { isHoursCaseUnit } from '@/js/formatNumbers'
+import { toLocalYmdNumber, toLocalYmdString } from '@/js/dateUtils'
+
+function defaultLogDateFromStore(store) {
+  const today = toLocalYmdString(new Date())
+  const range = store?.getters?.currentDateRange
+  if (!Array.isArray(range) || !range[0] || !range[1]) return today
+  const start = String(range[0]).split('T')[0]
+  const end = String(range[1]).split('T')[0]
+  if (today >= start && today <= end) return today
+  return end
+}
+
+function orderIdOf(order) {
+  return String(order?._id ?? order?.id ?? '')
+}
 
 
 export default {
@@ -169,7 +186,7 @@ export default {
       outgoing_calls: this.logToEdit?.outgoing_calls || 0,
       answered_calls: this.logToEdit?.answered_calls || 0,
       response_rate: this.logToEdit?.response_rate || 0,
-      date: this.logToEdit?.date?.substring(0, 10) || new Date().toISOString().substring(0, 10),
+      date: this.logToEdit?.date?.substring(0, 10) || defaultLogDateFromStore(this.$store),
       quantityCompleted: this.logToEdit?.quantityCompleted || 0,
       comments: this.logToEdit?.comments || '',
       // Conditional lead fields (always included in payload, default 0)
@@ -191,6 +208,7 @@ export default {
     successMessage: '',
     showErrorMessage: false,
     errorMessage: '',
+    isSaving: false,
     // Leads section is collapsed by default for new logs, expanded if editing with existing lead values
     showLeadFieldsExpanded: !!(this.logToEdit && (
       this.logToEdit.aLeads ||
@@ -208,6 +226,14 @@ export default {
   },
   computed: {
   ...mapState(['gcAgents', 'orders', 'user', 'cases']),
+  requiredSelect() {
+    return (v) => (v !== null && v !== undefined && String(v).trim() !== '')
+      || this.$t('dailyLogForm.required')
+  },
+  requiredNumber() {
+    return (v) => (v !== null && v !== undefined && v !== '')
+      || this.$t('dailyLogForm.required')
+  },
   isEditing() {
     return !!this.logToEdit || !!this.originalLogId
   },
@@ -234,29 +260,37 @@ export default {
   },
   filteredOrders() {
     const monthKey = this.logMonthKey
-    
-    return this.ordersWithCaseName.filter(order => {
-      const wantedAgent = String(this.form.agent || '')
-      const isAgentAssigned = wantedAgent && isAgentAssignedToOrder(order, wantedAgent)
-      if (!isAgentAssigned) return false
+    const wantedAgent = String(this.form.agent || '')
+    const list = this.ordersWithCaseName.filter((order) => {
+      if (!wantedAgent || !isAgentAssignedToOrder(order, wantedAgent)) return false
+      if (!isOrderEligibleForDailyLogsForMonth(order, monthKey, this.orders)) return false
 
-      const completedForLogs = isOrderCompletedForDailyLogs(order, monthKey)
-      if (!completedForLogs) {
-        if (!order.startDate || !order.deadline) return false
+      // Completed campaigns stay in the list for late results.
+      if (isOrderCompletedForDailyLogs(order, monthKey)) return true
 
-        const orderStart = new Date(order.startDate)
-        const orderEnd = new Date(order.deadline)
-        const [year, month] = monthKey.split('-').map(Number)
-        if (!year || !month) return false
-        const monthStart = new Date(year, month - 1, 1)
-        const monthEnd = new Date(year, month, 0, 23, 59, 59, 999)
-
-        const isActiveThisMonth = orderStart <= monthEnd && orderEnd >= monthStart
-        if (!isActiveThisMonth) return false
-      }
-
-      return isOrderEligibleForDailyLogsForMonth(order, monthKey, this.orders)
+      const start = toLocalYmdNumber(order.startDate)
+      const end = toLocalYmdNumber(order.deadline)
+      if (start == null || end == null) return false
+      const [year, month] = String(monthKey).split('-').map(Number)
+      if (!year || !month) return false
+      const monthStart = year * 10000 + month * 100 + 1
+      const monthEnd = year * 10000 + month * 100 + new Date(year, month, 0).getDate()
+      const overlaps = start <= monthEnd && end >= monthStart
+      if (overlaps) return true
+      // In-progress Q3 (etc.) can still take logs after the deadline.
+      return start <= monthEnd
     })
+    const selectedId = String(this.form.order || '')
+    if (selectedId && !list.some((o) => orderIdOf(o) === selectedId)) {
+      const extra = this.ordersWithCaseName.find((o) => orderIdOf(o) === selectedId)
+      if (extra) return [extra, ...list]
+    }
+    return list
+  },
+  caseSelectHint() {
+    if (!this.form.agent) return ''
+    if (this.filteredOrders.length === 0) return this.$t('dailyLogForm.noCasesAssigned')
+    return this.$t('dailyLogForm.searchCaseHint')
   },
   logMonthKey() {
     return monthKeyFromDate(this.form.date) || monthKeyFromDate(new Date())
@@ -279,7 +313,8 @@ export default {
   },
   selectedOrder() {
     if (!this.form.order) return null
-    return this.ordersWithCaseName.find(o => o._id === this.form.order) || null
+    const id = String(this.form.order)
+    return this.ordersWithCaseName.find((o) => orderIdOf(o) === id) || null
   },
   showLeadFields() {
     // Controlled by toggle button
@@ -300,8 +335,9 @@ export default {
 },
   watch: {
     'form.order'(newOrderId) {
-        const selectedOrder = this.filteredOrders.find(order => order._id === newOrderId);
-        this.form.caseUnit = selectedOrder ? selectedOrder.caseUnit || '' : '';
+        const selectedOrder = this.filteredOrders.find((order) => orderIdOf(order) === String(newOrderId || ''))
+        this.form.caseUnit = selectedOrder ? selectedOrder.caseUnit || '' : ''
+        this.form.caseName = selectedOrder ? selectedOrder.caseName || '' : this.form.caseName
         if (isHoursCaseUnit(this.form.caseUnit)) {
           this.form.quantityCompleted = this.normalizeDecimal(this.form.call_time) || 0;
         }
@@ -316,8 +352,8 @@ export default {
           this.form.quantityCompleted = this.normalizeDecimal(this.form.call_time) || 0;
         }
     },
-    'form.agent'(newAgentId) {
-        // Clear the selected order when agent changes since available orders will change
+    'form.agent'(newAgentId, oldAgentId) {
+        if (!oldAgentId || String(newAgentId) === String(oldAgentId)) return
         this.form.order = '';
         this.form.caseUnit = '';
         this.form.caseName = '';
@@ -383,7 +419,7 @@ async mounted() {
         this.form.outgoing_calls = logData.outgoing_calls || 0;
         this.form.answered_calls = logData.answered_calls || 0;
         this.form.response_rate = logData.response_rate || 0;
-        this.form.date = logData.date ? logData.date.substring(0, 10) : new Date().toISOString().substring(0, 10);
+        this.form.date = logData.date ? logData.date.substring(0, 10) : defaultLogDateFromStore(this.$store);
         this.form.quantityCompleted = logData.quantityCompleted || 0;
         this.form.comments = logData.comments || '';
         this.form.aLeads = logData.aLeads || 0;
@@ -432,7 +468,22 @@ async mounted() {
     },
     
     async submitForm() {
-        if (!this.formValid || this.isFormFrozen) return
+        this.showErrorMessage = false
+        this.errorMessage = ''
+
+        if (this.isFormFrozen) {
+          this.showErrorMessage = true
+          this.errorMessage = this.frozenMessage
+          return
+        }
+
+        const formRef = this.$refs.formRef
+        const validation = formRef?.validate ? await formRef.validate() : { valid: this.formValid }
+        if (validation?.valid === false) {
+          this.showErrorMessage = true
+          this.errorMessage = this.$t('dailyLogForm.fixRequiredFields')
+          return
+        }
 
         // Allow both comma and dot as decimal separators for key numeric fields
         this.form.hours = this.normalizeDecimal(this.form.hours);
@@ -442,21 +493,26 @@ async mounted() {
           this.form.quantityCompleted = this.form.call_time || 0;
         }
 
+        const selectedAgent = this.gcAgents.find((agent) => String(agent._id) === String(this.form.agent))
+        const selectedOrder = this.selectedOrder
+          || this.filteredOrders.find((order) => orderIdOf(order) === String(this.form.order || ''))
+        if (!selectedOrder) {
+          this.showErrorMessage = true
+          this.errorMessage = this.$t('dailyLogForm.caseNotAvailable')
+          return
+        }
+
+        this.isSaving = true
         try {
-            const selectedAgent = this.gcAgents.find(agent => agent._id === this.form.agent);
-            const selectedOrder = this.filteredOrders.find(order => order._id === this.form.order);
-            console.log('Selected Agent:', selectedAgent);
-            console.log('Selected Order:', selectedOrder);
             const payload = {
             ...this.form,
+            order: orderIdOf(selectedOrder) || this.form.order,
             agentName: selectedAgent ? selectedAgent.name : '',
-            caseName: this.form.caseName || (selectedOrder ? selectedOrder.caseName : '')
+            caseName: this.form.caseName || selectedOrder.caseName || ''
             };
             
             console.log('Saving log with caseName:', payload.caseName);
-            console.log('Selected order caseName:', selectedOrder ? selectedOrder.caseName : 'No order selected');
-            this.showErrorMessage = false;
-            this.errorMessage = '';
+            console.log('Selected order caseName:', selectedOrder.caseName);
 
             if (this.isEditing && this.originalLogId) {
                 // Update existing log
@@ -492,7 +548,7 @@ async mounted() {
                 this.form.outgoing_calls = 0;
                 this.form.answered_calls = 0;
                 this.form.response_rate = 0;
-                this.form.date = new Date().toISOString().substring(0, 10);
+                this.form.date = defaultLogDateFromStore(this.$store);
                 this.form.quantityCompleted = 0;
                 this.form.comments = '';
                 this.form.aLeads = 0;
@@ -514,10 +570,13 @@ async mounted() {
             this.showSuccessMessage = false;
             this.successMessage = '';
             this.showErrorMessage = true;
+            const apiMessage = err?.response?.data?.message || err?.response?.data?.error
             this.errorMessage =
-              err?.response?.data?.message ||
+              apiMessage ||
               this.$t('dailyLogForm.saveFailed') ||
               'Failed to save log.';
+        } finally {
+            this.isSaving = false
         }
     }
   },

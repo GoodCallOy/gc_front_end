@@ -81,7 +81,11 @@
     "dailyLogForm": {
       "selectAgent": "Select Agent",
       "selectCase": "Select Case",
-      "noCasesAssigned": "No cases assigned to this agent for the current month",
+      "noCasesAssigned": "No cases assigned to this agent for the selected date",
+      "searchCaseHint": "Type to search for a case",
+      "required": "This field is required",
+      "fixRequiredFields": "Please fill in the required fields.",
+      "caseNotAvailable": "Select a case. If it is missing, change the log date to a day inside the campaign.",
       "caseUnit": "Case Unit",
       "callTime": "Call Time",
       "completedCalls": "Completed Calls",
