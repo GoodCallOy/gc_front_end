@@ -141,7 +141,7 @@ import { mapGetters, mapMutations, mapActions } from 'vuex';
 import { goToNextMonth, goToPreviousMonth, formattedDateRange, isCurrentMonth } from '@/js/dateUtils';
 import { formatUnitsByCaseUnit } from '@/js/formatNumbers';
 import { getPercentageToGoalVuetifyColor } from '@/js/percentageToGoalStyle';
-import { isOrderEligibleForAgentGoalsForMonth, monthKeyFromDateRange } from '@/js/orderStatusUtils';
+import { isOrderEligibleForAgentGoalsForMonth, monthKeyFromDateRange, orderOverlapsDateRange } from '@/js/orderStatusUtils';
 import { getCampaignMonthView, getStoredAgentGoal, getLogCompletedUnits, isAgentAssignedToOrder } from '@/js/orderAuthority.js';
 import DateHeader from '@/components/DateHeader.vue';
 import AgentPersonalRevenueStatsStack from '@/components/AgentPersonalRevenueStatsStack.vue';
@@ -170,21 +170,14 @@ function monthBoundsFromRange(dateRange) {
   return { from, to };
 }
 
-function orderOverlapsRange(order, from, to) {
-  const orderStart = new Date(order?.startDate || 0);
-  const orderEnd = new Date(order?.deadline || 0);
-  return orderStart <= to && orderEnd >= from;
-}
-
 function getAgentMonthOrders(agent, orders, dateRange) {
   const aid = String(agent?._id ?? agent?.id ?? '');
   if (!aid || !Array.isArray(orders)) return [];
-  const { from, to } = monthBoundsFromRange(dateRange);
   const monthKey = monthKeyFromDateRange(dateRange);
   return orders.filter(
     (order) =>
       isAgentAssignedToOrder(order, aid) &&
-      orderOverlapsRange(order, from, to) &&
+      orderOverlapsDateRange(order, dateRange) &&
       getStoredAgentGoal(order, aid) > 0 &&
       (!monthKey || isOrderEligibleForAgentGoalsForMonth(order, monthKey, orders))
   );

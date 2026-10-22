@@ -1,6 +1,6 @@
 /** Order status helpers — global fallback plus per-month overrides (YYYY-MM keys). */
 
-import { toLocalYmdString } from './dateUtils'
+import { toLocalYmdString, toLocalYmdNumber } from './dateUtils'
 
 export const ORDER_STATUS_OPTIONS = [
   'pending',
@@ -27,6 +27,43 @@ export function monthKeyFromDateRange(dateRange) {
 export function monthKeyFromDate(dateVal) {
   const s = toLocalYmdString(dateVal) || String(dateVal || '').split('T')[0]
   return s.length >= 7 ? s.slice(0, 7) : ''
+}
+
+/** Inclusive local YYYYMMDD bounds for a YYYY-MM month key. */
+export function monthKeyBoundsYmd(monthKey) {
+  const key = String(monthKey || '').slice(0, 7)
+  if (key.length < 7) return null
+  const year = Number(key.slice(0, 4))
+  const month = Number(key.slice(5, 7))
+  if (!year || !month) return null
+  return {
+    start: year * 10000 + month * 100 + 1,
+    end: year * 10000 + month * 100 + new Date(year, month, 0).getDate(),
+  }
+}
+
+/**
+ * True when the order's local start/deadline overlaps this calendar month.
+ * Date-only strings stay on that calendar day (do not use Date.UTC / toISOString).
+ */
+export function orderOverlapsMonthKey(order, monthKey) {
+  const bounds = monthKeyBoundsYmd(monthKey)
+  const start = toLocalYmdNumber(order?.startDate)
+  const end = toLocalYmdNumber(order?.deadline)
+  if (!bounds || start == null || end == null) return false
+  return start <= bounds.end && end >= bounds.start
+}
+
+export function orderOverlapsDateRange(order, dateRange) {
+  const key = monthKeyFromDateRange(dateRange)
+  if (key) return orderOverlapsMonthKey(order, key)
+  if (!Array.isArray(dateRange) || !dateRange[0] || !dateRange[1]) return false
+  const rangeStart = toLocalYmdNumber(dateRange[0])
+  const rangeEnd = toLocalYmdNumber(dateRange[1])
+  const start = toLocalYmdNumber(order?.startDate)
+  const end = toLocalYmdNumber(order?.deadline)
+  if (rangeStart == null || rangeEnd == null || start == null || end == null) return false
+  return start <= rangeEnd && end >= rangeStart
 }
 
 export function getMonthlyOrderStatusMap(order) {
@@ -121,11 +158,21 @@ export function isCampaignClosedBeforeMonth(order, monthKey, allOrders = []) {
 
   const thisMonth = getMonthlyOrderStatusMap(order)[monthKey]
   if (thisMonth != null && thisMonth !== '') return false
-  return monthHasStickyClosedStatus(order, monthKey)
+  if (monthHasStickyClosedStatus(order, monthKey)) return true
+
+  // Global completed/cancelled with no monthly reopen: hide after the deadline month
+  // so old campaigns do not stay on the agent's current work list.
+  const global = normalizeOrderStatus(order.orderStatus ?? order.status)
+  if (STICKY_CLOSED_STATUSES.has(global)) {
+    const deadlineKey = monthKeyFromDate(order.deadline)
+    if (deadlineKey && deadlineKey < monthKey) return true
+  }
+  return false
 }
 
 /** Orders that contribute agent goal/revenue on the agents page for a month. */
 export function isOrderEligibleForAgentGoalsForMonth(order, monthKey, allOrders = []) {
+  if (monthKey && !orderOverlapsMonthKey(order, monthKey)) return false
   if (isCampaignClosedBeforeMonth(order, monthKey, allOrders)) return false
   const status = getOrderStatusForMonth(order, monthKey)
   return status === 'in-progress' || status === 'completed'
@@ -133,10 +180,11 @@ export function isOrderEligibleForAgentGoalsForMonth(order, monthKey, allOrders 
 
 /**
  * Cases the agent/admin should see on the agent dashboard for this month.
- * In-progress, pending, and completed for the viewed month.
+ * In-progress, pending, and completed for the viewed month, and dates overlap.
  * On-hold this month stays hidden. Completed/cancelled from an earlier month stay hidden.
  */
 export function isOrderListedOnAgentDashboardForMonth(order, monthKey, allOrders = []) {
+  if (monthKey && !orderOverlapsMonthKey(order, monthKey)) return false
   if (isCampaignClosedBeforeMonth(order, monthKey, allOrders)) return false
   const status = getOrderStatusForMonth(order, monthKey)
   return status === 'in-progress' || status === 'pending' || status === 'completed'
@@ -146,6 +194,7 @@ export function isOrderListedOnAgentDashboardForMonth(order, monthKey, allOrders
  * Agent dashboard / personal and team results: work that counts in the viewed month.
  */
 export function isOrderActiveForAgentDashboardForMonth(order, monthKey, allOrders = []) {
+  if (monthKey && !orderOverlapsMonthKey(order, monthKey)) return false
   if (isCampaignClosedBeforeMonth(order, monthKey, allOrders)) return false
   const status = getOrderStatusForMonth(order, monthKey)
   return status === 'in-progress' || status === 'completed'
@@ -153,6 +202,7 @@ export function isOrderActiveForAgentDashboardForMonth(order, monthKey, allOrder
 
 /** Callers see assigned orders except pending, cancelled, and campaigns already inactive in an earlier month. */
 export function isOrderVisibleToCallerForMonth(order, monthKey, allOrders = []) {
+  if (monthKey && !orderOverlapsMonthKey(order, monthKey)) return false
   if (isCampaignClosedBeforeMonth(order, monthKey, allOrders)) return false
   return !isOrderPendingForMonth(order, monthKey) && !isOrderCancelledForMonth(order, monthKey)
 }
@@ -172,17 +222,18 @@ export function isOrderCompletedForDailyLogs(order, monthKey) {
 }
 
 /**
- * Campaigns that can receive daily logs: in-progress, pending, and completed
- * (including after the campaign closed or its dates ended). Cancelled stays out.
+ * Campaigns that can receive daily logs this month: assigned work that still
+ * overlaps the month and is in-progress, pending, or completed this month.
+ * Older completed/cancelled campaigns stay off the current list.
  */
 export function isOrderEligibleForDailyLogsForMonth(order, monthKey, allOrders = []) {
   if (!order) return false
   if (monthKey && isOrderCancelledForMonth(order, monthKey)) return false
-  if (monthKey && isOrderCompletedForDailyLogs(order, monthKey)) return true
   if (monthKey && isCampaignClosedBeforeMonth(order, monthKey, allOrders)) return false
+  if (monthKey && !orderOverlapsMonthKey(order, monthKey)) return false
   if (!monthKey) return true
   const status = getOrderStatusForMonth(order, monthKey)
-  return status === 'in-progress' || status === 'pending'
+  return status === 'in-progress' || status === 'pending' || status === 'completed'
 }
 
 export function findOrderForDailyLog(orders, log) {

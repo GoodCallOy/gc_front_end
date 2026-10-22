@@ -281,6 +281,7 @@ import {
   wasOrderInactiveBeforeMonth,
   isCampaignClosedBeforeMonth,
   monthKeyFromDateRange,
+  orderOverlapsMonthKey,
 } from '@/js/orderStatusUtils'
 import { getPercentageToGoalBadgeClass } from '@/js/percentageToGoalStyle'
 import { formatSlashPair, formatStatNumber, formatCurrencyEUR } from '@/js/formatNumbers'
@@ -335,19 +336,11 @@ const filteredOrders = computed(() => {
     return orders.value || [];
   }
 
-  const [startDate, endDate] = currentDateRange.value;
-  const monthStart = new Date(startDate);
-  const monthEnd = new Date(endDate);
-
-  return orders.value.filter(order => {
-    const orderStart = new Date(order.startDate);
-    const orderEnd = new Date(order.deadline);
-    
-    // Check if order overlaps with the selected month
-    if (!(orderStart <= monthEnd && orderEnd >= monthStart)) return false;
-    const monthKey = currentMonthKey.value;
-    if (monthKey && isCampaignClosedBeforeMonth(order, monthKey, orders.value)) return false;
-    return true;
+  const monthKey = currentMonthKey.value
+  return orders.value.filter((order) => {
+    if (monthKey && !orderOverlapsMonthKey(order, monthKey)) return false
+    if (monthKey && isCampaignClosedBeforeMonth(order, monthKey, orders.value)) return false
+    return true
   });
 });
 

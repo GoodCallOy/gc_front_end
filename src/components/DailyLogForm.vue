@@ -141,12 +141,11 @@ import {
   areDailyLogsFrozenForLog,
   areDailyLogsFrozenForOrderMonth,
   isOrderEligibleForDailyLogsForMonth,
-  isOrderCompletedForDailyLogs,
   monthKeyFromDate,
 } from '@/js/orderStatusUtils'
 import { isAgentAssignedToOrder } from '@/js/orderAuthority.js'
 import { isHoursCaseUnit } from '@/js/formatNumbers'
-import { toLocalYmdNumber, toLocalYmdString } from '@/js/dateUtils'
+import { toLocalYmdString } from '@/js/dateUtils'
 
 function defaultLogDateFromStore(store) {
   const today = toLocalYmdString(new Date())
@@ -263,27 +262,12 @@ export default {
     const wantedAgent = String(this.form.agent || '')
     const list = this.ordersWithCaseName.filter((order) => {
       if (!wantedAgent || !isAgentAssignedToOrder(order, wantedAgent)) return false
-      if (!isOrderEligibleForDailyLogsForMonth(order, monthKey, this.orders)) return false
-
-      // Completed campaigns stay in the list for late results.
-      if (isOrderCompletedForDailyLogs(order, monthKey)) return true
-
-      const start = toLocalYmdNumber(order.startDate)
-      const end = toLocalYmdNumber(order.deadline)
-      if (start == null || end == null) return false
-      const [year, month] = String(monthKey).split('-').map(Number)
-      if (!year || !month) return false
-      const monthStart = year * 10000 + month * 100 + 1
-      const monthEnd = year * 10000 + month * 100 + new Date(year, month, 0).getDate()
-      const overlaps = start <= monthEnd && end >= monthStart
-      if (overlaps) return true
-      // In-progress Q3 (etc.) can still take logs after the deadline.
-      return start <= monthEnd
+      return isOrderEligibleForDailyLogsForMonth(order, monthKey, this.orders)
     })
     const selectedId = String(this.form.order || '')
-    if (selectedId && !list.some((o) => orderIdOf(o) === selectedId)) {
+    if (this.isEditing && selectedId && !list.some((o) => orderIdOf(o) === selectedId)) {
       const extra = this.ordersWithCaseName.find((o) => orderIdOf(o) === selectedId)
-      if (extra) return [extra, ...list]
+      if (extra && isAgentAssignedToOrder(extra, wantedAgent)) return [extra, ...list]
     }
     return list
   },

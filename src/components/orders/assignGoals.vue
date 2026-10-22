@@ -692,6 +692,7 @@ import {
   monthKeyFromDateRange,
   isOrderListedOnAgentDashboardForMonth,
   isCampaignClosedBeforeMonth,
+  orderOverlapsMonthKey,
 } from '@/js/orderStatusUtils'
 
 const store = useStore()
@@ -1345,20 +1346,12 @@ const { data } = await axios.get(
 const filteredSortedOrders = computed(() => {
   if (!orders.value || !orders.value.length || !currentDateRange.value || !currentDateRange.value.length) return [];
 
-  // Use string comparison for dates to avoid timezone issues
-  const rangeStart = currentDateRange.value[0]; // "YYYY-MM-DD"
-  const rangeEnd = currentDateRange.value[1];   // "YYYY-MM-DD"
   const monthKey = monthKeyFromDateRange(currentDateRange.value);
 
   // Filter to orders overlapping the selected month
   let list = orders.value
     .filter(order => {
-      const start = toDateOnly(order.startDate);
-      const end = toDateOnly(order.deadline);
-      if (!start || !end) return false;
-      // Order overlaps with the month range (any overlap counts)
-      // String comparison works for YYYY-MM-DD format
-      if (!(start <= rangeEnd && end >= rangeStart)) return false;
+      if (monthKey && !orderOverlapsMonthKey(order, monthKey)) return false
       if (monthKey && isCampaignClosedBeforeMonth(order, monthKey, orders.value)) return false;
       return true;
     })

@@ -657,6 +657,7 @@ import {
   isOrderEligibleForDailyLogsForMonth,
   isOrderCompletedForMonth,
   monthKeyFromDateRange,
+  orderOverlapsMonthKey,
 } from '@/js/orderStatusUtils'
 const store = useStore()
 const router = useRouter()
@@ -1743,22 +1744,10 @@ const teamEstimatedRevenueGoal = computed(() => {
   if (!Array.isArray(allOrders) || allOrders.length === 0) return 0;
   if (!Array.isArray(range) || range.length < 2) return 0;
 
-  const [startDate, endDate] = range;
-  const monthStart = new Date(startDate);
-  const monthEnd = new Date(endDate);
-  monthEnd.setHours(23, 59, 59, 999);
-
+  const monthKey = monthKeyFromDateRange(range)
   const eligibleOrders = allOrders.filter((order) => {
-    if (isTestCase(order) || isGoodCallCase(order)) return false;
-
-    // Same date-overlap logic as orders dashboard filteredOrders
-    const orderStart = new Date(order.startDate);
-    const orderEnd = new Date(order.deadline);
-    const overlapsMonth = orderStart <= monthEnd && orderEnd >= monthStart;
-    if (!overlapsMonth) return false;
-
-    const monthKey = monthKeyFromDateRange(range)
-    return isOrderActiveForAgentDashboardForMonth(order, monthKey)
+    if (isTestCase(order) || isGoodCallCase(order)) return false
+    return isOrderActiveForAgentDashboardForMonth(order, monthKey, allOrders)
   });
 
   if (!eligibleOrders.length) return 0;
@@ -1942,14 +1931,10 @@ const teamCurrentRevenueDashboardStyle = computed(() => {
   const monthEnd = new Date(Math.max.apply(null, ends));
   monthEnd.setHours(23, 59, 59, 999);
 
+  const monthKey = monthKeyFromDateRange(currentDateRange.value)
   const eligibleOrders = allOrders.filter((order) => {
-    if (isTestCase(order) || isGoodCallCase(order)) return false;
-    const orderStart = new Date(order.startDate);
-    const orderEnd = new Date(order.deadline);
-    const overlapsMonth = orderStart <= monthEnd && orderEnd >= monthStart;
-    if (!overlapsMonth) return false;
-    const monthKey = monthKeyFromDateRange(currentDateRange.value)
-    return isOrderActiveForAgentDashboardForMonth(order, monthKey)
+    if (isTestCase(order) || isGoodCallCase(order)) return false
+    return isOrderActiveForAgentDashboardForMonth(order, monthKey, allOrders)
   });
 
   if (!eligibleOrders.length) return 0;
@@ -2715,14 +2700,8 @@ function getAgentOrdersForView(agentId, { includeTestCases = true } = {}) {
   })
 
   if (currentDateRange.value?.length >= 2) {
-    const [startDate, endDate] = currentDateRange.value
-    const monthStart = new Date(startDate)
-    const monthEnd = new Date(endDate)
-    agentOrders = agentOrders.filter((order) => {
-      const orderStart = new Date(order.startDate)
-      const orderEnd = new Date(order.deadline)
-      return orderStart <= monthEnd && orderEnd >= monthStart
-    })
+    const monthKey = monthKeyFromDateRange(currentDateRange.value)
+    agentOrders = agentOrders.filter((order) => orderOverlapsMonthKey(order, monthKey))
   }
 
   return applyCallerOrderVisibility(dedupeOrdersForMonthView(agentOrders))
@@ -2737,24 +2716,12 @@ function findOrdersForUser(allOrdersArray, agentId) {
     isAgentAssignedToOrder(order, wanted)
   );
 
-  // Early return if no date range
   if (!currentDateRange.value || currentDateRange.value.length < 2) {
     return dedupeOrdersForMonthView(applyCallerOrderVisibility(agentOrders));
   }
-  
-  // Pre-calculate date boundaries once
-  const [startDate, endDate] = currentDateRange.value;
-  const monthStart = new Date(startDate);
-  const monthEnd = new Date(endDate);
-  
-  // Optimized date filtering
-  const inMonth = agentOrders.filter(order => {
-    const orderStart = new Date(order.startDate);
-    const orderEnd = new Date(order.deadline);
-    
-    // Fast overlap check
-    return orderStart <= monthEnd && orderEnd >= monthStart;
-  });
+
+  const monthKey = monthKeyFromDateRange(currentDateRange.value)
+  const inMonth = agentOrders.filter((order) => orderOverlapsMonthKey(order, monthKey))
 
   return dedupeOrdersForMonthView(applyCallerOrderVisibility(inMonth));
 }
@@ -2766,13 +2733,8 @@ function getAgentAssignedOrdersInMonth(agentId) {
 
   let agentOrders = (orders.value || []).filter((order) => isAgentAssignedToOrder(order, wanted));
   if (currentDateRange.value?.length >= 2) {
-    const monthStart = new Date(currentDateRange.value[0]);
-    const monthEnd = new Date(currentDateRange.value[1]);
-    agentOrders = agentOrders.filter((order) => {
-      const orderStart = new Date(order.startDate);
-      const orderEnd = new Date(order.deadline);
-      return orderStart <= monthEnd && orderEnd >= monthStart;
-    });
+    const monthKey = monthKeyFromDateRange(currentDateRange.value)
+    agentOrders = agentOrders.filter((order) => orderOverlapsMonthKey(order, monthKey));
   }
 
   return groupOrderCampaignsForMonthView(agentOrders, currentDateRange.value)

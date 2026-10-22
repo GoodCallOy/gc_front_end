@@ -83,6 +83,7 @@ import urls from '@/js/config.js';
 import { getMonthKey, getMonthWeeks } from '@/js/dateUtils';
 import { resolveLinkedGcAgent } from '@/js/resolveLinkedGcAgent.js';
 import { isAgentAssignedToOrder } from '@/js/orderAuthority.js';
+import { isOrderListedOnAgentDashboardForMonth } from '@/js/orderStatusUtils';
 
 const { t } = useI18n();
 const route = useRoute();
@@ -169,14 +170,9 @@ const assignedCasesList = computed(() => {
   const monthKey = form.value.selectedMonth;
   if (!agent || !monthKey) return [];
   const agentId = String(agent._id ?? agent.id ?? '');
-  const [y, m] = monthKey.split('-').map(Number);
-  const monthStart = new Date(y, m - 1, 1);
-  const monthEnd = new Date(y, m, 0, 23, 59, 59, 999);
-  return orders.value.filter(order => {
-    if (!isAgentAssignedToOrder(order, agentId)) return false;
-    const orderStart = new Date(order.startDate || 0);
-    const orderEnd = new Date(order.deadline || 0);
-    return orderStart <= monthEnd && orderEnd >= monthStart;
+  return orders.value.filter((order) => {
+    if (!isAgentAssignedToOrder(order, agentId)) return false
+    return isOrderListedOnAgentDashboardForMonth(order, monthKey, orders.value)
   });
 });
 

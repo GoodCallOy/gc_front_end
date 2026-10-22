@@ -119,7 +119,7 @@ import { goToNextMonth, goToPreviousMonth } from '@/js/dateUtils'
 import { useRouter } from 'vue-router'
 import { getCampaignMonthView, orderSpansMultipleMonths, ordersDashboardRevenueGoalEuros } from '@/js/orderAuthority.js'
 import { formatStatNumber, formatCurrencyEUR, formatSlashPair } from '@/js/formatNumbers'
-import { monthKeyFromDateRange, isCampaignClosedBeforeMonth } from '@/js/orderStatusUtils'
+import { monthKeyFromDateRange, isCampaignClosedBeforeMonth, orderOverlapsMonthKey } from '@/js/orderStatusUtils'
 
 // Helper function to check if an order is a test case
 function isTestCase(order) {
@@ -206,14 +206,9 @@ const filteredOrders = computed(() => {
   const list = orders.value || []
   const range = currentDateRange.value
   if (!range || range.length < 2) return list
-  const [startDate, endDate] = range
-  const monthStart = new Date(startDate)
-  const monthEnd = new Date(endDate)
-  return list.filter(order => {
-    const orderStart = new Date(order.startDate)
-    const orderEnd = new Date(order.deadline)
-    if (!(orderStart <= monthEnd && orderEnd >= monthStart)) return false
-    const monthKey = monthKeyFromDateRange(range)
+  const monthKey = monthKeyFromDateRange(range)
+  return list.filter((order) => {
+    if (monthKey && !orderOverlapsMonthKey(order, monthKey)) return false
     if (monthKey && isCampaignClosedBeforeMonth(order, monthKey, list)) return false
     return true
   })

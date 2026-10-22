@@ -34,14 +34,6 @@ export function computeAgentMyProgressPercent(agent, orders, statsLogs, dateRang
   const agentId = resolveGcAgentId(agent, gcAgents);
   if (!agentId || !Array.isArray(orders) || !Array.isArray(statsLogs)) return null;
 
-  let from;
-  let to;
-  if (dateRange && dateRange.length >= 2) {
-    from = new Date(dateRange[0]);
-    to = new Date(dateRange[1]);
-    to.setHours(23, 59, 59, 999);
-  }
-
   const userOrders = (orders || []).filter(
     (o) =>
       isAgentAssignedToOrder(o, agentId) &&
@@ -53,12 +45,8 @@ export function computeAgentMyProgressPercent(agent, orders, statsLogs, dateRang
 
   const monthKey = monthKeyFromDateRange(dateRange);
   const inRange = userOrders.filter((order) => {
-    if (!from || !to) return true;
-    const orderStart = new Date(order.startDate || 0);
-    const orderEnd = new Date(order.deadline || 0);
-    if (!(orderStart <= to && orderEnd >= from)) return false;
-    if (monthKey && !isOrderEligibleForAgentGoalsForMonth(order, monthKey)) return false;
-    return true;
+    if (!monthKey) return true;
+    return isOrderEligibleForAgentGoalsForMonth(order, monthKey, orders);
   });
 
   if (!inRange.length) return null;
