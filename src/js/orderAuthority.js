@@ -39,6 +39,7 @@ export {
   recordToObject,
   getLogCallHours,
   getLogCompletedUnits,
+  getLogAgentId,
   logMatchesOrderForMonthRevenue,
   groupOrderCampaignsForMonthView,
   estimatedRevenueEurosForCampaignGroup,

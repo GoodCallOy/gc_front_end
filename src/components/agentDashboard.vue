@@ -641,6 +641,7 @@ import {
   groupOrderCampaignsForMonthView,
   getLogCompletedUnits,
   getLogCallHours,
+  getLogAgentId,
 } from '@/js/orderAuthority.js';
 import agentCaseCard from './agentCaseCard.vue'
 import AgentDashboardTeamStatsCard from './agentDashboardTeamStatsCard.vue'
@@ -1065,7 +1066,7 @@ const revenueGenerated = computed(() => {
   const filteredStats = stats.filter(log => {
     const logDate = new Date(log.date);
     const isInDateRange = logDate >= monthStart && logDate <= monthEnd;
-    const logAgentId = log.agent?._id || log.agent?.id || log.agent || log.agentId;
+    const logAgentId = getLogAgentId(log);
     const isAgentLog = String(logAgentId) === String(agentId);
     return isInDateRange && isAgentLog;
   });
@@ -1238,7 +1239,7 @@ const weeklyTotals = computed(() => {
     const isInDateRange = logDate >= monthStart && logDate <= monthEnd;
     
     // Check if this log belongs to the specific agent
-    const logAgentId = log.agent?._id || log.agent || log.agentId;
+    const logAgentId = getLogAgentId(log);
     const isAgentLog = String(logAgentId) === String(agentId);
     
     return isInDateRange && isAgentLog;
@@ -1398,7 +1399,7 @@ const individualLogs = computed(() => {
     const isInDateRange = logDate >= monthStart && logDate <= monthEnd;
     
     // Check if this log belongs to the specific agent
-    const logAgentId = log.agent?._id || log.agent || log.agentId;
+    const logAgentId = getLogAgentId(log);
     const isAgentLog = String(logAgentId) === String(agentId);
     
     return isInDateRange && isAgentLog;
@@ -1595,14 +1596,7 @@ const weeklyGoalsTableRows = computed(() => {
           if (isNaN(d.getTime()) || d < from || d > to) return false
 
           // Match by agent
-          const logAgentId = String(
-            log?.agent?._id ??
-            log?.agent?.id ??
-            log?.agent ??
-            log?.agentId ??
-            ''
-          )
-          if (logAgentId !== agentId) return false
+          if (getLogAgentId(log) !== agentId) return false
 
           // Match by order or case name
           const logOrderId = String(
@@ -1878,7 +1872,7 @@ const personalHoursWorkedBreakdown = computed(() => {
 
   stats.forEach((log) => {
     const logDate = new Date(log.date);
-    const logAgentId = log.agent?._id || log.agent?.id || log.agent || log.agentId;
+    const logAgentId = getLogAgentId(log);
     if (String(logAgentId) !== agentId) return;
     if (logDate < monthStart || logDate > monthEnd) return;
     if (String(log.caseName || '').toLowerCase().includes('test')) return;
@@ -2298,7 +2292,7 @@ const aLeadDetailRows = computed(() => {
   for (const log of stats) {
     const d = new Date(log?.date);
     if (!(d >= monthStart && d <= monthEnd)) continue;
-    const logAgentId = String(log?.agent?._id ?? log?.agent?.id ?? log?.agent ?? log?.agentId ?? '');
+    const logAgentId = getLogAgentId(log);
     if (logAgentId !== agentId) continue;
     const key = `${log.date}_${log.agentName || log.agent}_${log.caseName}_${log._id || log.id}`;
     if (seen.has(key)) continue;
@@ -2810,22 +2804,35 @@ const editLog = (logData) => {
 
 // Delete log function
 const deleteLog = async (logData) => {
-  if (isDailyLogFrozen(logData)) return
+  if (isDailyLogFrozen(logData)) {
+    alert(t('dailyLogForm.frozenCompleted') || t('agentDashboard.failedToDeleteLog'))
+    return
+  }
   if (!confirm(t('agentDashboard.confirmDeleteLog'))) {
     return;
   }
+
+  const logId = logData?._id ?? logData?.id
+  if (!logId) {
+    alert(t('agentDashboard.failedToDeleteLog'))
+    return
+  }
   
   try {
-    const response = await axios.delete(`${urls.backEndURL}/dailyLogs/${logData._id}`);
+    const response = await axios.delete(`${urls.backEndURL}/dailyLogs/${logId}`);
     
     if (response.status === 200) {
-      // Refresh the data to reflect the deletion
       await store.dispatch('fetchDailyLogs');
-      console.log(t('agentDashboard.logDeletedSuccessfully'));
+      await refreshDashboardForCurrentSelection(
+        orders.value,
+        selectedGcAgent.value,
+        currentDateRange.value
+      )
     }
   } catch (error) {
     console.error('Error deleting log:', error);
-    alert(t('agentDashboard.failedToDeleteLog'));
+    const serverMessage = error?.response?.data?.message
+    alert(serverMessage || t('agentDashboard.failedToDeleteLog'));
   }
 };
 

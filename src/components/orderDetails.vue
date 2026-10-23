@@ -921,8 +921,14 @@ watch(individualLogs, () => {
       return;
     }
 
+    const logId = logData?._id ?? logData?.id
+    if (!logId) {
+      alert(t('agentDashboard.failedToDeleteLog'))
+      return
+    }
+
     try {
-      const response = await axios.delete(`${urls.backEndURL}/dailyLogs/${logData._id}`, {
+      const response = await axios.delete(`${urls.backEndURL}/dailyLogs/${logId}`, {
         withCredentials: true
       });
 
@@ -944,7 +950,8 @@ watch(individualLogs, () => {
       }
     } catch (error) {
       console.error('Error deleting log:', error);
-      alert(t('agentDashboard.failedToDeleteLog'));
+      const serverMessage = error?.response?.data?.message
+      alert(serverMessage || t('agentDashboard.failedToDeleteLog'));
     }
   }
 

@@ -10,6 +10,15 @@ export function normalizeEntityId(value) {
   return String(value)
 }
 
+function normalizeCaseName(name) {
+  return String(name ?? '').trim().replace(/\s+/g, ' ')
+}
+
+/** Agent id stored on a daily log (populated doc, ObjectId, or agentId field). */
+export function getLogAgentId(log) {
+  return normalizeEntityId(log?.agent ?? log?.agentId)
+}
+
 /** Prefer `id` when present so assignment subdocs do not use their own `_id`. */
 export function assignedCallerId(caller) {
   if (caller == null || caller === '') return ''
@@ -77,26 +86,30 @@ export function getDistributedAssignedGoals(order) {
   return Object.values(goals).reduce((sum, val) => sum + (Number(val) || 0), 0)
 }
 
-/** Match a daily log to an order for monthly revenue (order id, then case id, then case name). */
+/**
+ * Match a daily log to a campaign for month progress.
+ * Copied / overlapping order rows for the same case are grouped into one
+ * dashboard row, so a log that points at a sibling order id still counts
+ * when case id (or case name + unit) matches.
+ */
 export function logMatchesOrderForMonthRevenue(log, order) {
   if (!log || !order) return false
 
   const orderId = normalizeEntityId(order._id ?? order.id)
   const logOrderId = normalizeEntityId(log.order?._id ?? log.order ?? log.orderId)
+  if (logOrderId && orderId && logOrderId === orderId) return true
 
-  if (logOrderId && orderId) {
-    if (logOrderId !== orderId) return false
-    const logCase = log.caseName || log.case
-    if (logCase && order.caseName && String(logCase) !== String(order.caseName)) return false
-    return true
-  }
+  const logUnit = String(log.caseUnit || log.case_unit || '')
+  const orderUnit = String(order.caseUnit || '')
+  const unitOk = !logUnit || !orderUnit || logUnit === orderUnit
 
   const logCaseId = normalizeEntityId(log.caseId ?? log.case?._id)
   const orderCaseId = normalizeEntityId(order.caseId)
-  if (logCaseId && orderCaseId && logCaseId === orderCaseId) return true
+  if (logCaseId && orderCaseId && logCaseId === orderCaseId && unitOk) return true
 
-  const logCase = log.caseName || log.case
-  if (logCase && order.caseName && String(logCase) === String(order.caseName)) return true
+  const logCase = normalizeCaseName(log.caseName || log.case)
+  const orderCase = normalizeCaseName(order.caseName)
+  if (logCase && orderCase && logCase === orderCase && unitOk) return true
 
   return false
 }
@@ -696,9 +709,7 @@ export function sumAgentCompletedUnitsBeforeMonthKey(order, agentId, dailyLogs, 
   const seen = new Set()
   let units = 0
   for (const log of dailyLogs) {
-    const logAgentId = String(
-      log?.agent?._id ?? log?.agent?.id ?? log?.agent ?? log?.agentId ?? ''
-    )
+    const logAgentId = getLogAgentId(log)
     if (logAgentId !== aid) continue
     if (!logMatchesOrderForMonthRevenue(log, order)) continue
     const logYmd = toLocalYmdNumber(log.date)
@@ -761,9 +772,7 @@ export function sumOrderUnitsInMonth(order, dailyLogs = [], monthKey = '', agent
   for (const log of dailyLogs) {
     if (!logMatchesOrderForMonthRevenue(log, order)) continue
     if (aid) {
-      const logAgentId = String(
-        log?.agent?._id ?? log?.agent?.id ?? log?.agent ?? log?.agentId ?? ''
-      )
+      const logAgentId = getLogAgentId(log)
       if (logAgentId !== aid) continue
     }
     const logMonth = monthKeyFromDate(log.date)

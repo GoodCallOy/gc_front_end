@@ -251,7 +251,15 @@ export function findOrderForDailyLog(orders, log) {
 export function areDailyLogsFrozenForLog(orders, log) {
   const order = findOrderForDailyLog(orders, log)
   if (!order) return false
-  return areDailyLogsFrozenForOrderMonth(order, monthKeyFromDate(log?.date))
+  const monthKey = monthKeyFromDate(log?.date)
+  if (!areDailyLogsFrozenForOrderMonth(order, monthKey)) return false
+  const caseName = String(log?.caseName ?? order.caseName ?? '').trim()
+  const liveSibling = (orders || []).some(
+    (o) =>
+      String(o?.caseName ?? '').trim() === caseName &&
+      !areDailyLogsFrozenForOrderMonth(o, monthKey)
+  )
+  return !liveSibling
 }
 
 /** Merge one month into monthlyOrderStatus for PUT /orders/:id */
